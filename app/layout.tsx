@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Manrope, Edu_NSW_ACT_Cursive } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ReduxProvider } from "@/redux/provider";
@@ -12,13 +12,6 @@ const manrope = Manrope({
   display: "swap",
 });
 
-// const edu_nsw_act_cursive = Edu_NSW_ACT_Cursive({
-//   subsets: ["latin"],
-//   weight: ["400", "500", "600", "700"],
-//   variable: "--font-cursive",
-//   display: "swap",
-// });
-
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["400", "600", "700"],
@@ -28,14 +21,22 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "ScanDriver – Your Driver One Scan Away | Delhi NCR",
+  metadataBase: new URL("https://scandriver.in"),
+  title: {
+    default: "ScanDriver – Your Driver One Scan Away | Delhi NCR",
+    template: "%s | ScanDriver",
+  },
   description:
     "Delhi NCR's most trusted on-demand driver service. Hire verified, professional drivers hourly, weekly, monthly or for outstation. Book via WhatsApp instantly.",
-  keywords: "hire driver Delhi NCR, on demand driver Delhi, verified driver Gurgaon, personal driver Noida, monthly driver hire",
+  keywords:
+    "hire driver Delhi NCR, on demand driver Delhi, verified driver Gurgaon, personal driver Noida, monthly driver hire, outstation driver, driver on demand",
   authors: [{ name: "ScanDriver Private Limited" }],
+  creator: "ScanDriver Private Limited",
+  publisher: "ScanDriver Private Limited",
   openGraph: {
     title: "ScanDriver – Your Driver One Scan Away",
-    description: "Verified. Professional. On-Demand. Delhi NCR's most trusted driver platform.",
+    description:
+      "Verified. Professional. On-Demand. Delhi NCR's most trusted driver platform.",
     url: "https://scandriver.in",
     siteName: "ScanDriver",
     locale: "en_IN",
@@ -44,16 +45,23 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "ScanDriver – Your Driver One Scan Away",
-    description: "Verified. Professional. On-Demand. Delhi NCR's most trusted driver platform.",
+    description:
+      "Verified. Professional. On-Demand. Delhi NCR's most trusted driver platform.",
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
-  // Favicon and Apple touch icons
   icons: {
     icon: "/icons/logo-sd.png",
-    apple: "/apple-icon.png",
+    apple: "/icons/apple-icon.png",
   },
 };
 
@@ -76,11 +84,9 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       className="bg-background">
-      <head>
-        <link rel="icon" href="/icons/logo-sd.png" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" />
-      </head>
-      <body className={`${manrope.variable}  ${cormorant.variable} antialiased`}>
+      <body
+        className={`${manrope.variable} ${cormorant.variable} antialiased`}
+        suppressHydrationWarning>
         <ReduxProvider>
           <ThemeProvider
             attribute="class"
