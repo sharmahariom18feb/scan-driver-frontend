@@ -1,0 +1,97 @@
+import type { Metadata, Viewport } from "next";
+import { Cormorant_Garamond, Manrope, Edu_NSW_ACT_Cursive } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ReduxProvider } from "@/redux/provider";
+import "./globals.css";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+// const edu_nsw_act_cursive = Edu_NSW_ACT_Cursive({
+//   subsets: ["latin"],
+//   weight: ["400", "500", "600", "700"],
+//   variable: "--font-cursive",
+//   display: "swap",
+// });
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-cormorant",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "ScanDriver – Your Driver One Scan Away | Delhi NCR",
+  description:
+    "Delhi NCR's most trusted on-demand driver service. Hire verified, professional drivers hourly, weekly, monthly or for outstation. Book via WhatsApp instantly.",
+  keywords: "hire driver Delhi NCR, on demand driver Delhi, verified driver Gurgaon, personal driver Noida, monthly driver hire",
+  authors: [{ name: "ScanDriver Private Limited" }],
+  openGraph: {
+    title: "ScanDriver – Your Driver One Scan Away",
+    description: "Verified. Professional. On-Demand. Delhi NCR's most trusted driver platform.",
+    url: "https://scandriver.in",
+    siteName: "ScanDriver",
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ScanDriver – Your Driver One Scan Away",
+    description: "Verified. Professional. On-Demand. Delhi NCR's most trusted driver platform.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  // Favicon and Apple touch icons
+  icons: {
+    icon: "/icons/logo-sd.png",
+    apple: "/apple-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#080808" },
+  ],
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className="bg-background">
+      <head>
+        <link rel="icon" href="/icons/logo-sd.png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
+      </head>
+      <body className={`${manrope.variable}  ${cormorant.variable} antialiased`}>
+        <ReduxProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange={false}>
+            {children}
+          </ThemeProvider>
+        </ReduxProvider>
+        {process.env.NODE_ENV === "production" && <Analytics />}
+      </body>
+    </html>
+  );
+}

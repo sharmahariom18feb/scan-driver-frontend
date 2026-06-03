@@ -1,0 +1,39 @@
+{
+  "id": "/driver-app",
+  "name": "ScanDriver Partner",
+  "short_name": "SD Partner",
+  "description": "ScanDriver Partner Application for verified drivers",
+  "start_url": "/driver-app",
+  "scope": "/driver-app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "icons": [
+    {
+      "src": "/icons/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/logo-sd-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-ss.png",
+      "sizes": "390x844",
+      "type": "image/png"
+    },
+    {
+      "src": "/screenshots/desktop-ss.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
+}
