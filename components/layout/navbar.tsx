@@ -46,7 +46,7 @@ export function Navbar() {
           <nav className="flex items-center justify-between">
             {/* Logo */}
             <Link href="#" className="flex items-center gap-2.5 no-underline">
-              <Image loading='eager' src={logoSd} alt="logo" width={140} height={140} />
+              <Image loading='eager' src={logoSd} alt="logo" width={140} style={{ height: 'auto' }} />
             </Link>
 
             {/* Desktop Nav */}

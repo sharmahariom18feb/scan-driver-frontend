@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ReduxProvider } from "@/redux/provider";
@@ -7,16 +7,8 @@ import "./globals.css";
 
 const manrope = Manrope({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-sans",
-  display: "swap",
-});
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-cormorant",
   display: "swap",
 });
 
@@ -60,7 +52,7 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/icons/logo-sd.png",
+    // icon: "/icons/logo-sd.png",
     apple: "/icons/apple-icon.png",
   },
 };
@@ -85,7 +77,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className="bg-background">
       <body
-        className={`${manrope.variable} ${cormorant.variable} antialiased`}
+        className={`${manrope.variable} antialiased`}
         suppressHydrationWarning>
         <ReduxProvider>
           <ThemeProvider

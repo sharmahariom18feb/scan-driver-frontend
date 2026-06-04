@@ -1,7 +1,7 @@
 const CACHE_NAME = 'scandriver-partner-v1'
 const ASSETS_TO_CACHE = [
   '/driver-app',
-  '/logo-sd.png',
+  // '/logo-sd.png',
   '/placeholder-user.jpg',
   '/driver-manifest.json',
 ]

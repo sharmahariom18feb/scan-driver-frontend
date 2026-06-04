@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit'
+import { supabase } from '@/lib/supabaseClient'
 
 export interface Booking {
   id: string
@@ -14,6 +15,7 @@ export interface Booking {
   specialInstructions: string
   status: 'available' | 'accepted' | 'passed' | 'completed'
   type: 'AIRPORT DROP' | 'HOURLY' | 'OUTSTATION'
+  driverId?: string | null
 }
 
 export interface DriverNotification {
@@ -26,6 +28,7 @@ export interface DriverNotification {
 }
 
 export interface DriverInfo {
+  id?: string
   firstName: string
   lastName: string
   phone: string
@@ -49,157 +52,160 @@ export interface DriverState {
   }
   loading: boolean
   error: string | null
-}
-
-const mockBookings: Booking[] = [
-  {
-    id: 'SD-2841',
-    customerName: 'Ankit Sharma',
-    phone: '+91-9812345678',
-    pickup: 'Sector 29, Gurgaon',
-    drop: 'IGI Airport T3, Delhi',
-    dateTime: 'Today - 06:30 AM',
-    duration: '~90 min',
-    distance: '38 km',
-    fare: 680,
-    vehicle: 'Honda City - HR26-AB1234',
-    specialInstructions: 'Early morning flight. Punctuality critical.',
-    status: 'available',
-    type: 'AIRPORT DROP',
-  },
-  {
-    id: 'SD-2840',
-    customerName: 'Priya Mehta',
-    phone: '+91-9988776655',
-    pickup: 'DLF Phase 2, Gurgaon',
-    drop: 'Connaught Place, Delhi',
-    dateTime: 'Today - 09:00 AM',
-    duration: '3 hours',
-    distance: '28 km',
-    fare: 447,
-    vehicle: 'Maruti Swift - DL3C-XY5678',
-    specialInstructions: 'Client waiting. Friendly demeanor requested.',
-    status: 'available',
-    type: 'HOURLY',
-  },
-  {
-    id: 'SD-2839',
-    customerName: 'Rajiv Gupta',
-    phone: '+91-9765432109',
-    pickup: 'Noida Sector 62',
-    drop: 'Connaught Place, Delhi',
-    dateTime: 'Today - 11:30 AM',
-    duration: '2 hours',
-    distance: '25 km',
-    fare: 350,
-    vehicle: 'Hyundai Creta - UP16-CD9012',
-    specialInstructions: 'Keep AC on high.',
-    status: 'available',
-    type: 'HOURLY',
-  },
-  {
-    id: 'SD-2838',
-    customerName: 'Vikram Singh',
-    phone: '+91-9543210987',
-    pickup: 'Dwarka Sec 10',
-    drop: 'Sector 62 Noida',
-    dateTime: 'Tomorrow - 08:00 AM',
-    duration: '~75 min',
-    distance: '45 km',
-    fare: 580,
-    vehicle: 'Mahindra XUV700 - DL9C-ZA4321',
-    specialInstructions: 'Driver must know automatic transmission well.',
-    status: 'available',
-    type: 'OUTSTATION',
-  },
-]
-
-const mockNotifications: DriverNotification[] = [
-  {
-    id: 'N-1',
-    title: 'New Booking Available',
-    description: 'Airport drop from Gurgaon to IGI T3 – ₹680 fare. Open now to accept.',
-    time: '2 min ago',
-    type: 'booking',
-    read: false,
-  },
-  {
-    id: 'N-2',
-    title: 'New Booking Available',
-    description: 'Hourly booking from DLF Phase 2 – 3 hours, ₹447. Client waiting.',
-    time: '6 min ago',
-    type: 'booking',
-    read: false,
-  },
-  {
-    id: 'N-3',
-    title: 'Profile Verified',
-    description: 'Your Aadhaar and license verification is complete. You can now receive bookings.',
-    time: '1 hour ago',
-    type: 'system',
-    read: false,
-  },
-  {
-    id: 'N-4',
-    title: 'Rating Update',
-    description: 'You received a 5-star rating from your last trip. Keep it up!',
-    time: '3 hours ago',
-    type: 'rating',
-    read: true,
-  },
-  {
-    id: 'N-5',
-    title: 'Payout Processed',
-    description: 'Your weekly payout of ₹8,460 has been sent to your registered UPI ID.',
-    time: 'Yesterday',
-    type: 'payout',
-    read: true,
-  },
-]
-
-const defaultDriver: DriverInfo = {
-  firstName: 'Ramesh',
-  lastName: 'Kumar',
-  phone: '+91-9876543210',
-  email: 'ramesh@email.com',
-  currentArea: 'Dwarka, Delhi',
-  licenseNo: 'DL-1420210089567',
-  rating: 4.8,
-  verified: true,
-  avatar: 'RK',
+  checkingSession: boolean
 }
 
 const initialState: DriverState = {
   isAuthenticated: false,
   isOnline: false,
   info: null,
-  bookings: mockBookings,
-  notifications: mockNotifications,
+  bookings: [],
+  notifications: [],
   stats: {
     trips: 0,
     earnings: 0,
   },
   loading: false,
   error: null,
+  checkingSession: true,
 }
 
-// Mock Thunks - designed to easily integrate with Supabase in future
+// 1. Fetch bookings from Supabase
+export const fetchBookings = createAsyncThunk(
+  'driver/fetchBookings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      let query = supabase.from('bookings').select('*')
+      
+      if (session?.user) {
+        query = query.or(`status.eq.available,driver_id.eq.${session.user.id}`)
+      } else {
+        query = query.eq('status', 'available')
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
+      
+      if (error) throw error
+
+      if (!data) return []
+
+      return data.map((b: any) => ({
+        id: b.id,
+        customerName: b.customer_name,
+        phone: b.phone,
+        pickup: b.pickup,
+        drop: b.drop,
+        dateTime: b.date_time,
+        duration: b.duration,
+        distance: b.distance,
+        fare: Number(b.fare),
+        vehicle: b.vehicle,
+        specialInstructions: b.special_instructions || '',
+        status: b.status,
+        type: b.type,
+        driverId: b.driver_id,
+      })) as Booking[]
+    } catch (err: any) {
+      console.error('Supabase fetchBookings error:', err)
+      return rejectWithValue(err.message || 'Failed to fetch bookings')
+    }
+  }
+)
+
+// 2. Fetch notifications from Supabase
+export const fetchNotifications = createAsyncThunk(
+  'driver/fetchNotifications',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return []
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('driver_id', session.user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      if (!data) return []
+
+      return data.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        description: n.description,
+        time: n.time,
+        type: n.type,
+        read: n.read,
+      })) as DriverNotification[]
+    } catch (err: any) {
+      console.error('Supabase fetchNotifications error:', err)
+      return rejectWithValue(err.message || 'Failed to fetch notifications')
+    }
+  }
+)
+
+// 3. Login driver thunk with password authentication (supports email or username)
 export const loginDriver = createAsyncThunk(
   'driver/login',
-  async (credentials: { email: string; phone?: string }, { rejectWithValue }) => {
+  async (credentials: { emailOrUsername: string; password?: string }, { dispatch, rejectWithValue }) => {
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      
-      // Simply log in with default driver info, using signed in email if provided
-      const driverInfo = {
-        ...defaultDriver,
-        email: credentials.email || defaultDriver.email,
-        phone: credentials.phone || defaultDriver.phone,
+      let email = credentials.emailOrUsername
+
+      // If it doesn't look like an email, resolve username to email via RPC
+      if (!email.includes('@')) {
+        const { data: resolvedEmail, error: rpcError } = await supabase
+          .rpc('get_email_by_username', { p_username: email })
+
+        if (rpcError) throw rpcError
+        if (!resolvedEmail) throw new Error('Username not found')
+        email = resolvedEmail
       }
-      
-      // Store in localStorage for basic persistence
+
+      // Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: credentials.password || '',
+      })
+
+      if (error) throw error
+
+      const user = data.user
+      if (!user) throw new Error('No user data returned')
+
+      // Fetch driver profile info from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut()
+        throw new Error('Driver profile not found. Account creation is not implemented yet.')
+      }
+
+      const driverInfo: DriverInfo = {
+        id: user.id,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        phone: profile.phone,
+        email: user.email || email,
+        currentArea: profile.current_area,
+        licenseNo: profile.license_no,
+        rating: Number(profile.rating),
+        verified: profile.verified,
+        avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+      }
+
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
+      
+      // Load user's bookings and notifications
+      dispatch(fetchBookings())
+      dispatch(fetchNotifications())
+
       return driverInfo
     } catch (err: any) {
       return rejectWithValue(err.message || 'Login failed')
@@ -207,13 +213,102 @@ export const loginDriver = createAsyncThunk(
   }
 )
 
+// 3a. Send OTP thunk
+export const sendDriverOtp = createAsyncThunk(
+  'driver/sendOtp',
+  async (phone: string, { rejectWithValue }) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone,
+      })
+      if (error) throw error
+      return phone
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Failed to send OTP')
+    }
+  }
+)
+
+// 3b. Verify OTP thunk
+export const verifyDriverOtp = createAsyncThunk(
+  'driver/verifyOtp',
+  async ({ phone, code }: { phone: string; code: string }, { dispatch, rejectWithValue }) => {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone,
+        token: code,
+        type: 'sms',
+      })
+      if (error) throw error
+      const user = data.user
+      if (!user) throw new Error('Authentication failed')
+
+      // Fetch driver profile info from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut()
+        throw new Error('Driver profile not found. Account creation is not implemented yet.')
+      }
+
+      const driverInfo: DriverInfo = {
+        id: user.id,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        phone: profile.phone,
+        email: user.email || profile.email || '',
+        currentArea: profile.current_area,
+        licenseNo: profile.license_no,
+        rating: Number(profile.rating),
+        verified: profile.verified,
+        avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+      }
+
+      localStorage.setItem('driver_session', JSON.stringify(driverInfo))
+      
+      // Load user's bookings and notifications
+      dispatch(fetchBookings())
+      dispatch(fetchNotifications())
+
+      return driverInfo
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Failed to verify OTP')
+    }
+  }
+)
+
+// 4. Signup driver thunk
 export const signupDriver = createAsyncThunk(
   'driver/signup',
-  async (profileData: Partial<DriverInfo>, { rejectWithValue }) => {
+  async (profileData: Partial<DriverInfo> & { password?: string }, { rejectWithValue }) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      
+      const email = profileData.email || ''
+      const password = profileData.password || ''
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: profileData.firstName,
+            last_name: profileData.lastName,
+            phone: profileData.phone,
+            license_no: profileData.licenseNo,
+            current_area: profileData.currentArea,
+          }
+        }
+      })
+
+      if (error) throw error
+      const user = data.user
+      if (!user) throw new Error('Signup failed')
+
       const newDriver: DriverInfo = {
+        id: user.id,
         firstName: profileData.firstName || 'New',
         lastName: profileData.lastName || 'Driver',
         phone: profileData.phone || '+91-0000000000',
@@ -221,10 +316,10 @@ export const signupDriver = createAsyncThunk(
         currentArea: profileData.currentArea || 'Delhi NCR',
         licenseNo: profileData.licenseNo || 'DL-XXXXXXXXXXXXX',
         rating: 5.0,
-        verified: false, // newly registered starts unverified
+        verified: false,
         avatar: (profileData.firstName?.[0] || 'N') + (profileData.lastName?.[0] || 'D'),
       }
-      
+
       localStorage.setItem('driver_session', JSON.stringify(newDriver))
       return newDriver
     } catch (err: any) {
@@ -233,38 +328,242 @@ export const signupDriver = createAsyncThunk(
   }
 )
 
+// 5. Check active session
 export const checkDriverSession = createAsyncThunk(
   'driver/checkSession',
-  async (_, { rejectWithValue }) => {
+  async (_, { dispatch }) => {
     try {
-      const session = localStorage.getItem('driver_session')
-      if (session) {
-        return JSON.parse(session) as DriverInfo
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session && session.user) {
+        const user = session.user
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (profile) {
+          const driverInfo = {
+            id: user.id,
+            firstName: profile.first_name,
+            lastName: profile.last_name,
+            phone: profile.phone,
+            email: user.email || '',
+            currentArea: profile.current_area,
+            licenseNo: profile.license_no,
+            rating: Number(profile.rating),
+            verified: profile.verified,
+            avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+          } as DriverInfo
+          
+          dispatch(fetchBookings())
+          dispatch(fetchNotifications())
+          return driverInfo
+        } else {
+          // Clean up auth session if profile not found
+          await supabase.auth.signOut()
+          localStorage.removeItem('driver_session')
+          return null
+        }
+      }
+
+      // Check local storage session for demo modes
+      const localSession = localStorage.getItem('driver_session')
+      if (localSession) {
+        return JSON.parse(localSession) as DriverInfo
       }
       return null
     } catch (err) {
+      const localSession = localStorage.getItem('driver_session')
+      if (localSession) {
+        return JSON.parse(localSession) as DriverInfo
+      }
       return null
     }
   }
 )
 
+// 6. Update driver profile
 export const updateDriverProfile = createAsyncThunk(
   'driver/updateProfile',
-  async (updatedData: Partial<DriverInfo>, { getState, rejectWithValue }) => {
+  async (updatedData: Partial<DriverInfo>, { rejectWithValue }) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      const state = getState() as { driver: DriverState }
-      if (!state.driver.info) throw new Error('Not authenticated')
-      
-      const updatedInfo = {
-        ...state.driver.info,
-        ...updatedData,
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: updatedData.firstName,
+          last_name: updatedData.lastName,
+          phone: updatedData.phone,
+          license_no: updatedData.licenseNo,
+          current_area: updatedData.currentArea,
+        })
+        .eq('id', session.user.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const driverInfo: DriverInfo = {
+        id: session.user.id,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        phone: data.phone,
+        email: session.user.email || '',
+        currentArea: data.current_area,
+        licenseNo: data.license_no,
+        rating: Number(data.rating),
+        verified: data.verified,
+        avatar: (data.first_name?.[0] || '') + (data.last_name?.[0] || ''),
       }
-      
-      localStorage.setItem('driver_session', JSON.stringify(updatedInfo))
-      return updatedInfo
+
+      localStorage.setItem('driver_session', JSON.stringify(driverInfo))
+      return driverInfo
     } catch (err: any) {
+      // Local storage update fallback
+      const localSession = localStorage.getItem('driver_session')
+      if (localSession) {
+        const current = JSON.parse(localSession) as DriverInfo
+        const merged = { ...current, ...updatedData }
+        localStorage.setItem('driver_session', JSON.stringify(merged))
+        return merged
+      }
       return rejectWithValue(err.message || 'Update profile failed')
+    }
+  }
+)
+
+// 7. Toggle Online Status Thunk
+export const toggleOnlineStatus = createAsyncThunk(
+  'driver/toggleOnlineStatus',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const state = getState() as { driver: DriverState }
+      const newOnlineStatus = !state.driver.isOnline
+
+      if (session) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_online: newOnlineStatus })
+          .eq('id', session.user.id)
+
+        if (error) throw error
+
+        const id = 'N-' + Date.now()
+        const notificationTitle = newOnlineStatus ? 'You are now Online' : 'You are now Offline'
+        const notificationDesc = newOnlineStatus 
+          ? 'You will receive notifications of available bookings near you.' 
+          : 'Go online to start receiving booking requests.'
+
+        await supabase
+          .from('notifications')
+          .insert({
+            driver_id: session.user.id,
+            title: notificationTitle,
+            description: notificationDesc,
+            time: 'Just now',
+            type: 'system',
+            read: false,
+          })
+      }
+
+      return newOnlineStatus
+    } catch (err: any) {
+      console.warn('Supabase toggleOnlineStatus failed, using local fallback:', err)
+      const state = getState() as { driver: DriverState }
+      return !state.driver.isOnline
+    }
+  }
+)
+
+// 8. Accept Booking Thunk
+export const acceptBooking = createAsyncThunk(
+  'driver/acceptBooking',
+  async (bookingId: string, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({
+          status: 'accepted',
+          driver_id: session.user.id,
+        })
+        .eq('id', bookingId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      await supabase
+        .from('notifications')
+        .insert({
+          driver_id: session.user.id,
+          title: 'Booking Accepted',
+          description: `You accepted trip ${bookingId} to ${data.drop}. Drive safely!`,
+          time: 'Just now',
+          type: 'booking',
+          read: false,
+        })
+
+      return {
+        id: data.id,
+        customerName: data.customer_name,
+        phone: data.phone,
+        pickup: data.pickup,
+        drop: data.drop,
+        dateTime: data.date_time,
+        duration: data.duration,
+        distance: data.distance,
+        fare: Number(data.fare),
+        vehicle: data.vehicle,
+        specialInstructions: data.special_instructions || '',
+        status: data.status,
+        type: data.type,
+      } as Booking
+    } catch (err: any) {
+      console.warn('Supabase acceptBooking failed, using local mock updates:', err)
+      return { bookingId } // pass booking ID to update state locally
+    }
+  }
+)
+
+// 9. Mark notifications as read thunk
+export const markAllNotificationsAsRead = createAsyncThunk(
+  'driver/markAllNotificationsAsRead',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('driver_id', session.user.id)
+          .eq('read', false)
+      }
+      return true
+    } catch (err: any) {
+      console.warn('Supabase markAllNotificationsAsRead failed, updating locally:', err)
+      return true
+    }
+  }
+)
+
+// 10. Logout driver thunk
+export const logoutDriver = createAsyncThunk(
+  'driver/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      await supabase.auth.signOut()
+      localStorage.removeItem('driver_session')
+      return true
+    } catch (err: any) {
+      localStorage.removeItem('driver_session')
+      return true
     }
   }
 )
@@ -273,10 +572,158 @@ export const driverSlice = createSlice({
   name: 'driver',
   initialState,
   reducers: {
-    toggleOnlineStatus: (state) => {
-      state.isOnline = !state.isOnline
-      
-      // Add a notification when going online/offline
+    // Allows real-time channels to push bookings directly to store
+    setBookings: (state, action: PayloadAction<Booking[]>) => {
+      state.bookings = action.payload
+    },
+    updateBookingState: (state, action: PayloadAction<Booking>) => {
+      const index = state.bookings.findIndex((b) => b.id === action.payload.id)
+      if (index !== -1) {
+        state.bookings[index] = action.payload
+      } else {
+        state.bookings.unshift(action.payload)
+      }
+    },
+    // Allows real-time channels to push notifications directly to store
+    setNotifications: (state, action: PayloadAction<DriverNotification[]>) => {
+      state.notifications = action.payload
+    },
+    updateNotificationState: (state, action: PayloadAction<DriverNotification>) => {
+      const index = state.notifications.findIndex((n) => n.id === action.payload.id)
+      if (index !== -1) {
+        state.notifications[index] = action.payload
+      } else {
+        state.notifications.unshift(action.payload)
+      }
+    },
+    passBooking: (state, action: PayloadAction<string>) => {
+      const bookingId = action.payload
+      const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
+      if (bookingIndex !== -1) {
+        state.bookings[bookingIndex].status = 'passed'
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    // Fetch Bookings
+    builder.addCase(fetchBookings.fulfilled, (state, action: PayloadAction<Booking[]>) => {
+      state.bookings = action.payload
+    })
+
+    // Fetch Notifications
+    builder.addCase(fetchNotifications.fulfilled, (state, action: PayloadAction<DriverNotification[]>) => {
+      state.notifications = action.payload
+    })
+
+    // Login
+    builder.addCase(loginDriver.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(loginDriver.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
+      state.loading = false
+      state.isAuthenticated = true
+      state.info = action.payload
+      state.stats = {
+        trips: state.bookings.filter(b => b.status === 'accepted' || b.status === 'completed').length,
+        earnings: state.bookings
+          .filter(b => b.status === 'accepted' || b.status === 'completed')
+          .reduce((acc, curr) => acc + curr.fare, 0),
+      }
+    })
+    builder.addCase(loginDriver.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload as string || 'Login failed'
+    })
+
+    // Send OTP
+    builder.addCase(sendDriverOtp.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(sendDriverOtp.fulfilled, (state) => {
+      state.loading = false
+    })
+    builder.addCase(sendDriverOtp.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload as string || 'Failed to send OTP'
+    })
+
+    // Verify OTP
+    builder.addCase(verifyDriverOtp.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(verifyDriverOtp.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
+      state.loading = false
+      state.isAuthenticated = true
+      state.info = action.payload
+      state.stats = {
+        trips: state.bookings.filter(b => b.status === 'accepted' || b.status === 'completed').length,
+        earnings: state.bookings
+          .filter(b => b.status === 'accepted' || b.status === 'completed')
+          .reduce((acc, curr) => acc + curr.fare, 0),
+      }
+    })
+    builder.addCase(verifyDriverOtp.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload as string || 'Failed to verify OTP'
+    })
+    
+    // Signup
+    builder.addCase(signupDriver.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(signupDriver.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
+      state.loading = false
+      state.isAuthenticated = true
+      state.info = action.payload
+      state.stats = { trips: 0, earnings: 0 }
+    })
+    builder.addCase(signupDriver.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload as string || 'Signup failed'
+    })
+    
+    // Check Session
+    builder.addCase(checkDriverSession.pending, (state) => {
+      state.checkingSession = true
+    })
+    builder.addCase(checkDriverSession.fulfilled, (state, action: PayloadAction<DriverInfo | null>) => {
+      state.checkingSession = false
+      if (action.payload) {
+        state.isAuthenticated = true
+        state.info = action.payload
+        state.stats = {
+          trips: state.bookings.filter(b => b.status === 'accepted' || b.status === 'completed').length,
+          earnings: state.bookings
+            .filter(b => b.status === 'accepted' || b.status === 'completed')
+            .reduce((acc, curr) => acc + curr.fare, 0),
+        }
+      }
+    })
+    builder.addCase(checkDriverSession.rejected, (state) => {
+      state.checkingSession = false
+    })
+
+    // Update Profile
+    builder.addCase(updateDriverProfile.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(updateDriverProfile.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
+      state.loading = false
+      state.info = action.payload
+    })
+    builder.addCase(updateDriverProfile.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload as string || 'Profile update failed'
+    })
+
+    // Toggle Online Status
+    builder.addCase(toggleOnlineStatus.fulfilled, (state, action: PayloadAction<boolean>) => {
+      state.isOnline = action.payload
       const id = 'N-' + Date.now()
       if (state.isOnline) {
         state.notifications.unshift({
@@ -297,115 +744,59 @@ export const driverSlice = createSlice({
           read: false,
         })
       }
-    },
-    acceptBooking: (state, action: PayloadAction<string>) => {
-      const bookingId = action.payload
+    })
+
+    // Accept Booking
+    builder.addCase(acceptBooking.fulfilled, (state, action: PayloadAction<Booking | { bookingId: string }>) => {
+      const payload = action.payload
+      const bookingId = 'bookingId' in payload ? payload.bookingId : payload.id
+      
       const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
       if (bookingIndex !== -1) {
-        const booking = state.bookings[bookingIndex]
-        booking.status = 'accepted'
+        if ('id' in payload) {
+          state.bookings[bookingIndex] = payload
+        } else {
+          state.bookings[bookingIndex].status = 'accepted'
+        }
         
-        // Update stats
+        const fare = state.bookings[bookingIndex].fare
         state.stats.trips += 1
-        state.stats.earnings += booking.fare
-        
-        // Add notification
+        state.stats.earnings += fare
+
         state.notifications.unshift({
           id: 'N-' + Date.now(),
           title: 'Booking Accepted',
-          description: `You accepted trip ${booking.id} to ${booking.drop}. Drive safely!`,
+          description: `You accepted trip ${bookingId}. Drive safely!`,
           time: 'Just now',
           type: 'booking',
           read: false,
         })
       }
-    },
-    passBooking: (state, action: PayloadAction<string>) => {
-      const bookingId = action.payload
-      const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
-      if (bookingIndex !== -1) {
-        state.bookings[bookingIndex].status = 'passed'
-      }
-    },
-    markAllNotificationsAsRead: (state) => {
+    })
+
+    // Mark all notifications as read
+    builder.addCase(markAllNotificationsAsRead.fulfilled, (state) => {
       state.notifications = state.notifications.map((n) => ({ ...n, read: true }))
-    },
-    logoutDriver: (state) => {
-      localStorage.removeItem('driver_session')
+    })
+
+    // Logout
+    builder.addCase(logoutDriver.fulfilled, (state) => {
       state.isAuthenticated = false
       state.info = null
       state.isOnline = false
       state.stats = { trips: 0, earnings: 0 }
-      state.bookings = mockBookings.map(b => ({ ...b, status: 'available' })) // reset statuses
-    },
-  },
-  extraReducers: (builder) => {
-    // Login
-    builder.addCase(loginDriver.pending, (state) => {
-      state.loading = true
-      state.error = null
-    })
-    builder.addCase(loginDriver.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
-      state.loading = false
-      state.isAuthenticated = true
-      state.info = action.payload
-      // Setup initial stats if there are any
-      state.stats = {
-        trips: 0,
-        earnings: 0,
-      }
-    })
-    builder.addCase(loginDriver.rejected, (state, action) => {
-      state.loading = false
-      state.error = action.payload as string || 'Login failed'
-    })
-    
-    // Signup
-    builder.addCase(signupDriver.pending, (state) => {
-      state.loading = true
-      state.error = null
-    })
-    builder.addCase(signupDriver.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
-      state.loading = false
-      state.isAuthenticated = true
-      state.info = action.payload
-      state.stats = { trips: 0, earnings: 0 }
-    })
-    builder.addCase(signupDriver.rejected, (state, action) => {
-      state.loading = false
-      state.error = action.payload as string || 'Signup failed'
-    })
-    
-    // Check Session
-    builder.addCase(checkDriverSession.fulfilled, (state, action: PayloadAction<DriverInfo | null>) => {
-      if (action.payload) {
-        state.isAuthenticated = true
-        state.info = action.payload
-      }
-    })
-
-    // Update Profile
-    builder.addCase(updateDriverProfile.pending, (state) => {
-      state.loading = true
-      state.error = null
-    })
-    builder.addCase(updateDriverProfile.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
-      state.loading = false
-      state.info = action.payload
-    })
-    builder.addCase(updateDriverProfile.rejected, (state, action) => {
-      state.loading = false
-      state.error = action.payload as string || 'Profile update failed'
+      state.bookings = []
+      state.notifications = []
     })
   },
 })
 
 export const {
-  toggleOnlineStatus,
-  acceptBooking,
+  setBookings,
+  updateBookingState,
+  setNotifications,
+  updateNotificationState,
   passBooking,
-  markAllNotificationsAsRead,
-  logoutDriver,
 } = driverSlice.actions
 
 export default driverSlice.reducer

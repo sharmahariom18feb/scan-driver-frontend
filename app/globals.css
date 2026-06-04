@@ -64,8 +64,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Manrope', sans-serif;
-  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-sans);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -181,4 +181,17 @@ body::before {
 /* Theme transition */
 * {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Page Stylish Background Local Variables overrides */
+.page-stylish-bg {
+  --background: transparent;
+  --surface: rgba(201, 146, 42, 0.035);
+  --card: rgba(201, 146, 42, 0.045);
+}
+
+.dark .page-stylish-bg {
+  --background: transparent;
+  --surface: rgba(201, 146, 42, 0.018);
+  --card: rgba(201, 146, 42, 0.025);
 }

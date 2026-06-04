@@ -9,7 +9,7 @@ export function HeroSection() {
       {/* Background */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_70%_50%,rgba(201,146,42,0.08)_0%,transparent_70%),radial-gradient(ellipse_50%_80%_at_10%_80%,rgba(201,146,42,0.05)_0%,transparent_60%),linear-gradient(160deg,#0d0d0d_0%,#080808_100%)] dark:block hidden" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_70%_50%,rgba(201,146,42,0.05)_0%,transparent_70%),radial-gradient(ellipse_50%_80%_at_10%_80%,rgba(201,146,42,0.03)_0%,transparent_60%),linear-gradient(160deg,#fafafa_0%,#ffffff_100%)] dark:hidden" />
-      
+
       {/* Grid Lines */}
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(201,146,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(201,146,42,0.04)_1px,transparent_1px)] bg-[size:60px_60px] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_0%,transparent_100%)]" />
 
@@ -25,7 +25,7 @@ export function HeroSection() {
 
           {/* Heading */}
           <Reveal delay={0.1}>
-            <h1 className=" text-[clamp(44px,6vw,76px)] font-bold leading-[1.08] text-foreground mb-6">
+            <h1 className=" text-[clamp(44px,6vw,76px)] font-[1000] leading-[1.08] text-foreground mb-6">
               Your Driver,
               <em className="block italic text-gold-light">One Scan Away.</em>
             </h1>
