@@ -71,7 +71,7 @@ export default function AlertsTab({
                   <h4 className="font-semibold text-xs text-foreground leading-snug">
                     {notif.title}
                   </h4>
-                  <span className="text-[9px] text-text-muted">{notif.time}</span>
+                  {/* <span className="text-[9px] text-text-muted">{notif.time}</span> */}
                 </div>
                 <p className="text-[11px] text-text-muted leading-relaxed">
                   {notif.description}
