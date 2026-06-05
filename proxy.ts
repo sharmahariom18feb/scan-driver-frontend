@@ -8,13 +8,20 @@ export function proxy(request: NextRequest) {
   // Normalize hostname to remove port numbers (e.g. partner.localhost:3000 -> partner.localhost)
   const currentHost = hostname.split(':')[0].toLowerCase()
 
-  // Detect if the domain is partner.scandriver.in or starts with partner. (for local dev testing like partner.localhost)
+  // Detect subdomains
+  const isAdminSubdomain = currentHost === 'admin.scandriver.in' || currentHost.startsWith('admin.')
   const isPartnerSubdomain = currentHost === 'partner.scandriver.in' || currentHost.startsWith('partner.')
 
-  if (isPartnerSubdomain) {
-    // If the partner domain is accessed at the root path '/', rewrite to the driver-app page
-    if (url.pathname === '/') {
-      url.pathname = '/driver-app'
+  if (isAdminSubdomain) {
+    // Rewrite admin.* to the /admin path
+    if (!url.pathname.startsWith('/admin')) {
+      url.pathname = `/admin${url.pathname}`
+      return NextResponse.rewrite(url)
+    }
+  } else if (isPartnerSubdomain) {
+    // Rewrite partner.* to the /driver-app path
+    if (!url.pathname.startsWith('/driver-app')) {
+      url.pathname = `/driver-app${url.pathname}`
       return NextResponse.rewrite(url)
     }
   }
@@ -30,7 +37,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - PWA icons/assets (e.g., logo-sd.png, manifest, sw.js, screenshots)
+     * - PWA icons/assets (e.g., logo-sd.png, icons, screenshots, driver-manifest.json, sw.js)
      */
     '/((?!api|_next/static|_next/image|favicon.ico|logo-sd.png|icons|screenshots|driver-manifest.json|sw.js).*)',
   ],

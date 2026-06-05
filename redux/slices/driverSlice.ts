@@ -1,6 +1,20 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit'
 import { supabase } from '@/lib/supabaseClient'
 
+/**
+ * Normalizes a phone number to standard E.164 format (e.g. +919876543210)
+ */
+export const normalizePhone = (phone: string): string => {
+  const digits = phone.replace(/\D/g, '')
+  if (phone.trim().startsWith('+')) {
+    return '+' + digits
+  }
+  if (digits.length === 10) {
+    return '+91' + digits
+  }
+  return '+' + digits
+}
+
 export interface Booking {
   id: string
   customerName: string
@@ -16,6 +30,7 @@ export interface Booking {
   status: 'available' | 'accepted' | 'passed' | 'completed'
   type: 'AIRPORT DROP' | 'HOURLY' | 'OUTSTATION'
   driverId?: string | null
+  adminApproved?: boolean
 }
 
 export interface DriverNotification {
@@ -38,6 +53,7 @@ export interface DriverInfo {
   rating: number
   verified: boolean
   avatar: string
+  role?: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
 }
 
 export interface DriverState {
@@ -76,17 +92,17 @@ export const fetchBookings = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       let query = supabase.from('bookings').select('*')
-      
+
       if (session?.user) {
-        query = query.or(`status.eq.available,driver_id.eq.${session.user.id}`)
+        query = query.eq('admin_approved', true).or(`status.eq.available,driver_id.eq.${session.user.id}`)
       } else {
-        query = query.eq('status', 'available')
+        query = query.eq('status', 'available').eq('admin_approved', true)
       }
 
       const { data, error } = await query.order('created_at', { ascending: false })
-      
+
       if (error) throw error
 
       if (!data) return []
@@ -106,6 +122,7 @@ export const fetchBookings = createAsyncThunk(
         status: b.status,
         type: b.type,
         driverId: b.driver_id,
+        adminApproved: b.admin_approved,
       })) as Booking[]
     } catch (err: any) {
       console.error('Supabase fetchBookings error:', err)
@@ -175,9 +192,9 @@ export const loginDriver = createAsyncThunk(
       const user = data.user
       if (!user) throw new Error('No user data returned')
 
-      // Fetch driver profile info from profiles table
+      // Fetch driver profile info from users table
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', user.id)
         .single()
@@ -185,6 +202,11 @@ export const loginDriver = createAsyncThunk(
       if (profileError || !profile) {
         await supabase.auth.signOut()
         throw new Error('Driver profile not found. Account creation is not implemented yet.')
+      }
+
+      if (profile.role !== 'DRIVER' && profile.role !== 'ADMIN') {
+        await supabase.auth.signOut()
+        throw new Error('Access Denied: Only driver and admin accounts are allowed to log in.')
       }
 
       const driverInfo: DriverInfo = {
@@ -198,10 +220,11 @@ export const loginDriver = createAsyncThunk(
         rating: Number(profile.rating),
         verified: profile.verified,
         avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+        role: profile.role,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
-      
+
       // Load user's bookings and notifications
       dispatch(fetchBookings())
       dispatch(fetchNotifications())
@@ -218,11 +241,22 @@ export const sendDriverOtp = createAsyncThunk(
   'driver/sendOtp',
   async (phone: string, { rejectWithValue }) => {
     try {
+      const normalizedPhone = normalizePhone(phone)
+
+      // First check if user exists in public.users with role DRIVER
+      const { data: exists, error: rpcError } = await supabase
+        .rpc('check_user_exists_by_phone', { p_phone: normalizedPhone })
+
+      if (rpcError) throw rpcError
+      if (!exists) {
+        throw new Error('No driver account found with this phone number. Please enter the register number.')
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
-        phone,
+        phone: normalizedPhone,
       })
       if (error) throw error
-      return phone
+      return normalizedPhone
     } catch (err: any) {
       return rejectWithValue(err.message || 'Failed to send OTP')
     }
@@ -234,8 +268,9 @@ export const verifyDriverOtp = createAsyncThunk(
   'driver/verifyOtp',
   async ({ phone, code }: { phone: string; code: string }, { dispatch, rejectWithValue }) => {
     try {
+      const normalizedPhone = normalizePhone(phone)
       const { data, error } = await supabase.auth.verifyOtp({
-        phone,
+        phone: normalizedPhone,
         token: code,
         type: 'sms',
       })
@@ -243,9 +278,9 @@ export const verifyDriverOtp = createAsyncThunk(
       const user = data.user
       if (!user) throw new Error('Authentication failed')
 
-      // Fetch driver profile info from profiles table
+      // Fetch driver profile info from users table
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', user.id)
         .single()
@@ -253,6 +288,11 @@ export const verifyDriverOtp = createAsyncThunk(
       if (profileError || !profile) {
         await supabase.auth.signOut()
         throw new Error('Driver profile not found. Account creation is not implemented yet.')
+      }
+
+      if (profile.role !== 'DRIVER' && profile.role !== 'ADMIN') {
+        await supabase.auth.signOut()
+        throw new Error('Access Denied: Only driver and admin accounts are allowed to log in.')
       }
 
       const driverInfo: DriverInfo = {
@@ -266,10 +306,11 @@ export const verifyDriverOtp = createAsyncThunk(
         rating: Number(profile.rating),
         verified: profile.verified,
         avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+        role: profile.role,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
-      
+
       // Load user's bookings and notifications
       dispatch(fetchBookings())
       dispatch(fetchNotifications())
@@ -288,6 +329,7 @@ export const signupDriver = createAsyncThunk(
     try {
       const email = profileData.email || ''
       const password = profileData.password || ''
+      const normalizedPhone = normalizePhone(profileData.phone || '')
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -296,9 +338,10 @@ export const signupDriver = createAsyncThunk(
           data: {
             first_name: profileData.firstName,
             last_name: profileData.lastName,
-            phone: profileData.phone,
+            phone: normalizedPhone,
             license_no: profileData.licenseNo,
             current_area: profileData.currentArea,
+            role: 'DRIVER',
           }
         }
       })
@@ -311,13 +354,14 @@ export const signupDriver = createAsyncThunk(
         id: user.id,
         firstName: profileData.firstName || 'New',
         lastName: profileData.lastName || 'Driver',
-        phone: profileData.phone || '+91-0000000000',
+        phone: normalizedPhone || '+91-0000000000',
         email: profileData.email || 'partner@scandriver.in',
         currentArea: profileData.currentArea || 'Delhi NCR',
         licenseNo: profileData.licenseNo || 'DL-XXXXXXXXXXXXX',
         rating: 5.0,
         verified: false,
         avatar: (profileData.firstName?.[0] || 'N') + (profileData.lastName?.[0] || 'D'),
+        role: 'DRIVER',
       }
 
       localStorage.setItem('driver_session', JSON.stringify(newDriver))
@@ -337,12 +381,12 @@ export const checkDriverSession = createAsyncThunk(
       if (session && session.user) {
         const user = session.user
         const { data: profile } = await supabase
-          .from('profiles')
+          .from('users')
           .select('*')
           .eq('id', user.id)
           .single()
 
-        if (profile) {
+        if (profile && (profile.role === 'DRIVER' || profile.role === 'ADMIN')) {
           const driverInfo = {
             id: user.id,
             firstName: profile.first_name,
@@ -354,13 +398,14 @@ export const checkDriverSession = createAsyncThunk(
             rating: Number(profile.rating),
             verified: profile.verified,
             avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+            role: profile.role,
           } as DriverInfo
-          
+
           dispatch(fetchBookings())
           dispatch(fetchNotifications())
           return driverInfo
         } else {
-          // Clean up auth session if profile not found
+          // Clean up auth session if profile not found or user is not a DRIVER/ADMIN
           await supabase.auth.signOut()
           localStorage.removeItem('driver_session')
           return null
@@ -392,7 +437,7 @@ export const updateDriverProfile = createAsyncThunk(
       if (!session) throw new Error('Not authenticated')
 
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .update({
           first_name: updatedData.firstName,
           last_name: updatedData.lastName,
@@ -417,6 +462,7 @@ export const updateDriverProfile = createAsyncThunk(
         rating: Number(data.rating),
         verified: data.verified,
         avatar: (data.first_name?.[0] || '') + (data.last_name?.[0] || ''),
+        role: data.role,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -446,7 +492,7 @@ export const toggleOnlineStatus = createAsyncThunk(
 
       if (session) {
         const { error } = await supabase
-          .from('profiles')
+          .from('users')
           .update({ is_online: newOnlineStatus })
           .eq('id', session.user.id)
 
@@ -454,8 +500,8 @@ export const toggleOnlineStatus = createAsyncThunk(
 
         const id = 'N-' + Date.now()
         const notificationTitle = newOnlineStatus ? 'You are now Online' : 'You are now Offline'
-        const notificationDesc = newOnlineStatus 
-          ? 'You will receive notifications of available bookings near you.' 
+        const notificationDesc = newOnlineStatus
+          ? 'You will receive notifications of available bookings near you.'
           : 'Go online to start receiving booking requests.'
 
         await supabase
@@ -524,6 +570,7 @@ export const acceptBooking = createAsyncThunk(
         specialInstructions: data.special_instructions || '',
         status: data.status,
         type: data.type,
+        adminApproved: data.admin_approved,
       } as Booking
     } catch (err: any) {
       console.warn('Supabase acceptBooking failed, using local mock updates:', err)
@@ -669,7 +716,7 @@ export const driverSlice = createSlice({
       state.loading = false
       state.error = action.payload as string || 'Failed to verify OTP'
     })
-    
+
     // Signup
     builder.addCase(signupDriver.pending, (state) => {
       state.loading = true
@@ -685,7 +732,7 @@ export const driverSlice = createSlice({
       state.loading = false
       state.error = action.payload as string || 'Signup failed'
     })
-    
+
     // Check Session
     builder.addCase(checkDriverSession.pending, (state) => {
       state.checkingSession = true
@@ -750,7 +797,7 @@ export const driverSlice = createSlice({
     builder.addCase(acceptBooking.fulfilled, (state, action: PayloadAction<Booking | { bookingId: string }>) => {
       const payload = action.payload
       const bookingId = 'bookingId' in payload ? payload.bookingId : payload.id
-      
+
       const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
       if (bookingIndex !== -1) {
         if ('id' in payload) {
@@ -758,7 +805,7 @@ export const driverSlice = createSlice({
         } else {
           state.bookings[bookingIndex].status = 'accepted'
         }
-        
+
         const fare = state.bookings[bookingIndex].fare
         state.stats.trips += 1
         state.stats.earnings += fare

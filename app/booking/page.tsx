@@ -72,8 +72,8 @@ function StepIndicator({ step, label, active, completed }: { step: number; label
       <div className={cn(
         'h-8 w-8 rounded-full flex items-center justify-center text-xs font-extrabold border-2 transition-all duration-500',
         completed ? 'bg-primary border-primary text-black scale-100' :
-        active ? 'bg-primary/20 border-primary text-primary scale-105 shadow-md shadow-primary/10' :
-        'bg-surface2 border-border/30 text-text-muted'
+          active ? 'bg-primary/20 border-primary text-primary scale-105 shadow-md shadow-primary/10' :
+            'bg-surface2 border-border/30 text-text-muted'
       )}>
         {completed ? <CheckCircle className="h-4 w-4" /> : step}
       </div>
@@ -81,6 +81,24 @@ function StepIndicator({ step, label, active, completed }: { step: number; label
         'text-[11px] font-bold uppercase tracking-wider hidden sm:block transition-colors',
         completed ? 'text-primary' : active ? 'text-foreground' : 'text-text-muted/70'
       )}>{label}</span>
+    </div>
+  )
+}
+
+/* ─── Input helper component ─── */
+function InputField({ label, icon: Icon, error, children, className: cls }: { label: string; icon?: any; error?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('space-y-2', cls)}>
+      <label className="flex items-center gap-1.5 text-[11px] font-extrabold text-foreground/70 tracking-[0.08em] uppercase">
+        {Icon && <Icon className="h-3.5 w-3.5 text-primary" />}
+        {label}
+      </label>
+      {children}
+      {error && (
+        <p className="text-[10px] text-rose-400 flex items-center gap-1 animate-in slide-in-from-top-1 duration-200">
+          <AlertCircle className="h-3 w-3" /> {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -165,7 +183,11 @@ export default function BookingPage() {
   const validateForm = () => {
     const e: Record<string, string> = {}
     if (!customerName.trim()) e.name = 'Full name is required'
-    if (!phoneVal.trim()) e.phone = 'Mobile number is required'
+    if (!phoneVal.trim()) {
+      e.phone = 'Mobile number is required'
+    } else if (phoneVal.length !== 10) {
+      e.phone = 'Mobile number must be 10 digits'
+    }
     if (tripType !== 'MONTHLY') {
       if (!startDate) e.startDate = 'Select a date'
       if (!startTime) e.startTime = 'Select a time'
@@ -201,6 +223,7 @@ export default function BookingPage() {
       special_instructions: specialInstructions + (tripType === 'MONTHLY' && emailVal ? ` | Email: ${emailVal}` : ''),
       status: 'available' as const,
       type: tripType,
+      admin_approved: false,
     }
 
     try {
@@ -234,22 +257,6 @@ export default function BookingPage() {
       setInterviewDate(''); setInterviewTime(''); setVehicleName('')
     }, 800)
   }
-
-  /* ──────── Input helper component ──────── */
-  const InputField = ({ label, icon: Icon, error, children, className: cls }: { label: string; icon?: any; error?: string; children: React.ReactNode; className?: string }) => (
-    <div className={cn('space-y-2', cls)}>
-      <label className="flex items-center gap-1.5 text-[11px] font-extrabold text-foreground/70 tracking-[0.08em] uppercase">
-        {Icon && <Icon className="h-3.5 w-3.5 text-primary" />}
-        {label}
-      </label>
-      {children}
-      {error && (
-        <p className="text-[10px] text-rose-400 flex items-center gap-1 animate-in slide-in-from-top-1 duration-200">
-          <AlertCircle className="h-3 w-3" /> {error}
-        </p>
-      )}
-    </div>
-  )
 
   const inputBase = 'w-full px-4 py-3.5 bg-surface2 border border-border/30 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/15 focus:bg-surface focus:outline-none transition-all duration-300 text-sm text-foreground placeholder:text-text-muted/60 placeholder:italic'
 
@@ -411,8 +418,11 @@ export default function BookingPage() {
 
                   <InputField label="WhatsApp Number" icon={Phone} error={errors.phone}>
                     <input
-                      type="tel" value={phoneVal} onChange={(e) => setPhoneVal(e.target.value)}
-                      placeholder="e.g. +91 9876543210"
+                      type="tel"
+                      value={phoneVal}
+                      onChange={(e) => setPhoneVal(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="e.g. 9876543210"
+                      maxLength={10}
                       onFocus={() => setActiveSection(1)}
                       className={cn(inputBase, errors.phone && 'border-rose-500/50 focus:border-rose-500/70')}
                     />

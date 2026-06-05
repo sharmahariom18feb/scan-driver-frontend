@@ -28,6 +28,7 @@ import {
   fetchNotifications,
   sendDriverOtp,
   verifyDriverOtp,
+  normalizePhone,
   Booking,
 } from '@/redux/slices/driverSlice'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,7 @@ export default function DriverApp() {
     (state: RootState) => state.driver
   )
   const { theme, setTheme } = useTheme()
+  const [localCheckingSession, setLocalCheckingSession] = useState(true)
 
   // Tabs: 'home' | 'bookings' | 'alerts' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'bookings' | 'alerts' | 'profile'>('home')
@@ -63,7 +65,7 @@ export default function DriverApp() {
   const [licenseNo, setLicenseNo] = useState('')
 
   // Multi-option login state
-  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password')
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('otp')
   const [otpSent, setOtpSent] = useState(false)
   const [otpCode, setOtpCode] = useState('')
   const [resendTimer, setResendTimer] = useState(0)
@@ -83,9 +85,18 @@ export default function DriverApp() {
   // Booking filtering: 'available' | 'trips'
   const [bookingFilter, setBookingFilter] = useState<'available' | 'trips'>('available')
 
-  // Initial check
+  // Initial check with safety timeout to prevent infinite loader
+  // (e.g. BFCache / back-button navigation state freezing)
   useEffect(() => {
-    dispatch(checkDriverSession())
+    Promise.resolve(dispatch(checkDriverSession())).finally(() => {
+      setLocalCheckingSession(false)
+    })
+
+    const timer = setTimeout(() => {
+      setLocalCheckingSession(false)
+    }, 10000)
+
+    return () => clearTimeout(timer)
   }, [dispatch])
 
   // Countdown timer for OTP resend
@@ -162,7 +173,8 @@ export default function DriverApp() {
         if (loginDriver.fulfilled.match(result)) {
           toast.success(`Welcome back, ${result.payload.firstName}!`)
         } else {
-          toast.error(error || 'Failed to login')
+          const errMsg = result.payload as string || 'Failed to login'
+          toast.error(errMsg)
         }
       } else {
         // OTP Mode
@@ -170,25 +182,28 @@ export default function DriverApp() {
           toast.error('Please enter your mobile number')
           return
         }
+        const normalizedPhone = normalizePhone(phone)
         if (!otpSent) {
-          const result = await dispatch(sendDriverOtp(phone))
+          const result = await dispatch(sendDriverOtp(normalizedPhone))
           if (sendDriverOtp.fulfilled.match(result)) {
             setOtpSent(true)
             setResendTimer(30)
             toast.success('OTP sent successfully to your phone!')
           } else {
-            toast.error(error || 'Failed to send OTP')
+            const errMsg = result.payload as string || 'Failed to send OTP'
+            toast.error(errMsg)
           }
         } else {
           if (!otpCode) {
             toast.error('Please enter the OTP code')
             return
           }
-          const result = await dispatch(verifyDriverOtp({ phone, code: otpCode }))
+          const result = await dispatch(verifyDriverOtp({ phone: normalizedPhone, code: otpCode }))
           if (verifyDriverOtp.fulfilled.match(result)) {
             toast.success(`Welcome back, ${result.payload.firstName}!`)
           } else {
-            toast.error(error || 'Failed to verify OTP')
+            const errMsg = result.payload as string || 'Failed to verify OTP'
+            toast.error(errMsg)
           }
         }
       }
@@ -197,11 +212,12 @@ export default function DriverApp() {
         toast.error('Please fill out all required fields')
         return
       }
+      const normalizedPhone = normalizePhone(phone)
       const result = await dispatch(
         signupDriver({
           firstName,
           lastName,
-          phone,
+          phone: normalizedPhone,
           email,
           currentArea,
           licenseNo,
@@ -211,7 +227,8 @@ export default function DriverApp() {
       if (signupDriver.fulfilled.match(result)) {
         toast.success('Registration successful! Please wait for admin approval.')
       } else {
-        toast.error(error || 'Failed to register')
+        const errMsg = result.payload as string || 'Failed to register'
+        toast.error(errMsg)
       }
     }
   }
@@ -235,12 +252,14 @@ export default function DriverApp() {
       toast.error('Please enter your mobile number')
       return
     }
+    const normalizedPhone = normalizePhone(phone)
     setResendTimer(30)
-    const result = await dispatch(sendDriverOtp(phone))
+    const result = await dispatch(sendDriverOtp(normalizedPhone))
     if (sendDriverOtp.fulfilled.match(result)) {
       toast.success('OTP resent successfully!')
     } else {
-      toast.error(error || 'Failed to resend OTP')
+      const errMsg = result.payload as string || 'Failed to resend OTP'
+      toast.error(errMsg)
     }
   }
 
@@ -308,19 +327,19 @@ export default function DriverApp() {
   const completedBookings = bookings.filter((b) => b.status === 'completed' && (!currentDriverId || b.driverId === currentDriverId))
   const myTrips = [...acceptedBookings, ...completedBookings]
 
-  // Render Loader while checking session
-  if (checkingSession) {
+  // Render Loader while checking session (only if not already authenticated to prevent flash of loader)
+  if (localCheckingSession && !isAuthenticated) {
     return (
       <div className="flex-1 flex flex-col justify-center items-center min-h-screen bg-slate-950 text-white relative">
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-        
+
         <div className="z-10 flex flex-col items-center gap-5">
           <div className="h-16 w-16 rounded-full bg-slate-900 border border-gold/30 flex items-center justify-center shadow-lg mb-2">
             <span className="font-display font-bold text-xl text-gold-light">SD</span>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <div className="h-5 w-5 border-2 border-gold-light border-t-transparent rounded-full animate-spin" />
             <p className="text-sm font-medium tracking-wide text-text-muted">

@@ -102,6 +102,7 @@ export default function AuthScreen({
             >
               LOGIN
             </button>
+            {/*
             <button
               onClick={() => setIsLoginMode(false)}
               className={cn(
@@ -111,26 +112,12 @@ export default function AuthScreen({
             >
               SIGNUP
             </button>
+            */}
           </div>
 
           {/* Login Method Sub-selector */}
           {isLoginMode && (
             <div className="flex justify-center gap-6 mb-6 border-b border-border/10 pb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMethod('password')
-                  setOtpSent(false)
-                }}
-                className={cn(
-                  'pb-1 text-xs font-bold uppercase tracking-wider transition-all duration-300 border-b-2 outline-none',
-                  loginMethod === 'password'
-                    ? 'border-primary text-gold-light'
-                    : 'border-transparent text-text-muted hover:text-foreground'
-                )}
-              >
-                Password Login
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -146,11 +133,27 @@ export default function AuthScreen({
               >
                 Phone OTP
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('password')
+                  setOtpSent(false)
+                }}
+                className={cn(
+                  'pb-1 text-xs font-bold uppercase tracking-wider transition-all duration-300 border-b-2 outline-none',
+                  loginMethod === 'password'
+                    ? 'border-primary text-gold-light'
+                    : 'border-transparent text-text-muted hover:text-foreground'
+                )}
+              >
+                Password Login
+              </button>
+
             </div>
           )}
 
           <form className="space-y-4" onSubmit={handleAuth}>
-            {/* Fields specific to signup */}
+
             {!isLoginMode && (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -263,7 +266,7 @@ export default function AuthScreen({
               </>
             )}
 
-            {/* Fields specific to login */}
+
             {isLoginMode && (
               loginMethod === 'password' ? (
                 <>
@@ -308,7 +311,7 @@ export default function AuthScreen({
                 <>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-                      Mobile Number
+                      Mobile Number (Indian Numbers Only)
                     </label>
                     <input
                       type="tel"
@@ -317,7 +320,7 @@ export default function AuthScreen({
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors disabled:opacity-50"
-                      placeholder="+91-9876543210"
+                      placeholder="9876543210"
                     />
                   </div>
 
@@ -379,7 +382,7 @@ export default function AuthScreen({
           </form>
 
           {/* Google OAuth Login Option */}
-          {isLoginMode && (
+          {/* {isLoginMode && (
             <>
               <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
@@ -396,12 +399,12 @@ export default function AuthScreen({
                 className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-900 text-white border border-border/20 font-semibold text-sm rounded-md shadow-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer mb-2"
               >
                 <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.532 0-6.4-2.868-6.4-6.4s2.868-6.4 6.4-6.4c1.582 0 3.026.58 4.14 1.536l3.056-3.056C19.356 2.457 16.008 1.2 12.24 1.2 6.132 1.2 1.2 6.132 1.2 12.24s4.932 11.04 11.04 11.04c6.38 0 11.04-4.5 11.04-11.04 0-.744-.06-1.464-.18-2.16H12.24z"/>
+                  <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.532 0-6.4-2.868-6.4-6.4s2.868-6.4 6.4-6.4c1.582 0 3.026.58 4.14 1.536l3.056-3.056C19.356 2.457 16.008 1.2 12.24 1.2 6.132 1.2 1.2 6.132 1.2 12.24s4.932 11.04 11.04 11.04c6.38 0 11.04-4.5 11.04-11.04 0-.744-.06-1.464-.18-2.16H12.24z" />
                 </svg>
                 Continue with Google
               </button>
             </>
-          )}
+          )} */}
           {/* Empty space/padding after login options */}
           <div className="mt-2" />
         </div>
