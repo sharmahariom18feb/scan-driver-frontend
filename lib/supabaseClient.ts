@@ -9,17 +9,48 @@ const globalForSupabase = globalThis as unknown as {
   supabaseAdmin?: SupabaseClient
 }
 
-/**
- * Public Supabase client (browser / client side).
- * Uses the NEXT_PUBLIC_ env vars which are exposed to the browser.
- */
-export const supabase: SupabaseClient =
-  globalForSupabase.supabase ??
-  createClient(supabaseUrl, supabaseAnonKey)
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForSupabase.supabase = supabase
+const createCustomClient = (storageKey: string) => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storageKey: storageKey,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    }
+  })
 }
+
+// In the browser, we initialize client lazily or dynamically based on the route
+let clientInstance: SupabaseClient | null = null
+let currentKey = ''
+
+const getClient = (): SupabaseClient => {
+  if (typeof window === 'undefined') {
+    return createClient(supabaseUrl, supabaseAnonKey)
+  }
+  
+  const path = window.location.pathname
+  const expectedKey = path.startsWith('/admin') ? 'sb-admin-auth-token' : 'sb-driver-auth-token'
+  
+  if (!clientInstance || currentKey !== expectedKey) {
+    clientInstance = createCustomClient(expectedKey)
+    currentKey = expectedKey
+  }
+  
+  return clientInstance
+}
+
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(target, prop, receiver) {
+    const client = getClient()
+    const value = Reflect.get(client, prop, receiver)
+    if (typeof value === 'function') {
+      return value.bind(client)
+    }
+    return value
+  }
+})
+
 
 /**
  * Server‑side Supabase client (e.g., for API routes, getServerSideProps, etc.)

@@ -113,6 +113,16 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
 
       toast.success(`Booking ${bookingId} created successfully!`)
       setShowCreateModal(false)
+
+      // If approved immediately, send push notifications to drivers
+      if (adminApproved) {
+        fetch('/api/notify-drivers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ booking_id: bookingId }),
+        }).catch((err) => console.error('Failed to trigger push notifications:', err))
+      }
+
       // Reset Form
       setCustomerName('')
       setPhone('')
@@ -207,6 +217,14 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
 
       if (error) throw error
       toast.success(`Booking ${bookingId} approved successfully!`)
+
+      // Trigger push notifications
+      fetch('/api/notify-drivers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: bookingId }),
+      }).catch((err) => console.error('Failed to trigger push notifications:', err))
+
       onRefresh()
     } catch (err: any) {
       console.error('Error approving booking:', err)

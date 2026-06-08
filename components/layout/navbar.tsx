@@ -12,11 +12,11 @@ import Image from 'next/image'
 import logoSd from '../../public/icons/logo-sd.png';
 
 const navLinks = [
-  { href: '#services', label: 'Services' },
-  { href: '#how-it-works', label: 'How It Works' },
-  { href: '#why-us', label: 'Why Us' },
-  { href: '#join-driver', label: 'Join as Driver' },
-  { href: '#terms', label: 'Terms' },
+  { href: '/#services', label: 'Services' },
+  { href: '/#how-it-works', label: 'How It Works' },
+  { href: '/#why-us', label: 'Why Us' },
+  { href: '/#join-driver', label: 'Join as Driver' },
+  { href: '/#terms', label: 'Terms' },
 ]
 
 export function Navbar() {
@@ -38,15 +38,17 @@ export function Navbar() {
     <>
       <header
         className={cn(
-          'fixed top-0 left-0 right-0 z-[900] transition-all duration-400',
-          scrolled && 'bg-background/92 backdrop-blur-lg py-3 border-b border-border'
+          'fixed top-0 left-0 right-0 z-[900] transition-all duration-400 flex items-center',
+          scrolled
+            ? 'h-[11vh] bg-background/92 backdrop-blur-lg border-b border-border'
+            : 'h-[13vh]'
         )}
       >
-        <div className="w-full  px-20">
+        <div className="w-full px-6 md:px-12 lg:px-20">
           <nav className="flex items-center justify-between">
             {/* Logo */}
-            <Link href="#" className="flex items-center gap-2.5 no-underline">
-              <Image loading='eager' src={logoSd} alt="logo" width={140} style={{ height: 'auto' }} />
+            <Link href="/" className="flex items-center gap-2.5 no-underline">
+              <Image priority src={logoSd} alt="logo" width={140} style={{ height: 'auto' }} />
             </Link>
 
             {/* Desktop Nav */}
@@ -81,13 +83,11 @@ export function Navbar() {
                 <Phone size={14} /> Call Us
               </a>
               <CTAButton
-                href={getWhatsAppLink(WHATSAPP_CUSTOMER, 'Hi ScanDriver! I want to book a driver.')}
-                variant="whatsapp"
-                external
+                href="/booking"
+                variant="gold"
                 className="!px-5 !py-2.5 !text-[13px]"
               >
-                <WhatsAppIcon className="w-4 h-4" />
-                Book on WhatsApp
+                Book Now
               </CTAButton>
             </div>
 
@@ -145,13 +145,11 @@ export function Navbar() {
         )}
 
         <CTAButton
-          href={getWhatsAppLink(WHATSAPP_CUSTOMER, 'Hi ScanDriver! I want to book a driver.')}
-          variant="whatsapp"
-          external
+          href="/booking"
+          variant="gold"
           className="mt-4"
         >
-          <WhatsAppIcon />
-          Book Now on WhatsApp
+          Book Now
         </CTAButton>
       </div>
     </>

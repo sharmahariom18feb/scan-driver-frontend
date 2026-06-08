@@ -1,8 +1,11 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import logoSd from '../../public/icons/logo-sd.png'
 
 interface AuthScreenProps {
   handleAuth: (e: React.FormEvent) => Promise<void>
@@ -77,8 +80,8 @@ export default function AuthScreen({
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <div className="flex justify-center mb-4">
-          <div className="h-16 w-16 rounded-full bg-slate-900 border border-gold/30 flex items-center justify-center">
-            <span className="font-display font-bold text-xl text-gold-light">SD</span>
+          <div className="w-46 flex items-center justify-center">
+            <Image src={logoSd} alt="ScanDriver Logo" width={200} className="object-contain" priority />
           </div>
         </div>
         <h2 className="text-3xl font-bold tracking-tight text-foreground font-sans">
@@ -405,6 +408,17 @@ export default function AuthScreen({
               </button>
             </>
           )} */}
+          {isLoginMode && (
+            <div className="mt-6 text-center text-xs">
+              <span className="text-text-muted">Want to join us? </span>
+              <Link
+                href="/driver-app/onboarding"
+                className="text-primary hover:underline font-bold tracking-wide transition-colors"
+              >
+                Register & Onboard
+              </Link>
+            </div>
+          )}
           {/* Empty space/padding after login options */}
           <div className="mt-2" />
         </div>

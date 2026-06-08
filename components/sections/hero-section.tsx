@@ -42,12 +42,10 @@ export function HeroSection() {
           <Reveal delay={0.3}>
             <div className="flex gap-3.5 flex-wrap">
               <CTAButton
-                href={getWhatsAppLink(WHATSAPP_CUSTOMER, 'Hi ScanDriver! I want to book a driver.')}
-                variant="whatsapp"
-                external
+                href="/booking"
+                variant="gold"
               >
-                <WhatsAppIcon />
-                Book a Driver Now
+                Book Now
               </CTAButton>
               <CTAButton href="#services" variant="outline">
                 Explore Services ↓

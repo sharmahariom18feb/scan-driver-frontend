@@ -1,5 +1,7 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { FOOTER_COLUMNS, EMAIL, WEBSITE } from '@/constants'
+import logoSd from '../../public/icons/logo-sd.png'
 
 export function Footer() {
   return (
@@ -10,14 +12,14 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link href="#" className="flex items-center gap-2.5 no-underline mb-3.5">
-              <div className="w-10 h-10 bg-gradient-to-br from-gold to-gold-light rounded-[10px] flex items-center justify-content text-lg">
-                🚗
+              <div className="w-46 flex items-center justify-center">
+                <Image src={logoSd} alt="ScanDriver Logo" width={200} className="object-contain" />
               </div>
-              <div>
+              {/* <div>
                 <span className="font-sans text-xl font-bold text-foreground">
                   Scan<span className="text-gold-light">Driver</span>
                 </span>
-              </div>
+              </div> */}
             </Link>
             <p className="text-muted-foreground text-[13px] leading-relaxed max-w-[260px]">
               Delhi NCR&apos;s most trusted on-demand verified driver service. Professional drivers for every need — no app required.

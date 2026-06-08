@@ -1,6 +1,7 @@
 import { Reveal } from '@/components/common/reveal'
 import { SectionLabel } from '@/components/common/section-label'
-import { SERVICES, WHATSAPP_CUSTOMER, getWhatsAppLink } from '@/constants'
+import { SERVICES } from '@/constants'
+import Link from 'next/link'
 
 export function ServicesSection() {
   return (
@@ -24,10 +25,8 @@ export function ServicesSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {SERVICES.map((service, index) => (
             <Reveal key={service.id} delay={0.1 * (index % 4)}>
-              <a
-                href={getWhatsAppLink(WHATSAPP_CUSTOMER, service.whatsappMessage)}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href={`/booking?service=${service.id}`}
                 className="block bg-surface border border-border rounded-[14px] p-7 cursor-pointer transition-all duration-300 relative overflow-hidden group hover:border-gold/50 hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-gold/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -45,7 +44,7 @@ export function ServicesSection() {
                     Book Now →
                   </span>
                 </div>
-              </a>
+              </Link>
             </Reveal>
           ))}
         </div>

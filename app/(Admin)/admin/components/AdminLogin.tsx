@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
+import Image from 'next/image'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Driver } from '../types'
+import logoSd from '../../../../public/icons/logo-sd.png'
 
 interface AdminLoginProps {
   onLoginSuccess: (adminUser: Driver) => void
@@ -37,29 +39,31 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
         throw new Error('Authentication failed. No user object returned.')
       }
 
-      // 2. Fetch user profile from the database and verify their role
+      // 2. Fetch user profile from the database and verify their role (hardcoded ADMIN role)
       const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', data.user.id)
+        .eq('role', 'ADMIN') // Enforce ADMIN role check on backend
         .single()
 
       if (profileError || !profile) {
         await supabase.auth.signOut()
-        throw new Error('Access Denied: Admin user profile record not found.')
+        throw new Error('Access Denied: Invalid credentials or role mismatched.')
       }
 
       if (profile.role !== 'ADMIN') {
-        // Log them out immediately if they are not an ADMIN
         await supabase.auth.signOut()
         throw new Error('Access Denied: You do not have administrator privileges.')
       }
 
       toast.success(`Welcome back, ${profile.first_name}!`)
+      localStorage.setItem('admin_login_time', Date.now().toString())
       onLoginSuccess(profile as Driver)
     } catch (err: any) {
       console.error('Admin Login Error:', err)
       toast.error(err.message || 'Login failed. Please check credentials.')
+      setPassword('')
     } finally {
       setLoading(false)
     }
@@ -73,8 +77,8 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
 
       <div className="text-center mb-8 relative z-10">
         <div className="flex justify-center mb-4">
-          <div className="h-16 w-16 rounded-full bg-slate-900 border border-amber-500/40 flex items-center justify-center shadow-lg">
-            <span className="font-bold text-xl text-amber-400">SD</span>
+          <div className="w-46 flex items-center justify-center">
+            <Image src={logoSd} alt="ScanDriver Logo" width={300} className="object-cover" loading='eager' />
           </div>
         </div>
         <h2 className="text-3xl font-extrabold tracking-tight text-white">

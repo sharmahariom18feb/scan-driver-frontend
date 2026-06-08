@@ -75,6 +75,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className="bg-background">
       <body
         className={`${manrope.variable} antialiased`}

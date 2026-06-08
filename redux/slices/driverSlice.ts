@@ -5,8 +5,12 @@ import { supabase } from '@/lib/supabaseClient'
  * Normalizes a phone number to standard E.164 format (e.g. +919876543210)
  */
 export const normalizePhone = (phone: string): string => {
-  const digits = phone.replace(/\D/g, '')
-  if (phone.trim().startsWith('+')) {
+  let cleaned = phone.trim()
+  if (cleaned.startsWith('0') && cleaned.replace(/\D/g, '').length === 11) {
+    cleaned = cleaned.substring(1)
+  }
+  const digits = cleaned.replace(/\D/g, '')
+  if (cleaned.startsWith('+')) {
     return '+' + digits
   }
   if (digits.length === 10) {
@@ -54,6 +58,7 @@ export interface DriverInfo {
   verified: boolean
   avatar: string
   role?: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
+  isOnline?: boolean
 }
 
 export interface DriverState {
@@ -107,6 +112,18 @@ export const fetchBookings = createAsyncThunk(
 
       if (!data) return []
 
+      // Fetch passed bookings for current driver if logged in
+      let passedIds: string[] = []
+      if (session?.user) {
+        const { data: passedData } = await supabase
+          .from('passed_bookings')
+          .select('booking_id')
+          .eq('driver_id', session.user.id)
+        if (passedData) {
+          passedIds = passedData.map((pb: any) => pb.booking_id)
+        }
+      }
+
       return data.map((b: any) => ({
         id: b.id,
         customerName: b.customer_name,
@@ -119,7 +136,7 @@ export const fetchBookings = createAsyncThunk(
         fare: Number(b.fare),
         vehicle: b.vehicle,
         specialInstructions: b.special_instructions || '',
-        status: b.status,
+        status: (passedIds.includes(b.id) && b.status === 'available') ? 'passed' : b.status,
         type: b.type,
         driverId: b.driver_id,
         adminApproved: b.admin_approved,
@@ -192,21 +209,22 @@ export const loginDriver = createAsyncThunk(
       const user = data.user
       if (!user) throw new Error('No user data returned')
 
-      // Fetch driver profile info from users table
+      // Fetch driver profile info from users table and validate role
       const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
+        .eq('role', 'DRIVER') // Enforce DRIVER role check on backend
         .single()
 
       if (profileError || !profile) {
         await supabase.auth.signOut()
-        throw new Error('Driver profile not found. Account creation is not implemented yet.')
+        throw new Error('Access Denied: Invalid credentials or role mismatched.')
       }
 
-      if (profile.role !== 'DRIVER' && profile.role !== 'ADMIN') {
+      if (profile.role !== 'DRIVER') {
         await supabase.auth.signOut()
-        throw new Error('Access Denied: Only driver and admin accounts are allowed to log in.')
+        throw new Error('Access Denied: Only driver accounts are allowed to log in.')
       }
 
       const driverInfo: DriverInfo = {
@@ -221,9 +239,11 @@ export const loginDriver = createAsyncThunk(
         verified: profile.verified,
         avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
         role: profile.role,
+        isOnline: profile.is_online,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
+      localStorage.setItem('driver_login_time', Date.now().toString())
 
       // Load user's bookings and notifications
       dispatch(fetchBookings())
@@ -245,7 +265,7 @@ export const sendDriverOtp = createAsyncThunk(
 
       // First check if user exists in public.users with role DRIVER
       const { data: exists, error: rpcError } = await supabase
-        .rpc('check_user_exists_by_phone', { p_phone: normalizedPhone })
+        .rpc('check_user_exists_by_phone', { p_phone: normalizedPhone, p_role: 'DRIVER' })
 
       if (rpcError) throw rpcError
       if (!exists) {
@@ -278,21 +298,22 @@ export const verifyDriverOtp = createAsyncThunk(
       const user = data.user
       if (!user) throw new Error('Authentication failed')
 
-      // Fetch driver profile info from users table
+      // Fetch driver profile info from users table and validate role
       const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
+        .eq('role', 'DRIVER') // Enforce DRIVER role check on backend
         .single()
 
       if (profileError || !profile) {
         await supabase.auth.signOut()
-        throw new Error('Driver profile not found. Account creation is not implemented yet.')
+        throw new Error('Access Denied: Invalid credentials or role mismatched.')
       }
 
-      if (profile.role !== 'DRIVER' && profile.role !== 'ADMIN') {
+      if (profile.role !== 'DRIVER') {
         await supabase.auth.signOut()
-        throw new Error('Access Denied: Only driver and admin accounts are allowed to log in.')
+        throw new Error('Access Denied: Only driver accounts are allowed to log in.')
       }
 
       const driverInfo: DriverInfo = {
@@ -307,9 +328,11 @@ export const verifyDriverOtp = createAsyncThunk(
         verified: profile.verified,
         avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
         role: profile.role,
+        isOnline: profile.is_online,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
+      localStorage.setItem('driver_login_time', Date.now().toString())
 
       // Load user's bookings and notifications
       dispatch(fetchBookings())
@@ -365,6 +388,7 @@ export const signupDriver = createAsyncThunk(
       }
 
       localStorage.setItem('driver_session', JSON.stringify(newDriver))
+      localStorage.setItem('driver_login_time', Date.now().toString())
       return newDriver
     } catch (err: any) {
       return rejectWithValue(err.message || 'Signup failed')
@@ -378,15 +402,38 @@ export const checkDriverSession = createAsyncThunk(
   async (_, { dispatch }) => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
+
+      // Check 7-day session expiry limit
+      const driverLoginTimeStr = localStorage.getItem('driver_login_time')
+      const now = Date.now()
+      const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000
+
+      if (driverLoginTimeStr) {
+        const loginTime = parseInt(driverLoginTimeStr, 10)
+        if (now - loginTime > SEVEN_DAYS_IN_MS) {
+          // Expired
+          await supabase.auth.signOut()
+          localStorage.removeItem('driver_session')
+          localStorage.removeItem('driver_login_time')
+          return null
+        }
+      }
+
       if (session && session.user) {
+        // Fallback: If session exists but no login time is recorded, initialize it
+        if (!driverLoginTimeStr) {
+          localStorage.setItem('driver_login_time', now.toString())
+        }
+
         const user = session.user
         const { data: profile } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
+          .eq('role', 'DRIVER') // Enforce DRIVER role check on backend
           .single()
 
-        if (profile && (profile.role === 'DRIVER' || profile.role === 'ADMIN')) {
+        if (profile && profile.role === 'DRIVER') {
           const driverInfo = {
             id: user.id,
             firstName: profile.first_name,
@@ -399,15 +446,17 @@ export const checkDriverSession = createAsyncThunk(
             verified: profile.verified,
             avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
             role: profile.role,
+            isOnline: profile.is_online,
           } as DriverInfo
 
           dispatch(fetchBookings())
           dispatch(fetchNotifications())
           return driverInfo
         } else {
-          // Clean up auth session if profile not found or user is not a DRIVER/ADMIN
+          // Clean up auth session if profile not found or user is not a DRIVER
           await supabase.auth.signOut()
           localStorage.removeItem('driver_session')
+          localStorage.removeItem('driver_login_time')
           return null
         }
       }
@@ -415,12 +464,31 @@ export const checkDriverSession = createAsyncThunk(
       // Check local storage session for demo modes
       const localSession = localStorage.getItem('driver_session')
       if (localSession) {
+        if (driverLoginTimeStr) {
+          const loginTime = parseInt(driverLoginTimeStr, 10)
+          if (now - loginTime > SEVEN_DAYS_IN_MS) {
+            localStorage.removeItem('driver_session')
+            localStorage.removeItem('driver_login_time')
+            return null
+          }
+        }
         return JSON.parse(localSession) as DriverInfo
       }
       return null
     } catch (err) {
       const localSession = localStorage.getItem('driver_session')
       if (localSession) {
+        const driverLoginTimeStr = localStorage.getItem('driver_login_time')
+        const now = Date.now()
+        const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000
+        if (driverLoginTimeStr) {
+          const loginTime = parseInt(driverLoginTimeStr, 10)
+          if (now - loginTime > SEVEN_DAYS_IN_MS) {
+            localStorage.removeItem('driver_session')
+            localStorage.removeItem('driver_login_time')
+            return null
+          }
+        }
         return JSON.parse(localSession) as DriverInfo
       }
       return null
@@ -533,48 +601,65 @@ export const acceptBooking = createAsyncThunk(
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
-      const { data, error } = await supabase
-        .from('bookings')
-        .update({
-          status: 'accepted',
-          driver_id: session.user.id,
-        })
-        .eq('id', bookingId)
-        .select()
-        .single()
+      // Call postgres safe acceptance RPC to handle row locking (FOR UPDATE) and check status
+      const { data, error } = await supabase.rpc('accept_booking_safe', {
+        p_booking_id: bookingId,
+        p_driver_id: session.user.id,
+      })
 
       if (error) throw error
 
-      await supabase
-        .from('notifications')
-        .insert({
-          driver_id: session.user.id,
-          title: 'Booking Accepted',
-          description: `You accepted trip ${bookingId} to ${data.drop}. Drive safely!`,
-          time: 'Just now',
-          type: 'booking',
-          read: false,
-        })
+      if (data && !data.success) {
+        throw new Error(data.message || 'Booking is no longer available')
+      }
+
+      const booking = data.booking
 
       return {
-        id: data.id,
-        customerName: data.customer_name,
-        phone: data.phone,
-        pickup: data.pickup,
-        drop: data.drop,
-        dateTime: data.date_time,
-        duration: data.duration,
-        distance: data.distance,
-        fare: Number(data.fare),
-        vehicle: data.vehicle,
-        specialInstructions: data.special_instructions || '',
-        status: data.status,
-        type: data.type,
-        adminApproved: data.admin_approved,
+        id: booking.id,
+        customerName: booking.customer_name,
+        phone: booking.phone,
+        pickup: booking.pickup,
+        drop: booking.drop,
+        dateTime: booking.date_time,
+        duration: booking.duration,
+        distance: booking.distance,
+        fare: Number(booking.fare),
+        vehicle: booking.vehicle,
+        specialInstructions: booking.special_instructions || '',
+        status: booking.status,
+        type: booking.type,
+        driverId: booking.driver_id,
+        adminApproved: booking.admin_approved,
       } as Booking
     } catch (err: any) {
-      console.warn('Supabase acceptBooking failed, using local mock updates:', err)
-      return { bookingId } // pass booking ID to update state locally
+      console.warn('Supabase acceptBooking failed:', err)
+      return rejectWithValue(err.message || 'Accept booking failed')
+    }
+  }
+)
+
+// 8b. Pass Booking Thunk
+export const passBooking = createAsyncThunk(
+  'driver/passBooking',
+  async (bookingId: string, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const { error } = await supabase
+        .from('passed_bookings')
+        .insert({
+          driver_id: session.user.id,
+          booking_id: bookingId,
+        })
+
+      if (error) throw error
+
+      return bookingId
+    } catch (err: any) {
+      console.warn('Supabase passBooking failed, using local fallback:', err)
+      return bookingId
     }
   }
 )
@@ -607,9 +692,11 @@ export const logoutDriver = createAsyncThunk(
     try {
       await supabase.auth.signOut()
       localStorage.removeItem('driver_session')
+      localStorage.removeItem('driver_login_time')
       return true
     } catch (err: any) {
       localStorage.removeItem('driver_session')
+      localStorage.removeItem('driver_login_time')
       return true
     }
   }
@@ -643,13 +730,6 @@ export const driverSlice = createSlice({
         state.notifications.unshift(action.payload)
       }
     },
-    passBooking: (state, action: PayloadAction<string>) => {
-      const bookingId = action.payload
-      const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
-      if (bookingIndex !== -1) {
-        state.bookings[bookingIndex].status = 'passed'
-      }
-    },
   },
   extraReducers: (builder) => {
     // Fetch Bookings
@@ -671,6 +751,7 @@ export const driverSlice = createSlice({
       state.loading = false
       state.isAuthenticated = true
       state.info = action.payload
+      state.isOnline = action.payload.isOnline ?? false
       state.stats = {
         trips: state.bookings.filter(b => b.status === 'accepted' || b.status === 'completed').length,
         earnings: state.bookings
@@ -705,6 +786,7 @@ export const driverSlice = createSlice({
       state.loading = false
       state.isAuthenticated = true
       state.info = action.payload
+      state.isOnline = action.payload.isOnline ?? false
       state.stats = {
         trips: state.bookings.filter(b => b.status === 'accepted' || b.status === 'completed').length,
         earnings: state.bookings
@@ -742,6 +824,7 @@ export const driverSlice = createSlice({
       if (action.payload) {
         state.isAuthenticated = true
         state.info = action.payload
+        state.isOnline = action.payload.isOnline ?? false
         state.stats = {
           trips: state.bookings.filter(b => b.status === 'accepted' || b.status === 'completed').length,
           earnings: state.bookings
@@ -794,7 +877,12 @@ export const driverSlice = createSlice({
     })
 
     // Accept Booking
+    builder.addCase(acceptBooking.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
     builder.addCase(acceptBooking.fulfilled, (state, action: PayloadAction<Booking | { bookingId: string }>) => {
+      state.loading = false
       const payload = action.payload
       const bookingId = 'bookingId' in payload ? payload.bookingId : payload.id
 
@@ -820,6 +908,19 @@ export const driverSlice = createSlice({
         })
       }
     })
+    builder.addCase(acceptBooking.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload as string || 'Failed to accept booking'
+    })
+
+    // Pass Booking
+    builder.addCase(passBooking.fulfilled, (state, action: PayloadAction<string>) => {
+      const bookingId = action.payload
+      const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
+      if (bookingIndex !== -1) {
+        state.bookings[bookingIndex].status = 'passed'
+      }
+    })
 
     // Mark all notifications as read
     builder.addCase(markAllNotificationsAsRead.fulfilled, (state) => {
@@ -843,7 +944,6 @@ export const {
   updateBookingState,
   setNotifications,
   updateNotificationState,
-  passBooking,
 } = driverSlice.actions
 
 export default driverSlice.reducer

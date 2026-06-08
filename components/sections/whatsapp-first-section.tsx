@@ -1,8 +1,7 @@
 import { Reveal } from '@/components/common/reveal'
 import { SectionLabel } from '@/components/common/section-label'
 import { CTAButton } from '@/components/common/cta-button'
-import { WhatsAppIcon } from '@/components/common/icons'
-import { WHATSAPP_CUSTOMER, getWhatsAppLink } from '@/constants'
+// No WhatsApp constants or icons needed in imports anymore
 
 export function WhatsAppFirstSection() {
   return (
@@ -24,12 +23,10 @@ export function WhatsAppFirstSection() {
                 No app downloads. No long forms. No waiting. Book, track, and communicate with your driver entirely through WhatsApp — in under 2 minutes.
               </p>
               <CTAButton
-                href={getWhatsAppLink(WHATSAPP_CUSTOMER, 'Hi ScanDriver! I want to book a driver.')}
-                variant="whatsapp"
-                external
+                href="/booking"
+                variant="gold"
               >
-                <WhatsAppIcon />
-                Start Booking on WhatsApp
+                Book Now
               </CTAButton>
             </div>
           </Reveal>

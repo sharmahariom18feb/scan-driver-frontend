@@ -1,14 +1,16 @@
 'use client'
 
 import React from 'react'
-import { Star, Search } from 'lucide-react'
+import { Star, Search, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Booking, DriverInfo } from '@/redux/slices/driverSlice'
 
 interface HomeTabProps {
   info: DriverInfo | null
   isOnline: boolean
+  loading?: boolean
   handleToggleOnline: () => void
+  onRefresh: () => void
   stats: { trips: number; earnings: number }
   availableBookings: Booking[]
   handleOpenDetails: (booking: Booking) => void
@@ -17,7 +19,9 @@ interface HomeTabProps {
 export default function HomeTab({
   info,
   isOnline,
+  loading = false,
   handleToggleOnline,
+  onRefresh,
   stats,
   availableBookings,
   handleOpenDetails,
@@ -92,12 +96,24 @@ export default function HomeTab({
       {/* AVAILABLE BOOKINGS */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-text-muted">
-            Available Bookings
-          </h3>
-          <span className="px-2 py-0.5 rounded-full bg-surface2 border border-border/15 text-[10px] font-semibold text-gold-light">
-            {isOnline ? availableBookings.length : 0} available
-          </span>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-text-muted">
+              Available Bookings
+            </h3>
+            <span className="px-2 py-0.5 rounded-full bg-surface2 border border-border/15 text-[10px] font-semibold text-gold-light">
+              {isOnline ? availableBookings.length : 0} available
+            </span>
+          </div>
+          {isOnline && (
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="p-1.5 rounded-lg border border-border/10 text-text-muted hover:text-gold-light hover:bg-surface2 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+              title="Refresh Bookings"
+            >
+              <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
+            </button>
+          )}
         </div>
 
         {!isOnline ? (
@@ -114,18 +130,26 @@ export default function HomeTab({
             </div>
           </div>
         ) : availableBookings.length === 0 ? (
-          /* Online and Loading State / Empty */
+          /* Online and Empty State with Search Button */
           <div className="bg-card/40 border border-border/10 rounded-xl p-8 text-center flex flex-col items-center justify-center gap-4">
-            <div className="relative">
-              <div className="h-10 w-10 border-2 border-gold/30 border-t-primary rounded-full animate-spin" />
-              <Search size={14} className="absolute inset-0 m-auto text-gold-light" />
+            <div className="h-12 w-12 rounded-full bg-surface2 border border-border/10 flex items-center justify-center text-text-muted">
+              <Search size={22} className="text-gold-light" />
             </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-sm">Searching for rides...</h4>
-              <p className="text-xs text-text-muted max-w-[220px] mx-auto leading-relaxed">
-                Keep this page open. We are scanning available client requests in your area.
+            <div className="space-y-1.5">
+              <h4 className="font-semibold text-sm">No bookings found</h4>
+              <p className="text-xs text-text-muted max-w-[220px] mx-auto leading-relaxed mb-2">
+                Click search to scan for available booking requests in your area.
               </p>
             </div>
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="px-4 py-2 bg-primary hover:bg-primary/95 text-black font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <Search size={14} className={cn(loading && 'hidden')} />
+              {loading && <RefreshCw size={14} className="animate-spin" />}
+              {loading ? 'Searching...' : 'Search Bookings'}
+            </button>
           </div>
         ) : (
           /* Bookings List when online */

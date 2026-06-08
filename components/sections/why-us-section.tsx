@@ -1,7 +1,7 @@
 import { Reveal } from '@/components/common/reveal'
 import { SectionLabel } from '@/components/common/section-label'
 import { CTAButton } from '@/components/common/cta-button'
-import { TRUST_FEATURES, STATS, WHATSAPP_CUSTOMER, getWhatsAppLink } from '@/constants'
+import { TRUST_FEATURES, STATS } from '@/constants'
 
 export function WhyUsSection() {
   return (
@@ -40,11 +40,10 @@ export function WhyUsSection() {
 
             <Reveal delay={0.4}>
               <CTAButton
-                href={getWhatsAppLink(WHATSAPP_CUSTOMER, 'Hi ScanDriver! I want to book a driver.')}
+                href="/booking"
                 variant="gold"
-                external
               >
-                Book Your Verified Driver
+                Book Now
               </CTAButton>
             </Reveal>
           </div>

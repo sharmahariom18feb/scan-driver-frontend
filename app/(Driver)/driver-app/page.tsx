@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTheme } from 'next-themes'
+import { useRouter } from 'next/navigation'
+import logoSd from '../../../public/icons/logo-sd.png'
 import {
   Home as HomeIcon,
   Briefcase,
@@ -44,6 +47,7 @@ import BookingDetailModal from '@/components/driver/BookingDetailModal'
 
 export default function DriverApp() {
   const dispatch = useDispatch<AppDispatch>()
+  const router = useRouter()
   const { isAuthenticated, isOnline, info, bookings, notifications, stats, loading, error, checkingSession } = useSelector(
     (state: RootState) => state.driver
   )
@@ -98,6 +102,39 @@ export default function DriverApp() {
 
     return () => clearTimeout(timer)
   }, [dispatch])
+
+  // Periodic session expiration checker (7 days limit check for drivers)
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const checkSessionExpiry = () => {
+      const driverLoginTimeStr = localStorage.getItem('driver_login_time')
+      if (driverLoginTimeStr) {
+        const loginTime = parseInt(driverLoginTimeStr, 10)
+        const now = Date.now()
+        const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000
+        if (now - loginTime > SEVEN_DAYS_IN_MS) {
+          dispatch(logoutDriver())
+          toast.error('Your session has expired. Please log in again.')
+        }
+      }
+    }
+
+    // Run immediately and then every 1 minute
+    checkSessionExpiry()
+    const interval = setInterval(checkSessionExpiry, 60000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated, dispatch])
+
+  // Enforce role isolation: drivers only
+  useEffect(() => {
+    if (isAuthenticated && info) {
+      if (info.role !== 'DRIVER') {
+        dispatch(logoutDriver())
+        toast.error(`Access Denied: Invalid credentials or role mismatched.`)
+      }
+    }
+  }, [isAuthenticated, info, dispatch])
 
   // Countdown timer for OTP resend
   useEffect(() => {
@@ -161,6 +198,33 @@ export default function DriverApp() {
     }
   }, [info])
 
+  // Register FCM Token for push notifications when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !info || !info.id) return
+
+    const registerFcm = async () => {
+      try {
+        const { requestForToken } = await import('@/lib/firebase')
+        const token = await requestForToken()
+        if (token) {
+          const { error } = await supabase
+            .from('driver_fcm_tokens')
+            .upsert({
+              driver_id: info.id,
+              fcm_token: token,
+            }, { onConflict: 'fcm_token' })
+
+          if (error) throw error
+          console.log('FCM token registered successfully:', token)
+        }
+      } catch (err) {
+        console.error('Failed to register FCM token:', err)
+      }
+    }
+
+    registerFcm()
+  }, [isAuthenticated, info])
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isLoginMode) {
@@ -175,6 +239,7 @@ export default function DriverApp() {
         } else {
           const errMsg = result.payload as string || 'Failed to login'
           toast.error(errMsg)
+          setPassword('')
         }
       } else {
         // OTP Mode
@@ -204,6 +269,8 @@ export default function DriverApp() {
           } else {
             const errMsg = result.payload as string || 'Failed to verify OTP'
             toast.error(errMsg)
+            setOtpSent(false)
+            setOtpCode('')
           }
         }
       }
@@ -282,13 +349,36 @@ export default function DriverApp() {
     }
   }
 
-  const handleToggleOnline = () => {
-    dispatch(toggleOnlineStatus())
-    if (!isOnline) {
-      toast.success('You are now ONLINE. Searching for bookings...')
-    } else {
-      toast.info('You are now OFFLINE.')
+  const handleToggleOnline = async () => {
+    if (!info?.verified) {
+      toast.error('Your account is not approved by the admin yet. Please wait for verification.')
+      return
     }
+    const result = await dispatch(toggleOnlineStatus())
+    if (toggleOnlineStatus.fulfilled.match(result)) {
+      const online = result.payload
+      if (online) {
+        toast.success('You are now ONLINE. Searching for bookings...')
+        dispatch(fetchBookings())
+      } else {
+        toast.info('You are now OFFLINE.')
+      }
+    } else {
+      toast.error('Failed to change online status')
+    }
+  }
+
+  const handleRefreshBookings = async () => {
+    if (!isOnline) {
+      toast.error('Please go online to refresh bookings')
+      return
+    }
+    const myPromise = dispatch(fetchBookings())
+    toast.promise(myPromise, {
+      loading: 'Fetching latest bookings...',
+      success: 'Bookings list updated!',
+      error: 'Failed to reload bookings. Please try again.',
+    })
   }
 
   const handleOpenDetails = (booking: Booking) => {
@@ -296,13 +386,18 @@ export default function DriverApp() {
     setIsModalOpen(true)
   }
 
-  const handleAccept = (bookingId: string) => {
-    dispatch(acceptBooking(bookingId))
+  const handleAccept = async (bookingId: string) => {
     setIsModalOpen(false)
     setSelectedBooking(null)
-    toast.success('Booking accepted! Customer details unlocked.', {
-      duration: 5000,
-    })
+    const result = await dispatch(acceptBooking(bookingId))
+    if (acceptBooking.fulfilled.match(result)) {
+      toast.success('Booking accepted! Customer details unlocked.', {
+        duration: 5000,
+      })
+    } else {
+      const errMsg = result.payload as string || 'Failed to accept booking. It may have been accepted by another driver.'
+      toast.error(errMsg)
+    }
   }
 
   const handlePass = (bookingId: string) => {
@@ -336,8 +431,8 @@ export default function DriverApp() {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
 
         <div className="z-10 flex flex-col items-center gap-5">
-          <div className="h-16 w-16 rounded-full bg-slate-900 border border-gold/30 flex items-center justify-center shadow-lg mb-2">
-            <span className="font-display font-bold text-xl text-gold-light">SD</span>
+          <div className="w-46 flex items-center justify-center mb-2">
+            <Image src={logoSd} alt="ScanDriver Logo" width={200} className="object-contain" loading='eager' />
           </div>
 
           <div className="flex items-center gap-3">
@@ -346,6 +441,7 @@ export default function DriverApp() {
               Verifying session...
             </p>
           </div>
+          <a href="">Reload </a>
         </div>
       </div>
     )
@@ -452,7 +548,9 @@ export default function DriverApp() {
           <HomeTab
             info={info}
             isOnline={isOnline}
+            loading={loading}
             handleToggleOnline={handleToggleOnline}
+            onRefresh={handleRefreshBookings}
             stats={stats}
             availableBookings={availableBookings}
             handleOpenDetails={handleOpenDetails}

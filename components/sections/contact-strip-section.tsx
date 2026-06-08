@@ -1,6 +1,6 @@
 import { Reveal } from '@/components/common/reveal'
 import { CTAButton } from '@/components/common/cta-button'
-import { CONTACT_INFO, WHATSAPP_CUSTOMER, getWhatsAppLink } from '@/constants'
+import { CONTACT_INFO } from '@/constants'
 
 export function ContactStripSection() {
   return (
@@ -38,11 +38,10 @@ export function ContactStripSection() {
           <Reveal delay={0.2}>
             <div className="flex gap-3.5 flex-wrap items-center">
               <CTAButton
-                href={getWhatsAppLink(WHATSAPP_CUSTOMER, 'Hi ScanDriver! I want to book a driver.')}
-                variant="whatsapp"
-                external
+                href="/booking"
+                variant="gold"
               >
-                Book on WhatsApp
+                Book Now
               </CTAButton>
               <CTAButton href="tel:+919717498198" variant="outline">
                 Call Now

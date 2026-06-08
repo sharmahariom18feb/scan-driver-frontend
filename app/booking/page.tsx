@@ -111,6 +111,27 @@ export default function BookingPage() {
   const [emailVal, setEmailVal] = useState('')
   const [tripType, setTripType] = useState<TripType>('HOURLY')
 
+  // Parse query parameters on client mount to pre-fill service type
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const serviceParam = params.get('service')?.toUpperCase() || params.get('type')?.toUpperCase()
+      if (serviceParam) {
+        let mappedType: TripType | null = null
+        if (['HOURLY', 'WEEKLY', 'MONTHLY', 'OUTSTATION'].includes(serviceParam)) {
+          mappedType = serviceParam as TripType
+        } else if (serviceParam === 'CORPORATE') {
+          mappedType = 'MONTHLY'
+        } else if (serviceParam === 'AIRPORT' || serviceParam === 'EVENT') {
+          mappedType = 'HOURLY'
+        }
+        if (mappedType) {
+          setTripType(mappedType)
+        }
+      }
+    }
+  }, [])
+
   // Date and Time
   const [startDate, setStartDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -269,9 +290,12 @@ export default function BookingPage() {
       {/* ═══════════ HERO SECTION ═══════════ */}
       <section className="relative pt-28 sm:pt-36 pb-28 sm:pb-36 overflow-hidden">
         {/* Multi-layer gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0a0f1a] to-[#0d1a12]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,146,42,0.08),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.06),transparent_60%)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0a0f1a] to-[#0d1a12] dark:block hidden" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-[#f5f8fc] to-[#eef7f2] dark:hidden block" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,146,42,0.08),transparent_60%)] dark:block hidden" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,146,42,0.04),transparent_60%)] dark:hidden block" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.06),transparent_60%)] dark:block hidden" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.03),transparent_60%)] dark:hidden block" />
         <HeroGridPattern />
         <FloatingOrbs />
 
@@ -284,19 +308,19 @@ export default function BookingPage() {
 
         <div className="relative z-10 max-w-5xl mx-auto px-6 text-center space-y-6">
           {/* Pill badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.07] backdrop-blur-sm border border-white/15">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/[0.07] backdrop-blur-sm border border-black/10 dark:border-white/15">
             <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
             <span className="text-[11px] font-bold text-primary uppercase tracking-widest">Book Your Professional Driver</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
-            <span className="text-white">Hire a </span>
+            <span className="text-slate-900 dark:text-white">Hire a </span>
             <span className="bg-gradient-to-r from-primary via-gold-light to-primary bg-clip-text text-transparent">Verified Driver</span>
             <br />
-            <span className="text-white/90">in Delhi NCR</span>
+            <span className="text-slate-800 dark:text-white/90">in Delhi NCR</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-white/55 max-w-xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-slate-600 dark:text-white/55 max-w-xl mx-auto leading-relaxed">
             Background-checked, experienced drivers for every need —
             hourly, weekly, monthly, or outstation.
           </p>
@@ -309,7 +333,7 @@ export default function BookingPage() {
               { icon: Zap, text: '15 Min Allocation' },
               { icon: Clock, text: '24/7 Support' },
             ].map((badge) => (
-              <div key={badge.text} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-xs border border-white/[0.10] text-[11px] font-semibold text-white/70">
+              <div key={badge.text} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-xs border border-black/10 dark:border-white/[0.10] text-[11px] font-semibold text-slate-700 dark:text-white/70">
                 <badge.icon className="h-3.5 w-3.5 text-primary" />
                 {badge.text}
               </div>
@@ -320,7 +344,7 @@ export default function BookingPage() {
           <div className="pt-6 flex justify-center">
             <button
               onClick={() => document.getElementById('booking-form')?.scrollIntoView({ behavior: 'smooth' })}
-              className="flex flex-col items-center gap-1 text-white/30 hover:text-primary/70 transition-colors cursor-pointer group"
+              className="flex flex-col items-center gap-1 text-slate-400 dark:text-white/30 hover:text-primary/70 transition-colors cursor-pointer group"
             >
               <span className="text-[10px] font-semibold uppercase tracking-widest">Fill Booking Form</span>
               <ChevronRight className="h-5 w-5 rotate-90 group-hover:translate-y-0.5 transition-transform" />

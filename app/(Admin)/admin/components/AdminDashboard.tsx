@@ -174,9 +174,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-700/80 z-50 transform lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col justify-between ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-700/80 z-50 transform lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col justify-between ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="flex-1">
           {/* Sidebar Header */}
@@ -208,11 +207,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                     setActiveTab(item.id)
                     setSidebarOpen(false)
                   }}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                  }`}
+                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${isActive
+                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    }`}
                 >
                   <Icon size={18} />
                   {item.label}
@@ -261,12 +259,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
           <div className="flex items-center gap-4">
             {/* Theme toggle */}
-            <button
+            {/* <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2 rounded-xl border border-slate-750 text-slate-300 hover:text-amber-400 hover:bg-slate-800/40 transition-colors"
             >
               {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
+            </button> */}
 
             {/* Notification alert */}
             <div className="relative p-2 rounded-xl border border-slate-750 text-slate-300 hover:text-white hover:bg-slate-800/40 transition-all">

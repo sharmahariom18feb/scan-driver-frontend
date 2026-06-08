@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban } from 'lucide-react'
+import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Driver } from '../types'
@@ -17,6 +17,65 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
   const [onlineFilter, setOnlineFilter] = useState<'all' | 'online' | 'offline'>('all')
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  // Password reset states
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+  const [targetDriverId, setTargetDriverId] = useState<string | null>(null)
+  const [targetDriverName, setTargetDriverName] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [resettingPassword, setResettingPassword] = useState(false)
+
+  const openResetModal = (driverId: string, driverName: string) => {
+    setTargetDriverId(driverId)
+    setTargetDriverName(driverName)
+    setNewPassword('')
+    setResetModalOpen(true)
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!targetDriverId || !newPassword) return
+
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long')
+      return
+    }
+
+    setResettingPassword(true)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error('You must be logged in as admin to perform this action')
+      }
+
+      const response = await fetch('/api/reset-driver-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          driverId: targetDriverId,
+          newPassword: newPassword
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reset password')
+      }
+
+      toast.success('Driver password reset successfully!')
+      setResetModalOpen(false)
+    } catch (err: any) {
+      console.error('Password reset error:', err)
+      toast.error(err.message || 'An error occurred during password reset')
+    } finally {
+      setResettingPassword(false)
+    }
+  }
 
   // Filter Drivers
   const filteredDrivers = drivers.filter((d) => {
@@ -75,6 +134,44 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
     } catch (err: any) {
       console.error('Error toggling driver verification:', err)
       toast.error(err.message || 'Failed to update verification status')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  // Reject/Delete Driver Action
+  const handleRejectDriver = async (driverId: string) => {
+    const confirmReject = window.confirm('Are you sure you want to reject and delete this driver request?')
+    if (!confirmReject) return
+
+    setUpdatingId(driverId)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error('You must be logged in as admin to perform this action')
+      }
+
+      const response = await fetch('/api/delete-driver', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ driverId })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reject driver')
+      }
+
+      toast.success('Driver application rejected and deleted successfully!')
+      onRefresh()
+    } catch (err: any) {
+      console.error('Error rejecting driver:', err)
+      toast.error(err.message || 'Failed to reject driver')
     } finally {
       setUpdatingId(null)
     }
@@ -237,8 +334,8 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                       </button>
                     </td>
 
-                    {/* Verification Toggle */}
-                    <td className="py-4 px-5 text-right">
+                    {/* Verification Toggle & Reset Password */}
+                    <td className="py-4 px-5 text-right whitespace-nowrap space-x-2">
                       {d.verified ? (
                         <button
                           onClick={() => toggleVerification(d.id, d.verified)}
@@ -248,14 +345,29 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                           <Ban size={12} /> SUSPEND
                         </button>
                       ) : (
-                        <button
-                          onClick={() => toggleVerification(d.id, d.verified)}
-                          disabled={updatingId === d.id}
-                          className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/5"
-                        >
-                          <UserCheck size={12} /> APPROVE & ACTIVATE
-                        </button>
+                        <>
+                          <button
+                            onClick={() => toggleVerification(d.id, d.verified)}
+                            disabled={updatingId === d.id}
+                            className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/5"
+                          >
+                            <UserCheck size={12} /> APPROVE
+                          </button>
+                          <button
+                            onClick={() => handleRejectDriver(d.id)}
+                            disabled={updatingId === d.id}
+                            className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            <Ban size={12} /> REJECT
+                          </button>
+                        </>
                       )}
+                      <button
+                        onClick={() => openResetModal(d.id, `${d.first_name} ${d.last_name}`)}
+                        className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer border border-slate-700"
+                      >
+                        <Key size={12} /> RESET PASSWORD
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -306,7 +418,7 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                   </p>
                 </div>
 
-                <div className="pt-2.5 border-t border-slate-850 flex justify-end">
+                <div className="pt-2.5 border-t border-slate-850 flex justify-end gap-2">
                   {d.verified ? (
                     <button
                       onClick={() => toggleVerification(d.id, d.verified)}
@@ -316,20 +428,90 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                       Suspend Account
                     </button>
                   ) : (
-                    <button
-                      onClick={() => toggleVerification(d.id, d.verified)}
-                      disabled={updatingId === d.id}
-                      className="bg-emerald-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer shadow-md"
-                    >
-                      Verify & Approve
-                    </button>
+                    <>
+                      <button
+                        onClick={() => toggleVerification(d.id, d.verified)}
+                        disabled={updatingId === d.id}
+                        className="bg-emerald-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer shadow-md"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectDriver(d.id)}
+                        disabled={updatingId === d.id}
+                        className="bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                    </>
                   )}
+                  <button
+                    onClick={() => openResetModal(d.id, `${d.first_name} ${d.last_name}`)}
+                    className="bg-slate-800 border border-slate-700 text-slate-200 hover:text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer flex items-center gap-1"
+                  >
+                    <Key size={10} /> Reset Password
+                  </button>
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      {resetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-base font-bold text-white mb-2">Reset Password</h3>
+            <p className="text-xs text-slate-350 mb-4">
+              Enter a new password for <span className="font-extrabold text-amber-400">{targetDriverName}</span>. 
+              The driver will receive a security notification and must use the new password to log in next time.
+            </p>
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResetModalOpen(false)}
+                  disabled={resettingPassword}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs rounded-xl cursor-pointer transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resettingPassword}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50 shadow-md shadow-amber-500/5"
+                >
+                  {resettingPassword ? (
+                    <>
+                      <div className="h-3 w-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    'Reset Password'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
