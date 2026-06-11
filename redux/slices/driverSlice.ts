@@ -449,6 +449,8 @@ export const checkDriverSession = createAsyncThunk(
             isOnline: profile.is_online,
           } as DriverInfo
 
+          localStorage.setItem('driver_session', JSON.stringify(driverInfo))
+
           dispatch(fetchBookings())
           dispatch(fetchNotifications())
           return driverInfo
@@ -464,6 +466,9 @@ export const checkDriverSession = createAsyncThunk(
       // Check local storage session for demo modes
       const localSession = localStorage.getItem('driver_session')
       if (localSession) {
+        const driverLoginTimeStr = localStorage.getItem('driver_login_time')
+        const now = Date.now()
+        const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000
         if (driverLoginTimeStr) {
           const loginTime = parseInt(driverLoginTimeStr, 10)
           if (now - loginTime > SEVEN_DAYS_IN_MS) {
@@ -492,6 +497,48 @@ export const checkDriverSession = createAsyncThunk(
         return JSON.parse(localSession) as DriverInfo
       }
       return null
+    }
+  }
+)
+
+// 5b. Fetch driver profile info from Supabase
+export const fetchDriverProfile = createAsyncThunk(
+  'driver/fetchProfile',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .eq('role', 'DRIVER')
+        .single()
+
+      if (error) throw error
+      if (!profile) throw new Error('Profile not found')
+
+      const driverInfo: DriverInfo = {
+        id: session.user.id,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        phone: profile.phone,
+        email: session.user.email || profile.email || '',
+        currentArea: profile.current_area,
+        licenseNo: profile.license_no,
+        rating: Number(profile.rating),
+        verified: profile.verified,
+        avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+        role: profile.role,
+        isOnline: profile.is_online,
+      }
+
+      localStorage.setItem('driver_session', JSON.stringify(driverInfo))
+      return driverInfo
+    } catch (err: any) {
+      console.error('fetchDriverProfile error:', err)
+      return rejectWithValue(err.message || 'Failed to fetch profile')
     }
   }
 )
@@ -835,6 +882,27 @@ export const driverSlice = createSlice({
     })
     builder.addCase(checkDriverSession.rejected, (state) => {
       state.checkingSession = false
+    })
+
+    // Fetch Profile
+    builder.addCase(fetchDriverProfile.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(fetchDriverProfile.fulfilled, (state, action: PayloadAction<DriverInfo>) => {
+      state.loading = false
+      state.info = action.payload
+      state.isOnline = action.payload.isOnline ?? false
+      state.stats = {
+        trips: state.bookings.filter(b => b.status === 'accepted' || b.status === 'completed').length,
+        earnings: state.bookings
+          .filter(b => b.status === 'accepted' || b.status === 'completed')
+          .reduce((acc, curr) => acc + curr.fare, 0),
+      }
+    })
+    builder.addCase(fetchDriverProfile.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload as string || 'Failed to fetch profile'
     })
 
     // Update Profile

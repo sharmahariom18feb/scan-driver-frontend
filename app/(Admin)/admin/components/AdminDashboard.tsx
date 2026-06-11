@@ -106,10 +106,13 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     }
   }
 
-  // Initial Fetch & Real-time Subscriptions
+  // Fetch data on active tab changes (also covers initial mount)
   useEffect(() => {
     fetchData()
+  }, [activeTab])
 
+  // Real-time Subscriptions on Mount
+  useEffect(() => {
     // Subscribe to booking changes
     const bookingsChannel = supabase
       .channel('admin-bookings-changes')

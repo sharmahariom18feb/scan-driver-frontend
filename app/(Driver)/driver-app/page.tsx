@@ -33,6 +33,7 @@ import {
   verifyDriverOtp,
   normalizePhone,
   Booking,
+  fetchDriverProfile,
 } from '@/redux/slices/driverSlice'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
@@ -56,6 +57,7 @@ export default function DriverApp() {
 
   // Tabs: 'home' | 'bookings' | 'alerts' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'bookings' | 'alerts' | 'profile'>('home')
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   // Auth local state
   const [isLoginMode, setIsLoginMode] = useState(true)
@@ -102,6 +104,28 @@ export default function DriverApp() {
 
     return () => clearTimeout(timer)
   }, [dispatch])
+
+  // Fetch fresh data when tab changes, excluding the initial mount fetch
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    if (isInitialLoad) {
+      setIsInitialLoad(false)
+      return
+    }
+
+    if (activeTab === 'home') {
+      dispatch(fetchDriverProfile())
+      dispatch(fetchBookings())
+      dispatch(fetchNotifications())
+    } else if (activeTab === 'bookings') {
+      dispatch(fetchBookings())
+    } else if (activeTab === 'alerts') {
+      dispatch(fetchNotifications())
+    } else if (activeTab === 'profile') {
+      dispatch(fetchDriverProfile())
+    }
+  }, [activeTab, isAuthenticated, dispatch, isInitialLoad])
 
   // Periodic session expiration checker (7 days limit check for drivers)
   useEffect(() => {

@@ -26,9 +26,9 @@ import { toast, Toaster } from 'sonner'
 import { WHATSAPP_CUSTOMER, getWhatsAppLink } from '@/constants'
 import { cn } from '@/lib/utils'
 
-type TripType = 'HOURLY' | 'WEEKLY' | 'MONTHLY' | 'OUTSTATION'
-type VehicleType = 'Hatchback' | 'Sedan' | 'SUV' | 'Luxury'
-type OutstationType = 'ONE_WAY' | 'ROUND_TRIP'
+type TripType = 'oneway' | 'roundtrip' | 'monthly' | 'outstation'
+type CarType = 'hatchback' | 'sedan' | 'suv' | 'luxury'
+type OutstationType = 'oneway' | 'roundtrip'
 
 /* ─── Decorative SVG Vectors ─── */
 function FloatingOrbs() {
@@ -65,26 +65,6 @@ function DiamondAccent({ className }: { className?: string }) {
   )
 }
 
-/* ─── Step Progress Indicator ─── */
-function StepIndicator({ step, label, active, completed }: { step: number; label: string; active: boolean; completed: boolean }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className={cn(
-        'h-8 w-8 rounded-full flex items-center justify-center text-xs font-extrabold border-2 transition-all duration-500',
-        completed ? 'bg-primary border-primary text-black scale-100' :
-          active ? 'bg-primary/20 border-primary text-primary scale-105 shadow-md shadow-primary/10' :
-            'bg-surface2 border-border/30 text-text-muted'
-      )}>
-        {completed ? <CheckCircle className="h-4 w-4" /> : step}
-      </div>
-      <span className={cn(
-        'text-[11px] font-bold uppercase tracking-wider hidden sm:block transition-colors',
-        completed ? 'text-primary' : active ? 'text-foreground' : 'text-text-muted/70'
-      )}>{label}</span>
-    </div>
-  )
-}
-
 /* ─── Input helper component ─── */
 function InputField({ label, icon: Icon, error, children, className: cls }: { label: string; icon?: any; error?: string; children: React.ReactNode; className?: string }) {
   return (
@@ -103,192 +83,544 @@ function InputField({ label, icon: Icon, error, children, className: cls }: { la
   )
 }
 
-/* ─── Main Component ─── */
+/* ─── Defaults — minimum 1 hour from now ─── */
+function getMinDateTime() {
+  const now = new Date()
+  now.setHours(now.getHours() + 1)
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  const hh = String(now.getHours()).padStart(2, '0')
+  const min = String(now.getMinutes()).padStart(2, '0')
+  return { date: `${yyyy}-${mm}-${dd}`, time: `${hh}:${min}`, full: now }
+}
+
 export default function BookingPage() {
-  // Form Fields State
+  // Core States
   const [customerName, setCustomerName] = useState('')
   const [phoneVal, setPhoneVal] = useState('')
   const [emailVal, setEmailVal] = useState('')
-  const [tripType, setTripType] = useState<TripType>('HOURLY')
+  const [tripType, setTripType] = useState<TripType>('oneway')
+  const [carType, setCarType] = useState<CarType | ''>('')
+  
+  // Date & Time states
+  const [bookDate, setBookDate] = useState('')
+  const [bookTime, setBookTime] = useState('')
+  const [interviewDate, setInterviewDate] = useState('')
+  const [interviewTime, setInterviewTime] = useState('')
 
-  // Parse query parameters on client mount to pre-fill service type
+  // Specific trip fields
+  // 1. One Way
+  const [pickup, setPickup] = useState('')
+  const [drop, setDrop] = useState('')
+  const [estKms, setEstKms] = useState<number>(0)
+
+  // 2. Round Trip
+  const [roundHours, setRoundHours] = useState<number>(0)
+
+  // 3. Monthly
+  const [monthlyDays, setMonthlyDays] = useState<number>(0)
+  const [monthlyHours, setMonthlyHours] = useState<number>(0)
+  const [extraAmt, setExtraAmt] = useState<number>(0)
+
+  // 4. Outstation
+  const [outSubType, setOutSubType] = useState<OutstationType>('oneway')
+  const [outPickup, setOutPickup] = useState('')
+  const [outDrop, setOutDrop] = useState('')
+  const [outKms, setOutKms] = useState<number>(0)
+  const [outDest, setOutDest] = useState('')
+  const [outDays, setOutDays] = useState<number>(0)
+
+  // Common Pickup for RT & Monthly
+  const [pickupCommon, setPickupCommon] = useState('')
+
+  // Comments
+  const [comments, setComments] = useState('')
+
+  // Geolocation
+  const [userLat, setUserLat] = useState('')
+  const [userLng, setUserLng] = useState('')
+  const [locationCaptured, setLocationCaptured] = useState(false)
+  const [capturingLocation, setCapturingLocation] = useState(false)
+
+  // Submit and Validation States
+  const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Initialize dates
+  useEffect(() => {
+    const { date, time } = getMinDateTime()
+    setBookDate(date)
+    setBookTime(time)
+    setInterviewDate(date)
+    setInterviewTime(time)
+  }, [])
+
+  // Check URL params for quick pre-filling
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
-      const serviceParam = params.get('service')?.toUpperCase() || params.get('type')?.toUpperCase()
+      const serviceParam = params.get('service')?.toLowerCase() || params.get('type')?.toLowerCase()
       if (serviceParam) {
-        let mappedType: TripType | null = null
-        if (['HOURLY', 'WEEKLY', 'MONTHLY', 'OUTSTATION'].includes(serviceParam)) {
-          mappedType = serviceParam as TripType
-        } else if (serviceParam === 'CORPORATE') {
-          mappedType = 'MONTHLY'
-        } else if (serviceParam === 'AIRPORT' || serviceParam === 'EVENT') {
-          mappedType = 'HOURLY'
-        }
-        if (mappedType) {
-          setTripType(mappedType)
+        if (['oneway', 'roundtrip', 'monthly', 'outstation'].includes(serviceParam)) {
+          setTripType(serviceParam as TripType)
+        } else if (serviceParam === 'hourly') {
+          setTripType('roundtrip') // Hourly driver maps to Local Round Trip
+        } else if (serviceParam === 'weekly') {
+          setTripType('monthly') // Maps to monthly with custom duration
         }
       }
     }
   }, [])
 
-  // Date and Time
-  const [startDate, setStartDate] = useState('')
-  const [startTime, setStartTime] = useState('')
-
-  // Locations
-  const [pickup, setPickup] = useState('')
-  const [drop, setDrop] = useState('')
-  const [capturingLocation, setCapturingLocation] = useState(false)
-
-  // Vehicle
-  const [vehicleClass, setVehicleClass] = useState<VehicleType>('Sedan')
-  const [vehicleName, setVehicleName] = useState('')
-
-  // Duration
-  const [hourlyHours, setHourlyHours] = useState<number>(8)
-  const [outstationDays, setOutstationDays] = useState<number>(1)
-  const [outstationType, setOutstationType] = useState<OutstationType>('ROUND_TRIP')
-
-  // Monthly interview
-  const [interviewDate, setInterviewDate] = useState('')
-  const [interviewTime, setInterviewTime] = useState('')
-
-  // Special instructions
-  const [specialInstructions, setSpecialInstructions] = useState('')
-
-  // Submitting state
-  const [submitting, setSubmitting] = useState(false)
-
-  // Validation errors
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  // Active form section for mobile step tracking
-  const [activeSection, setActiveSection] = useState(0)
-
-  // Internal fare for WhatsApp message (not displayed)
-  const [internalFare, setInternalFare] = useState<number>(0)
-  useEffect(() => {
-    let fare = 0
-    if (tripType === 'HOURLY') {
-      fare = ({ Hatchback: 100, Sedan: 120, SUV: 150, Luxury: 250 })[vehicleClass] * Math.max(4, hourlyHours)
-    } else if (tripType === 'WEEKLY') {
-      fare = ({ Hatchback: 5500, Sedan: 6500, SUV: 8000, Luxury: 15000 })[vehicleClass]
-    } else if (tripType === 'MONTHLY') {
-      fare = ({ Hatchback: 18000, Sedan: 20000, SUV: 24000, Luxury: 45000 })[vehicleClass]
-    } else if (tripType === 'OUTSTATION') {
-      const days = Math.max(1, outstationDays)
-      fare = (({ Hatchback: 12, Sedan: 14, SUV: 18, Luxury: 30 })[vehicleClass] * days * 250) + (days * 400)
+  // Enforce 1hr minimum on date/time selection change
+  const handleDateTimeChange = (dateVal: string, timeVal: string, type: 'book' | 'interview') => {
+    if (!dateVal || !timeVal) return
+    const { date: minDate, time: minTime, full: minDT } = getMinDateTime()
+    const selectedDT = new Date(`${dateVal}T${timeVal}`)
+    if (selectedDT < minDT) {
+      toast.warning('⚠️ Booking must be at least 1 hour from now.')
+      if (type === 'book') {
+        setBookDate(minDate)
+        setBookTime(minTime)
+      } else {
+        setInterviewDate(minDate)
+        setInterviewTime(minTime)
+      }
+    } else {
+      if (type === 'book') {
+        setBookDate(dateVal)
+        setBookTime(timeVal)
+      } else {
+        setInterviewDate(dateVal)
+        setInterviewTime(timeVal)
+      }
     }
-    setInternalFare(fare)
-  }, [tripType, vehicleClass, hourlyHours, outstationDays])
+  }
 
-  // Capture GPS
-  const handleCaptureLocation = () => {
-    if (!navigator.geolocation) { toast.error('Geolocation is not supported'); return }
+  // Geolocation capture handler
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported on this device')
+      return
+    }
     setCapturingLocation(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords
-        const link = `https://www.google.com/maps?q=${latitude},${longitude}`
-        setPickup(prev => prev ? `${prev} (GPS: ${link})` : `GPS: ${link}`)
+        const lat = pos.coords.latitude.toFixed(5)
+        const lng = pos.coords.longitude.toFixed(5)
+        setUserLat(lat)
+        setUserLng(lng)
+        setLocationCaptured(true)
         setCapturingLocation(false)
-        toast.success('📍 GPS Location Captured!')
+        toast.success('📍 Live Location Captured!')
       },
-      () => { setCapturingLocation(false); toast.error('Location access denied. Please type manually.') },
+      () => {
+        setCapturingLocation(false)
+        toast.error('Location access denied. Please type your location manually.')
+      },
       { enableHighAccuracy: true, timeout: 8000 }
     )
   }
 
-  // Validate
+  // Pricing engine definitions
+  const oneWayPrices: Record<number, number> = {
+    10: 299, 15: 349, 20: 399, 25: 449, 30: 499, 35: 539, 
+    40: 579, 45: 619, 50: 659, 55: 699, 60: 739, 65: 779, 70: 819
+  }
+  const roundTripPrices: Record<number, number> = {
+    2: 349, 3: 399, 4: 499, 5: 599, 6: 699, 7: 799, 
+    8: 899, 9: 999, 10: 1099, 11: 1199, 12: 1299
+  }
+
+  const getOneWayPrice = (km: number) => {
+    const slabs = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
+    if (km > 70) return 819 + Math.round((km - 70) * 10)
+    for (let i = slabs.length - 1; i >= 0; i--) {
+      if (km >= slabs[i]) return oneWayPrices[slabs[i]]
+    }
+    return null
+  }
+
+  const getRoundTripPrice = (hrs: number) => {
+    if (hrs < 2) return null
+    if (hrs > 12) return 1299 + (hrs - 12) * 100
+    return roundTripPrices[hrs] || null
+  }
+
+  const getOutstationOWPrice = (km: number) => {
+    const outstationSlabs = [
+      { min: 0,   max: 100,  price: 1099 },
+      { min: 100, max: 150,  price: 1299 },
+      { min: 150, max: 200,  price: 1499 },
+      { min: 200, max: 250,  price: 1699 },
+      { min: 250, max: 300,  price: 1899 },
+      { min: 300, max: 350,  price: 2099 },
+      { min: 350, max: 9999, price: 2299 }
+    ]
+    for (const s of outstationSlabs) {
+      if (km >= s.min && km < s.max) return s.price
+    }
+    return 2299
+  }
+
+  const calcMonthlyPriceVal = (days: number, hours: number) => {
+    const mLookup: Record<string, number> = {
+      '22-8': 18000, '22-10': 20000, '22-12': 22000,
+      '24-8': 20000, '24-10': 22000, '24-12': 24000,
+      '26-8': 22000, '26-10': 24000, '26-12': 26000
+    }
+    const key = `${days}-${hours}`
+    if (mLookup[key]) {
+      return { amount: mLookup[key], isExact: true }
+    } else {
+      const basePerUnit = 24000 / (26 * 10)
+      const raw = Math.round(days * hours * basePerUnit)
+      return { amount: Math.max(raw, 18000), isExact: false }
+    }
+  }
+
+  // Calculate pricing state dynamically
+  const calcPrice = () => {
+    let amount: number | null = null
+    let note = ''
+    
+    if (tripType === 'roundtrip') {
+      if (roundHours > 0) {
+        if (roundHours < 2) {
+          note = '⚠️ Minimum booking is 2 hours'
+        } else {
+          amount = getRoundTripPrice(roundHours)
+          note = roundHours > 12 
+            ? '₹1,299 + ₹100 per extra hour · ₹2.5/min if time exceeded' 
+            : '₹2.5/min if time exceeded'
+        }
+      }
+    } else if (tripType === 'oneway') {
+      if (estKms > 0) {
+        if (estKms < 10) {
+          note = '⚠️ Minimum one-way distance is 10 km'
+        } else {
+          amount = getOneWayPrice(estKms)
+          note = estKms > 70 
+            ? '₹10/km extra beyond 70 km' 
+            : '₹10/km extra if KM exceeded'
+        }
+      }
+    } else if (tripType === 'outstation') {
+      if (outSubType === 'oneway') {
+        if (outKms > 0) {
+          if (outKms < 50) {
+            note = '⚠️ Outstation minimum distance is 50 km'
+          } else {
+            amount = getOutstationOWPrice(outKms)
+            note = 'Outstation one-way · ₹10/km if distance exceeded'
+          }
+        }
+      } else {
+        if (outDays > 0) {
+          const outRTprices: Record<number, number> = {
+            1: 1250, 2: 2400, 3: 3550, 4: 4700, 5: 5850, 6: 7000, 7: 8150
+          }
+          amount = outRTprices[outDays] || (outDays * 1150)
+          note = `${outDays} day${outDays > 1 ? 's' : ''} · Max 12 hrs/day · ₹2/min if time exceeded`
+        }
+      }
+    } else if (tripType === 'monthly') {
+      if (monthlyDays > 0 && monthlyHours > 0) {
+        const res = calcMonthlyPriceVal(monthlyDays, monthlyHours)
+        amount = res.amount + (extraAmt || 0)
+        note = 'Minimum salary · Final decided at interview'
+      }
+    }
+    return { amount, note }
+  }
+
+  const getNightCharge = () => {
+    if (tripType === 'monthly' || !bookTime) return 0
+    const [h] = bookTime.split(':').map(Number)
+    if (h >= 22 || h < 6) return 200
+    return 0
+  }
+
+  const { amount, note } = calcPrice()
+  const nightCharge = getNightCharge()
+  const totalFare = amount ? amount + nightCharge : null
+
+  // Date Formatting for Summary Preview
+  const getNiceDateTime = () => {
+    const isM = tripType === 'monthly'
+    const dStr = isM ? interviewDate : bookDate
+    const tStr = isM ? interviewTime : bookTime
+    if (!dStr || !tStr) return '—'
+    
+    try {
+      const o = new Date(`${dStr}T${tStr}`)
+      const dN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      const mN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      return `${dN[o.getDay()]}, ${o.getDate()} ${mN[o.getMonth()]} · ${o.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`
+    } catch {
+      return '—'
+    }
+  }
+
+  // Google Calendar Integration URL
+  const getGoogleCalendarUrl = () => {
+    if (!interviewDate || !interviewTime) return '#'
+    try {
+      const d = new Date(`${interviewDate}T${interviewTime}`)
+      const dEnd = new Date(d.getTime() + 60 * 60 * 1000) // +1 hour
+      const fmt = (dt: Date) => dt.toISOString().replace(/[-:]/g, '').split('.')[0]
+      const start = fmt(d)
+      const end = fmt(dEnd)
+      
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=ScanDriver+Driver+Interview&dates=${start}/${end}&details=Driver+interview+scheduled+via+ScanDriver.in/booking&location=As+shared+on+WhatsApp`
+    } catch {
+      return '#'
+    }
+  }
+
+  // Validation
   const validateForm = () => {
     const e: Record<string, string> = {}
-    if (!customerName.trim()) e.name = 'Full name is required'
+    if (!customerName.trim()) e.custName = 'Please enter your name'
     if (!phoneVal.trim()) {
-      e.phone = 'Mobile number is required'
-    } else if (phoneVal.length !== 10) {
-      e.phone = 'Mobile number must be 10 digits'
+      e.custPhone = 'Please enter a valid 10-digit number'
+    } else if (phoneVal.length !== 10 || isNaN(Number(phoneVal))) {
+      e.custPhone = 'Please enter a valid 10-digit number'
     }
-    if (tripType !== 'MONTHLY') {
-      if (!startDate) e.startDate = 'Select a date'
-      if (!startTime) e.startTime = 'Select a time'
-      if (!pickup.trim()) e.pickup = 'Pickup address is required'
-    } else {
-      if (!interviewDate) e.interviewDate = 'Select interview date'
-      if (!interviewTime) e.interviewTime = 'Select interview time'
-      if (!pickup.trim()) e.pickup = 'Address is required'
+    if (!carType) e.carType = 'Please select a car type'
+
+    if (tripType === 'oneway') {
+      if (!pickup.trim()) e.pickup = 'Please enter pickup location'
+      if (!drop.trim()) e.drop = 'Please enter drop location'
+      if (!estKms) e.estKms = 'Please select estimated KMs'
     }
-    if (tripType === 'OUTSTATION' && !drop.trim()) e.drop = 'Destination is required'
+    
+    if (tripType === 'roundtrip') {
+      if (!roundHours || roundHours < 2) e.roundHours = 'Minimum 2 hours required'
+      if (!pickupCommon.trim()) e.pickupCommon = 'Please enter pickup location'
+    }
+    
+    if (tripType === 'monthly') {
+      if (!interviewDate) e.interviewDate = 'Please select interview date'
+      if (!interviewTime) e.interviewTime = 'Please select preferred time'
+      if (!monthlyDays || monthlyDays <= 0) e.monthlyDays = 'Please enter working days'
+      if (!monthlyHours || monthlyHours <= 0) e.monthlyHours = 'Please enter hours per day'
+      if (!pickupCommon.trim()) e.pickupCommon = 'Please enter pickup location'
+    }
+    
+    if (tripType === 'outstation') {
+      if (!outPickup.trim()) e.outPickup = 'Please enter pickup location'
+      if (outSubType === 'oneway') {
+        if (!outDrop.trim()) e.outDrop = 'Please enter drop location'
+        if (!outKms) e.outKms = 'Please select estimated KMs'
+      } else {
+        if (!outDest.trim()) e.outDest = 'Please enter destination'
+        if (!outDays || outDays <= 0) e.outDays = 'Please enter number of days'
+      }
+    }
+    
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
-  // Submit
-  const handleSubmit = async (ev: React.FormEvent) => {
+  // Booking Submit
+  const handleBookingSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
-    if (!validateForm()) { toast.error('Please complete all required fields'); return }
+    if (!validateForm()) {
+      toast.error('Please fix the validation errors before submitting.')
+      const firstErrorEl = document.querySelector('.text-rose-400')
+      if (firstErrorEl) firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+
     setSubmitting(true)
     const bookingId = 'SD-' + Math.floor(1000 + Math.random() * 9000)
+
+    // Build pickup address with location coordinates if captured
+    let finalPickup = ''
+    if (tripType === 'oneway') finalPickup = pickup
+    else if (tripType === 'roundtrip' || tripType === 'monthly') finalPickup = pickupCommon
+    else finalPickup = outPickup
+
+    if (locationCaptured && userLat && userLng) {
+      finalPickup += ` (GPS: https://www.google.com/maps?q=${userLat},${userLng})`
+    }
+
+    // Drop
+    let finalDrop = ''
+    if (tripType === 'oneway') finalDrop = drop
+    else if (tripType === 'roundtrip') finalDrop = 'Local Trip'
+    else if (tripType === 'monthly') finalDrop = 'Monthly Hire'
+    else if (outSubType === 'oneway') finalDrop = outDrop
+    else finalDrop = outDest
+
+    // Date Time
+    const finalDateTime = tripType === 'monthly'
+      ? `Interview: ${interviewDate} ${interviewTime}`
+      : `${bookDate} ${bookTime}`
+
+    // Duration
+    let finalDuration = ''
+    if (tripType === 'oneway') finalDuration = 'One Way'
+    else if (tripType === 'roundtrip') finalDuration = `${roundHours} Hours`
+    else if (tripType === 'monthly') finalDuration = `${monthlyDays} Days x ${monthlyHours} hrs/day`
+    else if (outSubType === 'oneway') finalDuration = 'One Way'
+    else finalDuration = `${outDays} Days`
+
+    // Distance
+    let finalDistance = 'N/A'
+    if (tripType === 'oneway') finalDistance = `${estKms} km`
+    else if (tripType === 'outstation' && outSubType === 'oneway') finalDistance = `${outKms} km`
+
+    // Type mapping to Database check constraints
+    const mappedType = tripType === 'oneway' || tripType === 'roundtrip'
+      ? 'HOURLY'
+      : tripType === 'monthly'
+        ? 'MONTHLY'
+        : 'OUTSTATION'
 
     const dbPayload = {
       id: bookingId,
       customer_name: customerName,
       phone: phoneVal,
-      pickup,
-      drop: tripType === 'OUTSTATION' ? drop : (tripType === 'MONTHLY' ? 'Monthly Hire' : drop || 'Local Trip'),
-      date_time: tripType === 'MONTHLY' ? `Interview: ${interviewDate} ${interviewTime}` : `${startDate} ${startTime}`,
-      duration: tripType === 'HOURLY' ? `${hourlyHours} Hours` : (tripType === 'OUTSTATION' ? `${outstationDays} Days` : tripType === 'WEEKLY' ? '1 Week' : '1 Month'),
-      distance: tripType === 'OUTSTATION' ? `${outstationDays * 250} km est.` : 'N/A',
-      fare: internalFare,
-      vehicle: `${vehicleClass}${vehicleName ? ` (${vehicleName})` : ''}`,
-      special_instructions: specialInstructions + (tripType === 'MONTHLY' && emailVal ? ` | Email: ${emailVal}` : ''),
+      pickup: finalPickup,
+      drop: finalDrop,
+      date_time: finalDateTime,
+      duration: finalDuration,
+      distance: finalDistance,
+      fare: totalFare || 0,
+      vehicle: carType.charAt(0).toUpperCase() + carType.slice(1),
+      special_instructions: comments + (emailVal ? ` | Email: ${emailVal}` : ''),
       status: 'available' as const,
-      type: tripType,
+      type: mappedType,
       admin_approved: false,
     }
 
     try {
       const { error } = await supabase.from('bookings').insert(dbPayload)
       if (error) throw error
-      toast.success('Booking created! Redirecting to WhatsApp…')
+      toast.success('Booking recorded! Opening WhatsApp…')
     } catch (err: any) {
-      console.error('DB insert error:', err)
-      toast.info('Saved locally. Opening WhatsApp…')
+      console.error('Supabase save error:', err)
+      toast.info('Saved locally. Redirecting to WhatsApp…')
     }
 
-    let msg = `*New Booking Request* 🧑‍✈️\n`
-    msg += `*ID:* ${bookingId}\n*Name:* ${customerName}\n*Phone:* ${phoneVal}\n`
-    if (emailVal) msg += `*Email:* ${emailVal}\n`
-    msg += `*Service:* ${tripType}\n*Vehicle:* ${vehicleClass}${vehicleName ? ` (${vehicleName})` : ''}\n`
-    if (tripType === 'MONTHLY') {
-      msg += `*Interview:* ${interviewDate} @ ${interviewTime}\n*Base Location:* ${pickup}\n`
+    // ── Build WhatsApp Message ──
+    const carLabels = { hatchback: 'Hatchback', sedan: 'Sedan', suv: 'SUV', luxury: 'Luxury' }
+    let dtStr = ''
+    let tripDetails = ''
+    let pickupLine = ''
+
+    if (tripType === 'monthly') {
+      try {
+        const o = new Date(`${interviewDate}T${interviewTime}`)
+        const dN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        const mN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        dtStr = `📅 *Interview Date:* _${dN[o.getDay()]}, ${o.getDate()} ${mN[o.getMonth()]} ${o.getFullYear()}_\n🕐 *Time:* _${o.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}_`
+      } catch {
+        dtStr = `📅 *Interview Date:* _${interviewDate}_\n🕐 *Time:* _${interviewTime}_`
+      }
+      
+      const extraLine = extraAmt > 0 ? `\n➕ *Extra Amount:* ₹${extraAmt.toLocaleString('en-IN')}` : ''
+      tripDetails = `📦 *Package:* ${monthlyDays} Days × ${monthlyHours} hrs/day${extraLine}\n💰 *Minimum Salary:* ₹${(amount || 0).toLocaleString('en-IN')}`
+      pickupLine = `📍 *Pickup Area:* ${pickupCommon}`
     } else {
-      msg += `*Date/Time:* ${startDate} @ ${startTime}\n*Pickup:* ${pickup}\n`
-      if (tripType === 'OUTSTATION') msg += `*Destination:* ${drop}\n*Mode:* ${outstationType.replace('_', ' ')}\n*Days:* ${outstationDays}\n`
-      else if (tripType === 'HOURLY') msg += `*Duration:* ${hourlyHours} Hours\n`
+      try {
+        const o = new Date(`${bookDate}T${bookTime}`)
+        const dN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        const mN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        dtStr = `📅 *Date:* _${dN[o.getDay()]}, ${o.getDate()} ${mN[o.getMonth()]} ${o.getFullYear()}_\n🕐 *Time:* _${o.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}_`
+      } catch {
+        dtStr = `📅 *Date:* _${bookDate}_\n🕐 *Time:* _${bookTime}_`
+      }
     }
-    if (specialInstructions.trim()) msg += `*Notes:* ${specialInstructions}\n`
-    msg += `\n_Powered by ScanDriver.in_`
+
+    if (tripType === 'oneway') {
+      tripDetails = `🏁 *Drop:* ${drop}\n📏 *Est. KMs:* ${estKms} km`
+      pickupLine = `📍 *Pickup:* ${pickup}`
+    } else if (tripType === 'roundtrip') {
+      tripDetails = `⏱ *Hours Required:* ${roundHours} hrs`
+      pickupLine = `📍 *Pickup:* ${pickupCommon}`
+    } else if (tripType === 'outstation') {
+      if (outSubType === 'oneway') {
+        tripDetails = `🛣️ *Outstation One Way*\n🏁 *Drop City:* ${outDrop}\n📏 *Est. KMs:* ${outKms} km`
+        pickupLine = `📍 *Pickup:* ${outPickup}`
+      } else {
+        tripDetails = `🛣️ *Outstation Round Trip*\n🏙 *Destination:* ${outDest}\n📅 *Days:* ${outDays} day${outDays > 1 ? 's' : ''}`
+        pickupLine = `📍 *Pickup:* ${outPickup}`
+      }
+    }
+
+    const nightLine = nightCharge > 0 ? '\n🌙 *Night Charges (NTA):* ₹200 (10PM–6AM)' : ''
+    const priceStr = tripType !== 'monthly' && totalFare 
+      ? `\n💰 *Estimated Fare:* ₹${totalFare.toLocaleString('en-IN')}${nightLine}` 
+      : ''
+    
+    const commentsStr = comments.trim() ? `\n📝 *Additional Comments:* ${comments.trim()}` : ''
+    const gpsStr = locationCaptured && userLat && userLng
+      ? `\n📍 *My Pickup Location:* https://www.google.com/maps?q=${userLat},${userLng}`
+      : ''
+    
+    const tripLabel = tripType === 'outstation'
+      ? (outSubType === 'oneway' ? 'Outstation – One Way' : 'Outstation – Round Trip')
+      : { oneway: 'One Way', roundtrip: 'Round Trip', monthly: 'Monthly' }[tripType]
+
+    const msg = `🚗 *New Driver Booking – ScanDriver*
+
+👤 *Name:* ${customerName}
+📱 *Phone:* +91 ${phoneVal}
+
+🔄 *Trip Type:* ${tripLabel}
+🚙 *Car Type:* ${carLabels[carType as CarType]}
+${tripDetails}${priceStr}
+
+━━━━━━━━━━━━━━━
+${dtStr}
+${pickupLine}
+━━━━━━━━━━━━━━━
+${commentsStr}${gpsStr}
+
+✅ Please confirm my booking. Thank you!`
 
     setTimeout(() => {
       window.open(getWhatsAppLink(WHATSAPP_CUSTOMER, msg), '_blank')
       setSubmitting(false)
-      setCustomerName(''); setPhoneVal(''); setEmailVal(''); setPickup(''); setDrop('')
-      setStartDate(''); setStartTime(''); setSpecialInstructions('')
-      setInterviewDate(''); setInterviewTime(''); setVehicleName('')
+      // Reset form fields
+      setCustomerName('')
+      setPhoneVal('')
+      setEmailVal('')
+      setPickup('')
+      setDrop('')
+      setEstKms(0)
+      setRoundHours(0)
+      setMonthlyDays(0)
+      setMonthlyHours(0)
+      setExtraAmt(0)
+      setOutPickup('')
+      setOutDrop('')
+      setOutKms(0)
+      setOutDest('')
+      setOutDays(0)
+      setPickupCommon('')
+      setComments('')
+      setUserLat('')
+      setUserLng('')
+      setLocationCaptured(false)
     }, 800)
   }
 
+  // Helper inputs mapping
   const inputBase = 'w-full px-4 py-3.5 bg-surface2 border border-border/30 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/15 focus:bg-surface focus:outline-none transition-all duration-300 text-sm text-foreground placeholder:text-text-muted/60 placeholder:italic'
 
-  /* ──────── Render ──────── */
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
       <Toaster position="top-center" richColors />
       <Navbar />
 
       {/* ═══════════ HERO SECTION ═══════════ */}
-      <section className="relative pt-28 sm:pt-36 pb-28 sm:pb-36 overflow-hidden">
+      <section className="relative pt-24 pb-20 overflow-hidden">
         {/* Multi-layer gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0a0f1a] to-[#0d1a12] dark:block hidden" />
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-[#f5f8fc] to-[#eef7f2] dark:hidden block" />
@@ -306,420 +638,828 @@ export default function BookingPage() {
           </svg>
         </div>
 
-        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center space-y-6">
-          {/* Pill badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/[0.07] backdrop-blur-sm border border-black/10 dark:border-white/15">
-            <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
-            <span className="text-[11px] font-bold text-primary uppercase tracking-widest">Book Your Professional Driver</span>
+        <div className="relative z-10 max-w-lg mx-auto px-6 text-center space-y-4">
+          <div className="logo-text-mark flex justify-center items-center gap-0.5">
+            <span className="font-sans font-bold text-4xl tracking-wide text-foreground">Scan</span>
+            <span className="font-sans font-bold text-4xl tracking-wide text-primary">Driver</span>
           </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
-            <span className="text-slate-900 dark:text-white">Hire a </span>
-            <span className="bg-gradient-to-r from-primary via-gold-light to-primary bg-clip-text text-transparent">Verified Driver</span>
-            <br />
-            <span className="text-slate-800 dark:text-white/90">in Delhi NCR</span>
+          <h1 className="text-3xl font-extrabold tracking-tight leading-[1.2] text-foreground">
+            Book a <em className="text-primary not-italic">Verified</em> Driver Instantly
           </h1>
-
-          <p className="text-base sm:text-lg text-slate-600 dark:text-white/55 max-w-xl mx-auto leading-relaxed">
-            Background-checked, experienced drivers for every need —
-            hourly, weekly, monthly, or outstation.
+          <p className="text-xs text-text-muted leading-relaxed">
+            Delhi NCR's most trusted on-demand driver service.
           </p>
-
-          {/* Trust row */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-            {[
-              { icon: Shield, text: 'Aadhaar Verified' },
-              { icon: Star, text: '4.8★ Avg Rating' },
-              { icon: Zap, text: '15 Min Allocation' },
-              { icon: Clock, text: '24/7 Support' },
-            ].map((badge) => (
-              <div key={badge.text} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-xs border border-black/10 dark:border-white/[0.10] text-[11px] font-semibold text-slate-700 dark:text-white/70">
-                <badge.icon className="h-3.5 w-3.5 text-primary" />
-                {badge.text}
-              </div>
-            ))}
-          </div>
-
-          {/* Scroll prompt */}
-          <div className="pt-6 flex justify-center">
-            <button
-              onClick={() => document.getElementById('booking-form')?.scrollIntoView({ behavior: 'smooth' })}
-              className="flex flex-col items-center gap-1 text-slate-400 dark:text-white/30 hover:text-primary/70 transition-colors cursor-pointer group"
-            >
-              <span className="text-[10px] font-semibold uppercase tracking-widest">Fill Booking Form</span>
-              <ChevronRight className="h-5 w-5 rotate-90 group-hover:translate-y-0.5 transition-transform" />
-            </button>
+          <div className="flex flex-wrap justify-center gap-2 pt-1">
+            <span className="px-3 py-1 rounded-full bg-surface2 border border-border/25 text-[10px] font-bold text-text-muted">✓ Background Verified</span>
+            <span className="px-3 py-1 rounded-full bg-surface2 border border-border/25 text-[10px] font-bold text-text-muted">✓ Aadhaar KYC</span>
+            <span className="px-3 py-1 rounded-full bg-surface2 border border-border/25 text-[10px] font-bold text-text-muted">✓ License Checked</span>
+            <span className="px-3 py-1 rounded-full bg-surface2 border border-border/25 text-[10px] font-bold text-text-muted">✓ No App Required</span>
           </div>
         </div>
       </section>
 
       {/* ═══════════ FORM SECTION ═══════════ */}
-      <main id="booking-form" className="relative z-10 flex-1 -mt-8">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-20">
-
-          {/* Step Progress Bar */}
-          <div className="flex items-center justify-between mb-10 px-2">
-            <StepIndicator step={1} label="Service" active={activeSection === 0} completed={activeSection > 0} />
-            <div className="flex-1 h-px bg-border/30 mx-2" />
-            <StepIndicator step={2} label="Details" active={activeSection === 1} completed={activeSection > 1} />
-            <div className="flex-1 h-px bg-border/30 mx-2" />
-            <StepIndicator step={3} label="Vehicle" active={activeSection === 2} completed={activeSection > 2} />
-            <div className="flex-1 h-px bg-border/30 mx-2" />
-            <StepIndicator step={4} label="Confirm" active={activeSection === 3} completed={false} />
-          </div>
-
-          {/* The Form Card */}
-          <form onSubmit={handleSubmit}>
-            <div className="bg-card/90 backdrop-blur-md border border-border/25 rounded-3xl shadow-2xl overflow-hidden relative">
-              {/* Decorative corner glow */}
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/8 to-transparent rounded-bl-full pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-emerald-500/8 to-transparent rounded-tr-full pointer-events-none" />
-
-              {/* ─── Section 1: Service Type ─── */}
-              <div className="p-6 sm:p-8 border-b border-border/20">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/25 to-primary/10 border border-primary/15 flex items-center justify-center">
-                    <Sparkles className="h-4.5 w-4.5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-base text-foreground">Choose Your Service</h3>
-                    <p className="text-[11px] text-text-muted">Select the type of driver you need</p>
-                  </div>
+      <main className="relative z-10 flex-1 -mt-8">
+        <div className="max-w-xl mx-auto px-4 sm:px-6 pb-20">
+          <form onSubmit={handleBookingSubmit}>
+            <div className="bg-card/95 backdrop-blur-md border border-border/25 rounded-3xl shadow-2xl overflow-hidden relative p-6 sm:p-8 space-y-6">
+              
+              <div className="flex items-center gap-3 border-b border-border/10 pb-4">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/25 to-primary/10 border border-primary/15 flex items-center justify-center">
+                  <Sparkles className="h-4.5 w-4.5 text-primary animate-pulse" />
                 </div>
+                <div>
+                  <h2 className="font-bold text-lg text-foreground">Fill Booking Details</h2>
+                  <p className="text-[10px] text-text-muted">Fill out the information below to summon your driver</p>
+                </div>
+                <a href="tel:+919717498198" className="ml-auto bg-gradient-to-r from-primary to-primary-foreground/10 text-white dark:text-black font-extrabold text-xs px-4 py-2 rounded-full hover:scale-105 active:scale-95 transition-transform whitespace-nowrap shadow-md shadow-primary/20">
+                  📞 Call Us
+                </a>
+              </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {([
-                    { type: 'HOURLY' as TripType, icon: '🕐', label: 'Hourly', sub: 'By the hour' },
-                    { type: 'WEEKLY' as TripType, icon: '📆', label: 'Weekly', sub: '7-day package' },
-                    { type: 'MONTHLY' as TripType, icon: '📅', label: 'Monthly', sub: 'Full month hire' },
-                    { type: 'OUTSTATION' as TripType, icon: '🛣️', label: 'Outstation', sub: 'Long distance' },
-                  ]).map((item) => (
+              {/* Name */}
+              <InputField label="Your Name" error={errors.custName}>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="e.g. Rahul Sharma"
+                  className={cn(inputBase, errors.custName && 'border-rose-500/50')}
+                />
+              </InputField>
+
+              {/* Phone */}
+              <InputField label="WhatsApp Number" error={errors.custPhone}>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={phoneVal}
+                    onChange={(e) => setPhoneVal(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="e.g. 9876543210"
+                    maxLength={10}
+                    className={cn(inputBase, errors.custPhone && 'border-rose-500/50')}
+                  />
+                </div>
+                <p className="secure-note text-[10px] text-emerald-500 dark:text-emerald-400 flex items-center gap-1.5 font-semibold">
+                  <span>🔒</span> Your personal info is secured and will not be shared with anyone.
+                </p>
+              </InputField>
+
+              {/* Trip Type Tabs */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-extrabold text-foreground/70 tracking-[0.08em] uppercase">Trip Type</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { id: 'oneway', label: 'One Way', icon: '➡️' },
+                    { id: 'roundtrip', label: 'Round Trip', icon: '🔄' },
+                    { id: 'monthly', label: 'Monthly', icon: '📅' },
+                    { id: 'outstation', label: 'Outstation', icon: '🛣️' },
+                  ].map((tab) => (
                     <button
-                      key={item.type}
+                      key={tab.id}
                       type="button"
-                      onClick={() => { setTripType(item.type); setErrors({}); setActiveSection(0) }}
+                      onClick={() => {
+                        setTripType(tab.id as TripType)
+                        setErrors({})
+                      }}
                       className={cn(
-                        'relative py-5 px-3 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all duration-400 cursor-pointer group overflow-hidden',
-                        tripType === item.type
-                          ? 'border-primary bg-gradient-to-b from-primary/15 to-primary/5 shadow-lg shadow-primary/10'
-                          : 'border-border/25 bg-surface2/70 hover:border-border/40 hover:bg-surface2'
+                        'py-3.5 px-3 rounded-2xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 font-bold text-xs cursor-pointer',
+                        tripType === tab.id
+                          ? tab.id === 'outstation'
+                            ? 'border-violet-500 bg-violet-500/10 text-violet-400'
+                            : 'border-primary bg-primary/10 text-primary'
+                          : 'border-border/20 bg-surface2 text-text-muted hover:border-border/40 hover:bg-surface2/80'
                       )}
                     >
-                      {tripType === item.type && (
-                        <div className="absolute top-1.5 right-1.5">
-                          <CheckCircle className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-300">{item.icon}</span>
-                      <span className={cn('text-xs font-extrabold tracking-wide', tripType === item.type ? 'text-primary' : 'text-foreground')}>{item.label}</span>
-                      <span className="text-[9px] text-text-muted/80 font-medium">{item.sub}</span>
+                      <span className="text-xl">{tab.icon}</span>
+                      {tab.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* ─── Section 2: Personal Info ─── */}
-              <div className="p-6 sm:p-8 border-b border-border/20">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500/25 to-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
-                    <User className="h-4.5 w-4.5 text-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-base text-foreground">Your Information</h3>
-                    <p className="text-[11px] text-text-muted">We will reach out on WhatsApp</p>
-                  </div>
+              {/* Car Type Grid */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-extrabold text-foreground/70 tracking-[0.08em] uppercase">Car Type</label>
+                  {errors.carType && <span className="text-[10px] text-rose-400 font-semibold">{errors.carType}</span>}
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <InputField label="Full Name" icon={User} error={errors.name}>
-                    <input
-                      type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="e.g. Rahul Sharma"
-                      onFocus={() => setActiveSection(1)}
-                      className={cn(inputBase, errors.name && 'border-rose-500/50 focus:border-rose-500/70')}
-                    />
-                  </InputField>
-
-                  <InputField label="WhatsApp Number" icon={Phone} error={errors.phone}>
-                    <input
-                      type="tel"
-                      value={phoneVal}
-                      onChange={(e) => setPhoneVal(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="e.g. 9876543210"
-                      maxLength={10}
-                      onFocus={() => setActiveSection(1)}
-                      className={cn(inputBase, errors.phone && 'border-rose-500/50 focus:border-rose-500/70')}
-                    />
-                  </InputField>
-
-                  <InputField label="Email Address (Optional)" icon={Mail} className="sm:col-span-2">
-                    <input
-                      type="email" value={emailVal} onChange={(e) => setEmailVal(e.target.value)}
-                      placeholder="e.g. rahul@example.com"
-                      onFocus={() => setActiveSection(1)}
-                      className={inputBase}
-                    />
-                  </InputField>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { id: 'hatchback', label: 'Hatchback', icon: '🚗', eg: 'Alto, WagonR, i20' },
+                    { id: 'sedan', label: 'Sedan', icon: '🚙', eg: 'Dzire, Ciaz, Amaze' },
+                    { id: 'suv', label: 'SUV', icon: '🚐', eg: 'Innova, Ertiga, Creta' },
+                    { id: 'luxury', label: 'Luxury', icon: '🏎️', eg: 'BMW, Audi, Mercedes' },
+                  ].map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => {
+                        setCarType(v.id as CarType)
+                        if (errors.carType) {
+                          setErrors((prev) => {
+                            const copy = { ...prev }; delete copy.carType; return copy
+                          })
+                        }
+                      }}
+                      className={cn(
+                        'p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer group',
+                        carType === v.id
+                          ? 'border-primary bg-primary/10 text-primary shadow-md shadow-primary/5'
+                          : 'border-border/20 bg-surface2 text-text-muted hover:border-border/40 hover:bg-surface2/80'
+                      )}
+                    >
+                      <span className="text-2xl group-hover:scale-110 transition-transform duration-300 mb-1">{v.icon}</span>
+                      <span className="font-extrabold text-xs">{v.label}</span>
+                      <span className="text-[9px] font-normal opacity-70 mt-0.5">{v.eg}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* ─── Section 3: Schedule & Location ─── */}
-              <div className="p-6 sm:p-8 border-b border-border/20">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-500/25 to-sky-500/10 border border-sky-500/15 flex items-center justify-center">
-                    <Clock className="h-4.5 w-4.5 text-sky-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-base text-foreground">Schedule & Location</h3>
-                    <p className="text-[11px] text-text-muted">When and where do you need the driver?</p>
-                  </div>
-                </div>
+              {/* ── CONDITIONAL GROUPS ── */}
 
-                <div className="space-y-5">
-                  {/* Hourly inputs */}
-                  {tripType === 'HOURLY' && (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <InputField label="Start Date" error={errors.startDate}>
-                          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.startDate && 'border-rose-500/50')} />
-                        </InputField>
-                        <InputField label="Start Time" error={errors.startTime}>
-                          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.startTime && 'border-rose-500/50')} />
-                        </InputField>
-                      </div>
-                      <InputField label="Duration (Hours)">
-                        <div className="grid grid-cols-4 gap-2.5">
-                          {[4, 8, 12, 24].map((h) => (
-                            <button key={h} type="button" onClick={() => { setHourlyHours(h); setActiveSection(2) }}
-                              className={cn(
-                                'py-3 rounded-xl border-2 text-sm font-extrabold transition-all duration-300 cursor-pointer',
-                                hourlyHours === h
-                                  ? 'bg-gradient-to-b from-primary/20 to-primary/8 border-primary text-primary shadow-md shadow-primary/5'
-                                  : 'bg-surface2/70 border-border/25 text-foreground/70 hover:border-border/40 hover:text-foreground'
-                              )}
-                            >{h}h</button>
-                          ))}
-                        </div>
-                        <p className="text-[10px] text-text-muted/60 italic mt-1.5">Minimum booking duration is 4 hours</p>
-                      </InputField>
-                    </>
-                  )}
-
-                  {/* Weekly inputs */}
-                  {tripType === 'WEEKLY' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <InputField label="Start Date" error={errors.startDate}>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.startDate && 'border-rose-500/50')} />
-                      </InputField>
-                      <InputField label="Reporting Time" error={errors.startTime}>
-                        <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.startTime && 'border-rose-500/50')} />
-                      </InputField>
-                    </div>
-                  )}
-
-                  {/* Monthly inputs */}
-                  {tripType === 'MONTHLY' && (
-                    <>
-                      <div className="p-4 rounded-xl bg-amber-500/[0.04] border border-amber-500/10 flex items-start gap-3">
-                        <HelpCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-amber-400">Monthly Contract Interview</p>
-                          <p className="text-[11px] text-text-muted leading-relaxed mt-0.5">
-                            We organise a free face-to-face trial with the candidate. Pick a date &amp; time below.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <InputField label="Interview Date" error={errors.interviewDate}>
-                          <input type="date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.interviewDate && 'border-rose-500/50')} />
-                        </InputField>
-                        <InputField label="Interview Time" error={errors.interviewTime}>
-                          <input type="time" value={interviewTime} onChange={(e) => setInterviewTime(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.interviewTime && 'border-rose-500/50')} />
-                        </InputField>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Outstation inputs */}
-                  {tripType === 'OUTSTATION' && (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <InputField label="Start Date" error={errors.startDate}>
-                          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.startDate && 'border-rose-500/50')} />
-                        </InputField>
-                        <InputField label="Reporting Time" error={errors.startTime}>
-                          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} onFocus={() => setActiveSection(2)} className={cn(inputBase, errors.startTime && 'border-rose-500/50')} />
-                        </InputField>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <InputField label="Trip Mode">
-                          <div className="flex gap-2.5">
-                            {(['ROUND_TRIP', 'ONE_WAY'] as OutstationType[]).map((mode) => (
-                              <button key={mode} type="button" onClick={() => setOutstationType(mode)}
-                                className={cn(
-                                  'flex-1 py-3 rounded-xl border-2 text-xs font-extrabold transition-all cursor-pointer',
-                                  outstationType === mode
-                                    ? 'bg-gradient-to-b from-primary/20 to-primary/8 border-primary text-primary shadow-md shadow-primary/5'
-                                    : 'bg-surface2/70 border-border/25 text-foreground/70 hover:border-border/40 hover:text-foreground'
-                                )}
-                              >{mode === 'ROUND_TRIP' ? '🔄 Round Trip' : '➡️ One Way'}</button>
-                            ))}
-                          </div>
-                        </InputField>
-                        <InputField label="Duration (Days)">
-                          <input type="number" min="1" max="30" value={outstationDays} onChange={(e) => setOutstationDays(parseInt(e.target.value) || 1)} className={inputBase} />
-                        </InputField>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Location fields */}
-                  <InputField
-                    label={tripType === 'MONTHLY' ? 'Base Address / Location' : 'Pickup Address'}
-                    icon={MapPin}
-                    error={errors.pickup}
-                  >
-                    <div className="relative">
-                      <textarea
-                        rows={2} value={pickup} onChange={(e) => setPickup(e.target.value)}
-                        onFocus={() => setActiveSection(2)}
-                        placeholder={tripType === 'MONTHLY' ? 'Base reporting address in Delhi NCR' : 'Enter pickup location or address'}
-                        className={cn(inputBase, 'resize-none pr-28', errors.pickup && 'border-rose-500/50')}
+              {/* 1. ONE WAY GROUP */}
+              {tripType === 'oneway' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="relative pl-6 border-l-2 border-dashed border-primary/40 space-y-4">
+                    <div className="absolute -left-[5px] top-4 h-2 w-2 rounded-full bg-primary" />
+                    <InputField label="Pickup Location" error={errors.pickup}>
+                      <input
+                        type="text"
+                        value={pickup}
+                        onChange={(e) => setPickup(e.target.value)}
+                        placeholder="e.g. Sector 29, Gurgaon"
+                        className={cn(inputBase, errors.pickup && 'border-rose-500/50')}
                       />
-                      <button
-                        type="button" onClick={handleCaptureLocation} disabled={capturingLocation}
-                        className="absolute right-2 top-2 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold flex items-center gap-1 hover:bg-primary/20 transition-all cursor-pointer"
-                      >
-                        <Compass className={cn('h-3 w-3', capturingLocation && 'animate-spin')} />
-                        {capturingLocation ? 'Wait…' : '📍 GPS'}
-                      </button>
-                    </div>
+                    </InputField>
+
+                    <div className="absolute -left-[5px] bottom-14 h-2 w-2 rounded-full bg-rose-500" />
+                    <InputField label="Drop Location" error={errors.drop}>
+                      <input
+                        type="text"
+                        value={drop}
+                        onChange={(e) => setDrop(e.target.value)}
+                        placeholder="e.g. Cyber City, DLF Phase 2"
+                        className={cn(inputBase, errors.drop && 'border-rose-500/50')}
+                      />
+                    </InputField>
+                  </div>
+
+                  <InputField label="Estimated Distance" error={errors.estKms}>
+                    <select
+                      value={estKms || ''}
+                      onChange={(e) => setEstKms(Number(e.target.value))}
+                      className={cn(inputBase, errors.estKms && 'border-rose-500/50')}
+                    >
+                      <option value="">— Select Distance —</option>
+                      {[10, 15, 20, 25, 30, 35, 40, 50, 55, 60].map((val) => (
+                        <option key={val} value={val}>{val} km</option>
+                      ))}
+                    </select>
+                  </InputField>
+                </div>
+              )}
+
+              {/* 2. ROUND TRIP GROUP */}
+              {tripType === 'roundtrip' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <InputField label="Total Hours Required" error={errors.roundHours}>
+                    <input
+                      type="number"
+                      value={roundHours || ''}
+                      onChange={(e) => setRoundHours(Number(e.target.value))}
+                      placeholder="e.g. 4 (min 2 hours)"
+                      min="2"
+                      max="24"
+                      className={cn(inputBase, errors.roundHours && 'border-rose-500/50')}
+                    />
                   </InputField>
 
-                  {tripType === 'OUTSTATION' && (
-                    <InputField label="Destination Address" icon={Navigation} error={errors.drop}>
-                      <textarea
-                        rows={2} value={drop} onChange={(e) => setDrop(e.target.value)}
-                        placeholder="Enter outstation destination"
-                        className={cn(inputBase, 'resize-none', errors.drop && 'border-rose-500/50')}
+                  <div className="grid grid-cols-2 gap-4 bg-surface2/50 border border-border/10 rounded-2xl p-4">
+                    <div className="space-y-1">
+                      <span className="block text-[10px] font-extrabold text-text-muted uppercase tracking-wider">📍 Live Location</span>
+                      <button
+                        type="button"
+                        onClick={handleGetLocation}
+                        disabled={capturingLocation}
+                        className={cn(
+                          'w-full py-2.5 rounded-xl border border-dashed border-primary text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-primary/5 transition-all duration-300',
+                          locationCaptured && 'border-solid border-emerald-500 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/15'
+                        )}
+                      >
+                        {capturingLocation ? (
+                          <>⏳ Fetching...</>
+                        ) : (
+                          <>{locationCaptured ? '✅ Location Shared' : '📍 Share Location'}</>
+                        )}
+                      </button>
+                    </div>
+                    <div className="space-y-1 text-center sm:text-left">
+                      <span className="block text-[10px] font-extrabold text-text-muted uppercase tracking-wider">📌 Status</span>
+                      {locationCaptured ? (
+                        <div className="flex flex-col items-center sm:items-start justify-center h-9">
+                          <span className="text-emerald-500 text-xs font-bold">Captured!</span>
+                          <a
+                            href={`https://www.google.com/maps?q=${userLat},${userLng}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-primary underline font-bold"
+                          >
+                            View on Map
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="block text-xs text-text-muted/60 leading-9">Not shared yet</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. MONTHLY GROUP */}
+              {tripType === 'monthly' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 flex gap-3 items-start">
+                    <HelpCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-extrabold text-primary">Monthly Contract Interview</h4>
+                      <p className="text-[10px] text-text-muted leading-relaxed mt-0.5">
+                        We organize a face-to-face trial with the candidate. Select your preferred date & time below.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputField label="🗓 Interview Date" error={errors.interviewDate}>
+                      <input
+                        type="date"
+                        value={interviewDate}
+                        onChange={(e) => handleDateTimeChange(e.target.value, interviewTime, 'interview')}
+                        className={cn(inputBase, errors.interviewDate && 'border-rose-500/50')}
                       />
+                    </InputField>
+                    <InputField label="🕐 Start Time" error={errors.interviewTime}>
+                      <input
+                        type="time"
+                        value={interviewTime}
+                        onChange={(e) => handleDateTimeChange(interviewDate, e.target.value, 'interview')}
+                        className={cn(inputBase, errors.interviewTime && 'border-rose-500/50')}
+                      />
+                    </InputField>
+                  </div>
+
+                  {/* Google Calendar Link Button */}
+                  {interviewDate && interviewTime && (
+                    <div className="p-3 bg-blue-500/5 border border-blue-500/25 rounded-2xl flex flex-col gap-2 items-center justify-center">
+                      <span className="text-[11px] font-bold text-foreground/80 underline decoration-blue-500/65 underline-offset-2">
+                        📅 {getNiceDateTime()}
+                      </span>
+                      <a
+                        href={getGoogleCalendarUrl()}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/35 hover:bg-blue-500/20 px-4 py-2 rounded-xl text-xs font-bold text-blue-500 shadow-sm transition-all"
+                      >
+                        📅 Add Interview to Google Calendar
+                      </a>
+                    </div>
+                  )}
+
+                  <InputField label="Working Days per Month" error={errors.monthlyDays}>
+                    <input
+                      type="number"
+                      value={monthlyDays || ''}
+                      onChange={(e) => setMonthlyDays(Number(e.target.value))}
+                      placeholder="e.g. 26"
+                      min="1"
+                      max="31"
+                      className={cn(inputBase, errors.monthlyDays && 'border-rose-500/50')}
+                    />
+                  </InputField>
+
+                  <InputField label="Hours per Day" error={errors.monthlyHours}>
+                    <input
+                      type="number"
+                      value={monthlyHours || ''}
+                      onChange={(e) => setMonthlyHours(Number(e.target.value))}
+                      placeholder="e.g. 10"
+                      min="1"
+                      max="24"
+                      className={cn(inputBase, errors.monthlyHours && 'border-rose-500/50')}
+                    />
+                  </InputField>
+
+                  {/* Monthly Extra Salary Amount Input */}
+                  {monthlyDays > 0 && monthlyHours > 0 && (
+                    <InputField label="Extra Amount (Optional)">
+                      <div className="flex items-center">
+                        <div className="bg-surface2 border-y border-l border-border/30 px-4 py-3.5 rounded-l-xl font-bold text-text-muted text-sm select-none">
+                          ₹
+                        </div>
+                        <input
+                          type="number"
+                          value={extraAmt || ''}
+                          onChange={(e) => setExtraAmt(Number(e.target.value))}
+                          placeholder="e.g. 2000"
+                          min="0"
+                          step="500"
+                          className={cn(inputBase, 'rounded-l-none border-l-0')}
+                        />
+                      </div>
+                      <p className="text-[9px] text-text-muted/70 italic">Higher amount = more driver interest = faster recruitment.</p>
                     </InputField>
                   )}
                 </div>
-              </div>
+              )}
 
-              {/* ─── Section 4: Vehicle & Notes ─── */}
-              <div className="p-6 sm:p-8 border-b border-border/20">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500/25 to-violet-500/10 border border-violet-500/15 flex items-center justify-center">
-                    <span className="text-lg">🚘</span>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-base text-foreground">Vehicle Preferences</h3>
-                    <p className="text-[11px] text-text-muted">Choose car type and add any special notes</p>
-                  </div>
-                </div>
-
-                <div className="space-y-5">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {([
-                      { type: 'Hatchback' as VehicleType, icon: '🚗', eg: 'WagonR, Swift' },
-                      { type: 'Sedan' as VehicleType, icon: '🚘', eg: 'Dzire, City' },
-                      { type: 'SUV' as VehicleType, icon: '🚙', eg: 'Creta, XUV700' },
-                      { type: 'Luxury' as VehicleType, icon: '🏎️', eg: 'BMW, Merc' },
-                    ]).map((v) => (
-                      <button
-                        key={v.type} type="button"
-                        onClick={() => { setVehicleClass(v.type); setActiveSection(3) }}
-                        className={cn(
-                          'relative py-4 px-3 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all duration-300 cursor-pointer group',
-                          vehicleClass === v.type
-                            ? 'border-primary bg-gradient-to-b from-primary/15 to-primary/5 shadow-md shadow-primary/5'
-                            : 'border-border/25 bg-surface2/70 hover:border-border/40 hover:bg-surface2'
-                        )}
-                      >
-                        {vehicleClass === v.type && <div className="absolute top-1.5 right-1.5"><CheckCircle className="h-3.5 w-3.5 text-primary" /></div>}
-                        <span className="text-2xl group-hover:scale-110 transition-transform">{v.icon}</span>
-                        <span className={cn('text-[11px] font-extrabold', vehicleClass === v.type ? 'text-primary' : 'text-foreground')}>  {v.type}</span>
-                        <span className="text-[8px] text-text-muted/80">{v.eg}</span>
-                      </button>
-                    ))}
+              {/* 4. OUTSTATION GROUP */}
+              {tripType === 'outstation' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="out-badge inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/25 text-[10px] font-extrabold text-violet-400 uppercase tracking-widest">
+                    🛣️ Outstation Booking
                   </div>
 
-                  <InputField label="Vehicle Name / Model (Optional)">
+                  <div className="space-y-2">
+                    <span className="block text-[11px] font-extrabold text-foreground/70 uppercase tracking-wider">Outstation Trip Type</span>
+                    <div className="flex gap-2">
+                      {[
+                        { id: 'oneway', label: '➡️ One Way' },
+                        { id: 'roundtrip', label: '🔄 Round Trip' },
+                      ].map((mode) => (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => setOutSubType(mode.id as OutstationType)}
+                          className={cn(
+                            'flex-1 py-2.5 rounded-xl border-2 text-xs font-bold transition-all duration-300 cursor-pointer',
+                            outSubType === mode.id
+                              ? 'border-violet-500 bg-violet-500/10 text-violet-400 shadow-md shadow-violet-500/5'
+                              : 'border-border/20 bg-surface2 text-text-muted hover:border-border/40 hover:bg-surface2/80'
+                          )}
+                        >
+                          {mode.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pickup City/Location - UX Improvement: Always visible for Outstation */}
+                  <InputField label="Pickup City / Location" error={errors.outPickup}>
                     <input
-                      type="text" value={vehicleName} onChange={(e) => setVehicleName(e.target.value)}
-                      onFocus={() => setActiveSection(3)}
-                      placeholder="e.g. Honda City Automatic"
-                      className={inputBase}
+                      type="text"
+                      value={outPickup}
+                      onChange={(e) => setOutPickup(e.target.value)}
+                      placeholder="e.g. Connaught Place, Delhi"
+                      className={cn(inputBase, errors.outPickup && 'border-rose-500/50')}
                     />
                   </InputField>
 
-                  <InputField label="Special Instructions / Requests">
-                    <textarea
-                      rows={3} value={specialInstructions} onChange={(e) => setSpecialInstructions(e.target.value)}
-                      onFocus={() => setActiveSection(3)}
-                      placeholder="e.g. Need manual transmission expert, night driving, family trip, etc."
-                      className={cn(inputBase, 'resize-none')}
-                    />
-                  </InputField>
+                  {/* Subtype conditional inputs */}
+                  {outSubType === 'oneway' ? (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      <InputField label="Drop City / Location" error={errors.outDrop}>
+                        <input
+                          type="text"
+                          value={outDrop}
+                          onChange={(e) => setOutDrop(e.target.value)}
+                          placeholder="e.g. Jaipur, Rajasthan"
+                          className={cn(inputBase, errors.outDrop && 'border-rose-500/50')}
+                        />
+                      </InputField>
+
+                      <InputField label="Estimated Distance (One Way)" error={errors.outKms}>
+                        <select
+                          value={outKms || ''}
+                          onChange={(e) => setOutKms(Number(e.target.value))}
+                          className={cn(inputBase, errors.outKms && 'border-rose-500/50')}
+                        >
+                          <option value="">— Select Distance —</option>
+                          {[100, 150, 200, 250, 300, 350, 400].map((val) => (
+                            <option key={val} value={val}>{val} km</option>
+                          ))}
+                        </select>
+                      </InputField>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      <InputField label="Destination City" error={errors.outDest}>
+                        <input
+                          type="text"
+                          value={outDest}
+                          onChange={(e) => setOutDest(e.target.value)}
+                          placeholder="e.g. Agra, Taj Mahal"
+                          className={cn(inputBase, errors.outDest && 'border-rose-500/50')}
+                        />
+                      </InputField>
+
+                      <InputField label="Number of Days" error={errors.outDays}>
+                        <input
+                          type="number"
+                          value={outDays || ''}
+                          onChange={(e) => setOutDays(Number(e.target.value))}
+                          placeholder="e.g. 2"
+                          min="1"
+                          max="30"
+                          className={cn(inputBase, errors.outDays && 'border-rose-500/50')}
+                        />
+                      </InputField>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
-              {/* ─── Submit Bar ─── */}
-              <div className="p-6 sm:p-8 bg-gradient-to-r from-surface2 to-surface2/60 border-t border-border/20">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  {/* Trust micro-badges */}
-                  <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start flex-1">
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-semibold">
-                      <Shield className="h-3.5 w-3.5 text-emerald-500" /> Verified Drivers
-                    </div>
-                    <DiamondAccent />
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-semibold">
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> Instant Confirmation
-                    </div>
-                    <DiamondAccent />
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-semibold">
-                      <Zap className="h-3.5 w-3.5 text-primary" /> No Signup Required
-                    </div>
-                  </div>
-
-                  {/* CTA */}
+              {/* Optional GPS Location component for OneWay, Outstation, Monthly */}
+              {tripType !== 'roundtrip' && (
+                <InputField label="📍 Share Your Location (Optional)">
                   <button
-                    type="submit"
-                    disabled={submitting}
+                    type="button"
+                    onClick={handleGetLocation}
+                    disabled={capturingLocation}
                     className={cn(
-                      'w-full sm:w-auto px-10 py-4 rounded-xl font-extrabold text-sm tracking-wide flex items-center justify-center gap-2.5 transition-all duration-400 cursor-pointer shadow-lg',
-                      submitting
-                        ? 'bg-surface border border-border/20 text-text-muted'
-                        : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0'
+                      'w-full py-3 border border-dashed border-primary hover:bg-primary/5 text-primary text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer',
+                      locationCaptured && 'border-solid border-emerald-500 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/15'
                     )}
                   >
-                    {submitting ? (
-                      <div className="h-5 w-5 border-2 border-text-muted/40 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <MessageSquare className="h-5 w-5" />
-                        Book via WhatsApp
-                      </>
-                    )}
+                    <Compass className={cn('h-4 w-4', capturingLocation && 'animate-spin')} />
+                    {capturingLocation ? 'Capturing Location...' : locationCaptured ? '✅ Location Captured!' : 'Tap to share current location'}
                   </button>
+                  {locationCaptured && (
+                    <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/25 rounded-xl p-3.5 animate-in slide-in-from-top-1 text-xs">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        ✅ Captured (Lat: {userLat}, Lng: {userLng})
+                      </span>
+                      <a
+                        href={`https://www.google.com/maps?q=${userLat},${userLng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary font-bold underline"
+                      >
+                        View Map
+                      </a>
+                    </div>
+                  )}
+                  <p className="text-[9px] text-text-muted/70">Helps us dispatch the nearest driver faster.</p>
+                </InputField>
+              )}
+
+              {/* Booking Date & Time (for non-monthly trips) */}
+              {tripType !== 'monthly' && (
+                <InputField label="Date & Time" error={errors.bookDate || errors.bookTime}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input
+                      type="date"
+                      value={bookDate}
+                      onChange={(e) => handleDateTimeChange(e.target.value, bookTime, 'book')}
+                      className={cn(inputBase, errors.bookDate && 'border-rose-500/50')}
+                    />
+                    <input
+                      type="time"
+                      value={bookTime}
+                      onChange={(e) => handleDateTimeChange(bookDate, e.target.value, 'book')}
+                      className={cn(inputBase, errors.bookTime && 'border-rose-500/50')}
+                    />
+                  </div>
+                </InputField>
+              )}
+
+              {/* Pickup for non-oneway local/monthly trips (RT, Monthly and Outstation RoundTrip need it) */}
+              {(tripType === 'roundtrip' || tripType === 'monthly') && (
+                <InputField label="Pickup Location" error={errors.pickupCommon}>
+                  <input
+                    type="text"
+                    value={pickupCommon}
+                    onChange={(e) => setPickupCommon(e.target.value)}
+                    placeholder="e.g. Sector 29, Gurgaon"
+                    className={cn(inputBase, errors.pickupCommon && 'border-rose-500/50')}
+                  />
+                </InputField>
+              )}
+
+              {/* Comments */}
+              <InputField label="Additional Comments (Optional)">
+                <textarea
+                  value={comments}
+                  onChange={(e) => setComments(e.target.value)}
+                  placeholder="Any special requests, automatic or manual transmission, preferred language..."
+                  rows={3}
+                  className="w-full px-4 py-3.5 bg-surface2 border border-border/30 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/15 focus:bg-surface focus:outline-none transition-all duration-300 text-sm text-foreground placeholder:text-text-muted/60 placeholder:italic resize-none"
+                />
+              </InputField>
+
+              <div className="border-t border-border/10 pt-4" />
+
+              {/* ─── LIVE PREVIEW CARD ─── */}
+              {(customerName || phoneVal || carType || pickup || pickupCommon || outPickup) && (
+                <div className="bg-emerald-500/[0.03] dark:bg-emerald-500/[0.015] border border-emerald-500/20 rounded-2xl p-5 animate-in fade-in duration-300 space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                    <MessageSquare className="h-4 w-4" /> Live Summary Preview
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Name</span>
+                      <span className="font-semibold text-foreground truncate">{customerName || '—'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Phone</span>
+                      <span className="font-semibold text-foreground">{phoneVal ? `+91 ${phoneVal}` : '—'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Trip Type</span>
+                      <span className="font-semibold text-foreground capitalize">
+                        {tripType === 'outstation'
+                          ? `Outstation (${outSubType === 'oneway' ? 'One Way' : 'Round Trip'})`
+                          : tripType === 'oneway'
+                            ? 'One Way'
+                            : tripType === 'roundtrip'
+                              ? 'Round Trip'
+                              : 'Monthly'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Car Type</span>
+                      <span className="font-semibold text-foreground capitalize">{carType || '—'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Pickup</span>
+                      <span className="font-semibold text-foreground truncate">
+                        {tripType === 'oneway'
+                          ? pickup
+                          : tripType === 'roundtrip' || tripType === 'monthly'
+                            ? pickupCommon
+                            : outPickup || '—'}
+                      </span>
+                    </div>
+                    {tripType === 'oneway' && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Drop</span>
+                        <span className="font-semibold text-foreground truncate">{drop || '—'}</span>
+                      </div>
+                    )}
+                    {tripType === 'outstation' && outSubType === 'oneway' && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Drop</span>
+                        <span className="font-semibold text-foreground truncate">{outDrop || '—'}</span>
+                      </div>
+                    )}
+                    {tripType === 'outstation' && outSubType === 'roundtrip' && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Destination</span>
+                        <span className="font-semibold text-foreground truncate">{outDest || '—'}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-col col-span-2">
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wide">Date & Time</span>
+                      <span className="font-semibold text-foreground">{getNiceDateTime()}</span>
+                    </div>
+                  </div>
+
+                  {/* Realtime Fare/Salary Box */}
+                  {(amount || note) && (
+                    <div className="bg-slate-900/95 dark:bg-black/85 rounded-xl p-4 flex flex-col gap-1.5 text-white">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {tripType === 'monthly' ? '💰 Estimated Salary' : '💰 Estimated Fare'}
+                        </span>
+                        <span className="text-2xl font-bold text-primary font-mono">
+                          {totalFare ? `₹${totalFare.toLocaleString('en-IN')}` : '—'}
+                        </span>
+                      </div>
+
+                      {/* Monthly breakdowns */}
+                      {tripType === 'monthly' && monthlyDays > 0 && monthlyHours > 0 && (
+                        <div className="text-[10px] text-slate-400 border-t border-slate-800 pt-2 space-y-1">
+                          <p>📅 Package: {monthlyDays} days × {monthlyHours} hrs/day</p>
+                          <p>💼 Base Salary: ₹{calcMonthlyPriceVal(monthlyDays, monthlyHours).amount.toLocaleString('en-IN')}</p>
+                          {extraAmt > 0 && <p className="text-primary">➕ Extra Interest Amt: +₹{extraAmt.toLocaleString('en-IN')}</p>}
+                        </div>
+                      )}
+
+                      {/* Night Allowance Indicator */}
+                      {tripType !== 'monthly' && nightCharge > 0 && (
+                        <div className="text-[10px] text-primary flex items-center gap-1">
+                          <span>🌙</span> Includes ₹200 Night Travel Allowance (10PM–6AM)
+                        </div>
+                      )}
+
+                      <p className="text-[9.5px] text-slate-500 leading-normal border-t border-slate-800/60 pt-1.5 italic font-medium">{note}</p>
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={submitting}
+                className={cn(
+                  'w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-extrabold text-sm tracking-wide flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-98 hover:-translate-y-0.5 transition-all',
+                  submitting && 'opacity-65 cursor-not-allowed pointer-events-none'
+                )}
+              >
+                {submitting ? (
+                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <MessageSquare className="h-4.5 w-4.5" />
+                    Send Booking on WhatsApp
+                  </>
+                )}
+              </button>
+              <div className="text-center text-[10px] text-text-muted font-bold">
+                Your details will be sent to our team via WhatsApp instantly.
               </div>
             </div>
           </form>
 
-          {/* Bottom trust banner */}
-          <div className="mt-10 p-5 rounded-2xl bg-gradient-to-r from-card to-card/70 backdrop-blur-xs border border-border/25 flex flex-col sm:flex-row items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/25 to-primary/10 border border-primary/15 flex items-center justify-center shrink-0">
-              <Shield className="h-6 w-6 text-primary" />
+          {/* ═══════════ TERMS & CONDITIONS CARD ═══════════ */}
+          <div className="bg-card border border-border/15 rounded-3xl p-6 mt-8 shadow-xl space-y-6">
+            
+            {/* dynamic prices & charges */}
+            <div className="space-y-3">
+              <h3 className="font-extrabold text-sm text-foreground flex items-center gap-2">
+                <span>💰</span> Pricing & Extra Charges
+              </h3>
+              
+              <div className="space-y-2.5">
+                {tripType === 'oneway' && (
+                  <>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>₹10 per km</strong> extra if actual distance exceeds your booked KM limit.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>Waiting period: <strong>₹2 per minute</strong> (after a 15-minute start delay exception).</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>Driver return charges are <strong>already included</strong> in the package.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>₹200 Night Travel Allowance (NTA)</strong> applicable between 10:00 PM – 6:00 AM.</span>
+                    </div>
+                  </>
+                )}
+
+                {tripType === 'roundtrip' && (
+                  <>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>₹2.5 per minute</strong> to be charged if travel time exceeds booked hours.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>₹200 Night Travel Allowance (NTA)</strong> applicable between 10:00 PM – 6:00 AM.</span>
+                    </div>
+                  </>
+                )}
+
+                {tripType === 'outstation' && (
+                  <>
+                    {outSubType === 'oneway' ? (
+                      <>
+                        <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                          <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                          <span>Driver return fare is <strong>already included</strong> in the package — no extra return amount.</span>
+                        </div>
+                        <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                          <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                          <span><strong>₹10 per km</strong> extra if actual distance exceeds your booked KM limit.</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                          <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                          <span>Price calculated for maximum <strong>12 hours</strong> — if exceeded, <strong>₹2 per minute</strong> extra on same day.</span>
+                        </div>
+                        <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                          <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                          <span>If next day added, additional day package price will be appended to your billing.</span>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {tripType === 'monthly' && (
+                  <>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>Prices shown are <strong>minimum salary</strong> — final salary decided by you at interview.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>Available packages: 22 / 24 / 26 days × 8 / 10 / 12 hours per day.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>₹200 Night Travel Allowance (NTA)</strong> applicable between 10:00 PM – 6:00 AM.</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="text-center sm:text-left space-y-1">
-              <h4 className="text-sm font-bold text-foreground">ScanDriver Guarantee</h4>
-              <p className="text-[11px] text-text-muted leading-relaxed">
-                Every driver undergoes Aadhaar verification, license check, criminal background screening, and minimum 2 reference verifications before onboarding. Your safety is our top priority.
-              </p>
+
+            <div className="border-t border-border/10" />
+
+            {/* key pointers */}
+            <div className="space-y-3">
+              <h3 className="font-extrabold text-sm text-foreground flex items-center gap-2">
+                <span>📌</span> Key Pointers
+              </h3>
+
+              <div className="space-y-2.5">
+                {tripType !== 'monthly' && (
+                  <>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>Nearby verified driver at your doorstep within <strong>60 minutes</strong>.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>All drivers are experienced and background verified.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>Pay at the end of the trip</strong> — no advance needed.</span>
+                    </div>
+                  </>
+                )}
+
+                {tripType === 'oneway' && (
+                  <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                    <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                    <span>No need to provide food or travel expenses to the driver.</span>
+                  </div>
+                )}
+
+                {tripType === 'roundtrip' && (
+                  <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                    <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                    <span>No need to provide food or travel expenses to the driver.</span>
+                  </div>
+                )}
+
+                {tripType === 'outstation' && (
+                  <>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>₹200 Night Travel Allowance (NTA)</strong> applicable between 10:00 PM – 6:00 AM.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>Food & stay charges will be levied to the customer</strong> for outstation trips.</span>
+                    </div>
+                    {outSubType === 'oneway' ? (
+                      <>
+                        <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                          <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                          <span>Customer's responsibility to provide conveyance fare to the nearest bus stand/railway station when trip ends.</span>
+                        </div>
+                        <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                          <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                          <span>One-way driver food to be managed by Customer.</span>
+                        </div>
+                      </>
+                    ) : null}
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-violet-500/10 border border-violet-500/25 text-violet-400 rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>Pay at the end of the trip</strong> — no advance needed.</span>
+                    </div>
+                  </>
+                )}
+
+                {tripType === 'monthly' && (
+                  <>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>All drivers are experienced and background verified.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>Final salary to be decided by you in the Interview.</strong></span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span>Driver will be available for the agreed hours every day.</span>
+                    </div>
+                    <div className="flex gap-2 text-xs text-text-muted leading-relaxed">
+                      <span className="h-5 w-5 bg-primary/15 border border-primary/25 text-primary rounded-full flex items-center justify-center shrink-0 font-bold">✓</span>
+                      <span><strong>Monthly salary to be credited by you directly</strong> to the driver.</span>
+                    </div>
+                    <div className="flex gap-2.5 items-start p-3.5 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-bold animate-pulse">
+                      <span className="shrink-0 text-sm">📩</span>
+                      <span>A proposal will be sent to you on WhatsApp / Email with candidate driver profiles.</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
+
           </div>
         </div>
       </main>
@@ -728,3 +1468,4 @@ export default function BookingPage() {
     </div>
   )
 }
+

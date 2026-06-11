@@ -58,12 +58,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing driverId' }, { status: 400 })
     }
 
-    // 4. Delete the user in auth.users using the Admin Client (this cascades to public.users)
-    const { error: deleteError } = await supabaseAdminClient.auth.admin.deleteUser(driverId)
+    // 4. Delete the user in auth.users using the SQL RPC function (authenticated as the admin caller)
+    const { data: rpcResult, error: rpcError } = await userClient.rpc(
+      'delete_driver_sql',
+      {
+        p_driver_id: driverId
+      }
+    )
 
-    if (deleteError) {
-      console.error('Error deleting driver:', deleteError)
-      return NextResponse.json({ error: deleteError.message }, { status: 500 })
+    if (rpcError) {
+      console.error('Error executing delete driver RPC:', rpcError)
+      return NextResponse.json({ error: rpcError.message }, { status: 500 })
     }
 
     return NextResponse.json({

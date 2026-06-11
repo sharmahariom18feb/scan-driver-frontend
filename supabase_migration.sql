@@ -318,4 +318,24 @@ begin
 end;
 $$ language plpgsql security definer;
 
+-- 11. Delete driver directly from auth.users (security definer to bypass schema restrictions, restricted to ADMIN caller only)
+create or replace function public.delete_driver_sql(p_driver_id uuid)
+returns boolean as $$
+declare
+  v_caller_role text;
+begin
+  -- Check if caller is ADMIN
+  select role into v_caller_role from public.users where id = auth.uid();
+  if v_caller_role != 'ADMIN' or v_caller_role is null then
+    raise exception 'Unauthorized: Only admins can delete drivers.';
+  end if;
+
+  -- Delete from auth.users
+  delete from auth.users
+  where id = p_driver_id;
+
+  return true;
+end;
+$$ language plpgsql security definer;
+
 

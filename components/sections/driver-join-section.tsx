@@ -74,7 +74,7 @@ export function DriverJoinSection() {
                 </div>
 
                 <CTAButton
-                  href={"/driver-app/onboarding"}
+                  href={getWhatsAppLink(WHATSAPP_DRIVER, 'Hi ScanDriver! I want to join as a driver.')}
                   variant="gold"
                   external
                   className="w-full justify-center"
