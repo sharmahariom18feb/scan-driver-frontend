@@ -65,7 +65,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       // 2. Fetch Drivers (users with role = 'DRIVER')
       const { data: driversData, error: driversError } = await supabase
         .from('users')
-        .select('*')
+        .select('*, driver_profiles(*)')
         .eq('role', 'DRIVER')
         .order('created_at', { ascending: false })
 
@@ -139,7 +139,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
           console.log('Real-time users update received in admin:', payload)
           fetchData()
           if (payload.eventType === 'INSERT' && payload.new.role === 'DRIVER') {
-            toast.info(`New Registration: Driver ${payload.new.first_name} registered for verification.`)
+            toast.info(`New Registration: Driver ${payload.new.full_name} registered for verification.`)
           }
         }
       )
@@ -227,10 +227,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         <div className="p-4 border-t border-slate-700/80 space-y-3 bg-slate-900/40">
           <div className="flex items-center gap-3 px-2">
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 font-bold text-xs flex items-center justify-center shadow-md">
-              {adminUser.first_name?.[0] || 'A'}
+              {adminUser.full_name?.[0] || 'A'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-white truncate">{adminUser.first_name} {adminUser.last_name}</p>
+              <p className="text-xs font-bold text-white truncate">{adminUser.full_name}</p>
               <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">Administrator</span>
             </div>
           </div>

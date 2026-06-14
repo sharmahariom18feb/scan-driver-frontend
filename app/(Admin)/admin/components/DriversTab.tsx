@@ -17,6 +17,15 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
   const [onlineFilter, setOnlineFilter] = useState<'all' | 'online' | 'offline'>('all')
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null)
+
+  const getProfile = (d: Driver) => {
+    if (!d.driver_profiles) return null
+    if (Array.isArray(d.driver_profiles)) {
+      return d.driver_profiles[0] || null
+    }
+    return d.driver_profiles
+  }
 
   // Password reset states
   const [resetModalOpen, setResetModalOpen] = useState(false)
@@ -80,8 +89,7 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
   // Filter Drivers
   const filteredDrivers = drivers.filter((d) => {
     const matchesSearch =
-      d.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       d.phone.includes(searchTerm) ||
       d.license_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
       d.current_area.toLowerCase().includes(searchTerm.toLowerCase())
@@ -277,19 +285,19 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                 </tr>
               ) : (
                 filteredDrivers.map((d) => (
-                  <tr key={d.id} className="hover:bg-slate-800/30 transition-all text-xs">
+                  <React.Fragment key={d.id}>
+                    <tr className="hover:bg-slate-800/30 transition-all text-xs">
                     {/* Name */}
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 bg-slate-950 border border-slate-800 rounded-full flex items-center justify-center font-extrabold text-slate-400">
-                          {d.first_name?.[0]}{d.last_name?.[0]}
+                          {(d.full_name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase() || ''}
                         </div>
                         <div>
                           <p className="font-extrabold text-white flex items-center gap-1.5">
-                            {d.first_name} {d.last_name}
+                            {d.full_name}
                             {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
                           </p>
-                          <p className="text-[10px] text-slate-350 font-semibold">{d.email}</p>
                         </div>
                       </div>
                     </td>
@@ -363,13 +371,48 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                         </>
                       )}
                       <button
-                        onClick={() => openResetModal(d.id, `${d.first_name} ${d.last_name}`)}
+                        onClick={() => openResetModal(d.id, d.full_name)}
                         className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer border border-slate-700"
                       >
                         <Key size={12} /> RESET PASSWORD
                       </button>
+                      <button
+                        onClick={() => setExpandedDriverId(expandedDriverId === d.id ? null : d.id)}
+                        className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer border border-slate-700"
+                      >
+                        {expandedDriverId === d.id ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                      </button>
                     </td>
                   </tr>
+                  {expandedDriverId === d.id && (() => {
+                    const profile = getProfile(d)
+                    return (
+                      <tr className="bg-slate-950/60 text-xs">
+                        <td colSpan={6} className="py-4 px-6 border-b border-slate-800">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-300">
+                            <div className="space-y-1.5">
+                              <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
+                              <p><span className="font-bold text-white">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
+                              <p><span className="font-bold text-white">Licence Validity:</span> {profile ? profile.license_status : 'N/A'}</p>
+                              <p><span className="font-bold text-white">Documents:</span> {profile && profile.documents_available.length > 0 ? profile.documents_available.join(', ') : 'None selected'}</p>
+                            </div>
+                            <div className="space-y-1.5">
+                              <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Availability & Preference</h4>
+                              <p><span className="font-bold text-white">Kaam schedule:</span> {profile ? profile.availability : 'N/A'}</p>
+                              <p><span className="font-bold text-white">Service Preference:</span> {profile && profile.service_preference.length > 0 ? profile.service_preference.join(', ') : 'None selected'}</p>
+                              <p><span className="font-bold text-white">Vehicles:</span> {profile && profile.vehicle_specialties.length > 0 ? profile.vehicle_specialties.join(', ') : 'None selected'}</p>
+                            </div>
+                            <div className="space-y-1.5">
+                              <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Additional Details</h4>
+                              <p><span className="font-bold text-white">Pehle platform pe:</span> {profile ? (profile.previous_platforms || 'Nahi') : 'N/A'}</p>
+                              <p className="whitespace-pre-wrap"><span className="font-bold text-white">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })()}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
@@ -386,14 +429,13 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 bg-slate-950 border border-slate-850 rounded-full flex items-center justify-center font-extrabold text-slate-400 text-xs">
-                      {d.first_name?.[0]}{d.last_name?.[0]}
+                      {(d.full_name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase() || ''}
                     </div>
                     <div>
                       <p className="font-extrabold text-white flex items-center gap-1 text-xs">
-                        {d.first_name} {d.last_name}
+                        {d.full_name}
                         {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
                       </p>
-                      <p className="text-[9px] text-slate-450 font-semibold">{d.email}</p>
                     </div>
                   </div>
 
@@ -417,6 +459,31 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                     <span className="font-bold text-slate-200">{d.is_online ? 'Online' : 'Offline'}</span>
                   </p>
                 </div>
+
+                {expandedDriverId === d.id && (() => {
+                  const profile = getProfile(d)
+                  return (
+                    <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-350 space-y-3 mt-2">
+                      <div className="space-y-1">
+                        <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
+                        <p><span className="font-bold text-slate-200">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
+                        <p><span className="font-bold text-slate-200">Licence Validity:</span> {profile ? profile.license_status : 'N/A'}</p>
+                        <p><span className="font-bold text-slate-200">Documents:</span> {profile && profile.documents_available.length > 0 ? profile.documents_available.join(', ') : 'None'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Availability & Preference</h4>
+                        <p><span className="font-bold text-slate-200">Schedule:</span> {profile ? profile.availability : 'N/A'}</p>
+                        <p><span className="font-bold text-slate-200">Services:</span> {profile && profile.service_preference.length > 0 ? profile.service_preference.join(', ') : 'None'}</p>
+                        <p><span className="font-bold text-slate-200">Vehicles:</span> {profile && profile.vehicle_specialties.length > 0 ? profile.vehicle_specialties.join(', ') : 'None'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Additional Details</h4>
+                        <p><span className="font-bold text-slate-200">Pehle Platform:</span> {profile ? (profile.previous_platforms || 'Nahi') : 'N/A'}</p>
+                        <p className="whitespace-pre-wrap"><span className="font-bold text-slate-200">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <div className="pt-2.5 border-t border-slate-850 flex justify-end gap-2">
                   {d.verified ? (
@@ -446,10 +513,16 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
                     </>
                   )}
                   <button
-                    onClick={() => openResetModal(d.id, `${d.first_name} ${d.last_name}`)}
+                    onClick={() => openResetModal(d.id, d.full_name)}
                     className="bg-slate-800 border border-slate-700 text-slate-200 hover:text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer flex items-center gap-1"
                   >
                     <Key size={10} /> Reset Password
+                  </button>
+                  <button
+                    onClick={() => setExpandedDriverId(expandedDriverId === d.id ? null : d.id)}
+                    className="bg-slate-800 border border-slate-700 text-slate-200 hover:text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                  >
+                    {expandedDriverId === d.id ? 'Hide details' : 'View details'}
                   </button>
                 </div>
               </div>

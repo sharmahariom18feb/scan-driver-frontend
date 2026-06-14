@@ -11,16 +11,13 @@ interface AuthScreenProps {
   handleAuth: (e: React.FormEvent) => Promise<void>
   handleGoogleLogin: () => Promise<void>
   handleResendOtp: () => Promise<void>
-  email: string
-  setEmail: (val: string) => void
+
   password: string
   setPassword: (val: string) => void
   showPassword: boolean
   setShowPassword: (val: boolean) => void
-  firstName: string
-  setFirstName: (val: string) => void
-  lastName: string
-  setLastName: (val: string) => void
+  fullName: string
+  setFullName: (val: string) => void
   phone: string
   setPhone: (val: string) => void
   currentArea: string
@@ -44,16 +41,13 @@ export default function AuthScreen({
   handleAuth,
   handleGoogleLogin,
   handleResendOtp,
-  email,
-  setEmail,
+
   password,
   setPassword,
   showPassword,
   setShowPassword,
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
+  fullName,
+  setFullName,
   phone,
   setPhone,
   currentArea,
@@ -84,10 +78,10 @@ export default function AuthScreen({
             <Image src={logoSd} alt="ScanDriver Logo" width={200} className="object-contain" priority />
           </div>
         </div>
-        <h2 className="text-3xl font-bold tracking-tight text-foreground font-sans">
+        <h2 className="text-4xl font-bold tracking-tight text-foreground font-sans">
           ScanDriver Partner
         </h2>
-        <p className="mt-2 text-sm text-text-muted">
+        <p className="mt-2 text-base text-text-muted">
           Your Driver One Scan Away – Driver Terminal
         </p>
       </div>
@@ -99,7 +93,7 @@ export default function AuthScreen({
             <button
               onClick={() => setIsLoginMode(true)}
               className={cn(
-                'flex-1 text-center py-2 text-xs font-semibold rounded-md transition-all duration-300',
+                'flex-1 text-center py-2 text-sm font-semibold rounded-md transition-all duration-300',
                 isLoginMode ? 'bg-primary text-black' : 'text-text-muted hover:text-foreground'
               )}
             >
@@ -109,7 +103,7 @@ export default function AuthScreen({
             <button
               onClick={() => setIsLoginMode(false)}
               className={cn(
-                'flex-1 text-center py-2 text-xs font-semibold rounded-md transition-all duration-300',
+                'flex-1 text-center py-2 text-sm font-semibold rounded-md transition-all duration-300',
                 !isLoginMode ? 'bg-primary text-black' : 'text-text-muted hover:text-foreground'
               )}
             >
@@ -119,7 +113,7 @@ export default function AuthScreen({
           </div>
 
           {/* Login Method Sub-selector */}
-          {isLoginMode && (
+          {/* {isLoginMode && (
             <div className="flex justify-center gap-6 mb-6 border-b border-border/10 pb-3">
               <button
                 type="button"
@@ -128,7 +122,7 @@ export default function AuthScreen({
                   setOtpSent(false)
                 }}
                 className={cn(
-                  'pb-1 text-xs font-bold uppercase tracking-wider transition-all duration-300 border-b-2 outline-none',
+                  'pb-1 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 outline-none',
                   loginMethod === 'otp'
                     ? 'border-primary text-gold-light'
                     : 'border-transparent text-text-muted hover:text-foreground'
@@ -143,7 +137,7 @@ export default function AuthScreen({
                   setOtpSent(false)
                 }}
                 className={cn(
-                  'pb-1 text-xs font-bold uppercase tracking-wider transition-all duration-300 border-b-2 outline-none',
+                  'pb-1 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 outline-none',
                   loginMethod === 'password'
                     ? 'border-primary text-gold-light'
                     : 'border-transparent text-text-muted hover:text-foreground'
@@ -153,57 +147,48 @@ export default function AuthScreen({
               </button>
 
             </div>
-          )}
+          )} */}
 
           <form className="space-y-4" onSubmit={handleAuth}>
 
             {!isLoginMode && (
               <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
-                      placeholder="Ramesh"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
-                      placeholder="Kumar"
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-                    Mobile Number
+                  <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
+                    Full Name
                   </label>
                   <input
-                    type="tel"
+                    type="text"
                     required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
-                    placeholder="+91-9876543210"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full px-3 py-2 text-base bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
+                    placeholder="Ramesh Kumar"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                  <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
+                    Mobile Number
+                  </label>
+                  <div className="flex rounded-md border border-border/30 bg-surface focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                    <span className="flex items-center justify-center px-3 text-base text-text-muted bg-surface2 border-r border-border/20 font-semibold select-none">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      required
+                      pattern="[0-9]{10}"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      className="flex-1 px-3 py-2 text-base bg-transparent focus:outline-none text-foreground"
+                      placeholder="9876543210"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
                     Current Area
                   </label>
                   <input
@@ -211,13 +196,13 @@ export default function AuthScreen({
                     required
                     value={currentArea}
                     onChange={(e) => setCurrentArea(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
+                    className="w-full px-3 py-2 text-base bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
                     placeholder="Dwarka, Delhi"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                  <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
                     Driving License No.
                   </label>
                   <input
@@ -225,27 +210,14 @@ export default function AuthScreen({
                     required
                     value={licenseNo}
                     onChange={(e) => setLicenseNo(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
+                    className="w-full px-3 py-2 text-base bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
                     placeholder="DL-XXXXXXXXXXXXX"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
-                    placeholder="ramesh@email.com"
-                  />
-                </div>
 
                 <div className="relative">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                  <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
                     Password
                   </label>
                   <div className="relative">
@@ -254,7 +226,7 @@ export default function AuthScreen({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-3 pr-10 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
+                      className="w-full pl-3 pr-10 py-2 text-base bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
                       placeholder="••••••••"
                     />
                     <button
@@ -274,21 +246,27 @@ export default function AuthScreen({
               loginMethod === 'password' ? (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-                      Email or Username
+                    <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
+                      Mobile Number
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
-                      placeholder="ramesh@email.com or ramesh_driver"
-                    />
+                    <div className="flex rounded-md border border-border/30 bg-surface focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                      <span className="flex items-center justify-center px-3 text-base text-text-muted bg-surface2 border-r border-border/20 font-semibold select-none">
+                        +91
+                      </span>
+                      <input
+                        type="tel"
+                        required
+                        pattern="[0-9]{10}"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        className="flex-1 px-3 py-2 text-base bg-transparent focus:outline-none text-foreground"
+                        placeholder="9876543210"
+                      />
+                    </div>
                   </div>
 
                   <div className="relative">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                    <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
                       Password
                     </label>
                     <div className="relative">
@@ -297,7 +275,7 @@ export default function AuthScreen({
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
+                        className="w-full pl-3 pr-10 py-2 text-base bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors"
                         placeholder="••••••••"
                       />
                       <button
@@ -313,23 +291,29 @@ export default function AuthScreen({
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-                      Mobile Number (Indian Numbers Only)
+                    <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
+                      Mobile Number
                     </label>
-                    <input
-                      type="tel"
-                      required
-                      disabled={otpSent}
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground transition-colors disabled:opacity-50"
-                      placeholder="9876543210"
-                    />
+                    <div className="flex rounded-md border border-border/30 bg-surface focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                      <span className="flex items-center justify-center px-3 text-base text-text-muted bg-surface2 border-r border-border/20 font-semibold select-none">
+                        +91
+                      </span>
+                      <input
+                        type="tel"
+                        required
+                        disabled={otpSent}
+                        pattern="[0-9]{10}"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        className="flex-1 px-3 py-2 text-base bg-transparent focus:outline-none text-foreground disabled:opacity-50"
+                        placeholder="9876543210"
+                      />
+                    </div>
                   </div>
 
                   {otpSent && (
                     <div className="space-y-2">
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                      <label className="block text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
                         Enter 6-digit OTP
                       </label>
                       <input
@@ -338,10 +322,10 @@ export default function AuthScreen({
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground text-center tracking-widest font-mono transition-colors"
+                        className="w-full px-3 py-2 text-base bg-surface rounded-md border border-border/30 focus:border-primary focus:outline-none text-foreground text-center tracking-widest font-mono transition-colors"
                         placeholder="123456"
                       />
-                      <div className="flex justify-between items-center text-xs">
+                      <div className="flex justify-between items-center text-sm">
                         <span className="text-text-muted">
                           Didn't receive code?
                         </span>
@@ -368,7 +352,7 @@ export default function AuthScreen({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-primary text-black font-semibold text-sm rounded-md shadow-md hover:bg-gold-light transition-colors duration-300 flex items-center justify-center cursor-pointer"
+              className="w-full py-2.5 px-4 bg-primary text-black font-semibold text-base rounded-md shadow-md hover:bg-gold-light transition-colors duration-300 flex items-center justify-center cursor-pointer"
             >
               {loading ? (
                 <div className="h-5 w-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -391,7 +375,7 @@ export default function AuthScreen({
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border/20" />
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
+                <div className="relative flex justify-center text-sm uppercase">
                   <span className="bg-background px-2 text-text-muted">Or login with</span>
                 </div>
               </div>
@@ -399,7 +383,7 @@ export default function AuthScreen({
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-900 text-white border border-border/20 font-semibold text-sm rounded-md shadow-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer mb-2"
+                className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-900 text-white border border-border/20 font-semibold text-base rounded-md shadow-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer mb-2"
               >
                 <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
                   <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.532 0-6.4-2.868-6.4-6.4s2.868-6.4 6.4-6.4c1.582 0 3.026.58 4.14 1.536l3.056-3.056C19.356 2.457 16.008 1.2 12.24 1.2 6.132 1.2 1.2 6.132 1.2 12.24s4.932 11.04 11.04 11.04c6.38 0 11.04-4.5 11.04-11.04 0-.744-.06-1.464-.18-2.16H12.24z" />
@@ -409,7 +393,7 @@ export default function AuthScreen({
             </>
           )} */}
           {isLoginMode && (
-            <div className="mt-6 text-center text-xs">
+            <div className="mt-6 text-center text-sm">
               <span className="text-text-muted">Want to join us? </span>
               <Link
                 href="/driver-app/onboarding"

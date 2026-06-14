@@ -35,6 +35,7 @@ export interface Booking {
   type: 'AIRPORT DROP' | 'HOURLY' | 'OUTSTATION'
   driverId?: string | null
   adminApproved?: boolean
+  tripStatus?: string
 }
 
 export interface DriverNotification {
@@ -48,8 +49,7 @@ export interface DriverNotification {
 
 export interface DriverInfo {
   id?: string
-  firstName: string
-  lastName: string
+  fullName: string
   phone: string
   email: string
   currentArea: string
@@ -59,6 +59,7 @@ export interface DriverInfo {
   avatar: string
   role?: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   isOnline?: boolean
+  referralCode?: string
 }
 
 export interface DriverState {
@@ -140,6 +141,7 @@ export const fetchBookings = createAsyncThunk(
         type: b.type,
         driverId: b.driver_id,
         adminApproved: b.admin_approved,
+        tripStatus: b.trip_status,
       })) as Booking[]
     } catch (err: any) {
       console.error('Supabase fetchBookings error:', err)
@@ -181,28 +183,28 @@ export const fetchNotifications = createAsyncThunk(
   }
 )
 
-// 3. Login driver thunk with password authentication (supports email or username)
+// 3. Login driver thunk with password authentication (supports email, username, or phone)
 export const loginDriver = createAsyncThunk(
   'driver/login',
-  async (credentials: { emailOrUsername: string; password?: string }, { dispatch, rejectWithValue }) => {
+  async (credentials: { emailOrUsername?: string; phone?: string; password?: string }, { dispatch, rejectWithValue }) => {
     try {
-      let email = credentials.emailOrUsername
+      let loginResult;
 
-      // If it doesn't look like an email, resolve username to email via RPC
-      if (!email.includes('@')) {
-        const { data: resolvedEmail, error: rpcError } = await supabase
-          .rpc('get_email_by_username', { p_username: email })
-
-        if (rpcError) throw rpcError
-        if (!resolvedEmail) throw new Error('Username not found')
-        email = resolvedEmail
+      if (credentials.phone) {
+        loginResult = await supabase.auth.signInWithPassword({
+          phone: credentials.phone,
+          password: credentials.password || '',
+        })
+      } else if (credentials.emailOrUsername && credentials.emailOrUsername.includes('@')) {
+        loginResult = await supabase.auth.signInWithPassword({
+          email: credentials.emailOrUsername,
+          password: credentials.password || '',
+        })
+      } else {
+        throw new Error('Please enter your mobile number')
       }
 
-      // Supabase authentication
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: credentials.password || '',
-      })
+      const { data, error } = loginResult
 
       if (error) throw error
 
@@ -229,17 +231,17 @@ export const loginDriver = createAsyncThunk(
 
       const driverInfo: DriverInfo = {
         id: user.id,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
+        fullName: profile.full_name,
         phone: profile.phone,
-        email: user.email || email,
+        email: user.email || profile.email || '',
         currentArea: profile.current_area,
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
-        avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+        avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
+        referralCode: profile.referral_code,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -318,17 +320,17 @@ export const verifyDriverOtp = createAsyncThunk(
 
       const driverInfo: DriverInfo = {
         id: user.id,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
+        fullName: profile.full_name,
         phone: profile.phone,
         email: user.email || profile.email || '',
         currentArea: profile.current_area,
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
-        avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+        avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
+        referralCode: profile.referral_code,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -350,17 +352,15 @@ export const signupDriver = createAsyncThunk(
   'driver/signup',
   async (profileData: Partial<DriverInfo> & { password?: string }, { rejectWithValue }) => {
     try {
-      const email = profileData.email || ''
       const password = profileData.password || ''
       const normalizedPhone = normalizePhone(profileData.phone || '')
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        phone: normalizedPhone,
         password,
         options: {
           data: {
-            first_name: profileData.firstName,
-            last_name: profileData.lastName,
+            full_name: profileData.fullName,
             phone: normalizedPhone,
             license_no: profileData.licenseNo,
             current_area: profileData.currentArea,
@@ -375,15 +375,14 @@ export const signupDriver = createAsyncThunk(
 
       const newDriver: DriverInfo = {
         id: user.id,
-        firstName: profileData.firstName || 'New',
-        lastName: profileData.lastName || 'Driver',
+        fullName: profileData.fullName || 'New Driver',
         phone: normalizedPhone || '+91-0000000000',
-        email: profileData.email || 'partner@scandriver.in',
+        email: profileData.email || '',
         currentArea: profileData.currentArea || 'Delhi NCR',
         licenseNo: profileData.licenseNo || 'DL-XXXXXXXXXXXXX',
         rating: 5.0,
         verified: false,
-        avatar: (profileData.firstName?.[0] || 'N') + (profileData.lastName?.[0] || 'D'),
+        avatar: (profileData.fullName || '').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || 'ND',
         role: 'DRIVER',
       }
 
@@ -436,17 +435,17 @@ export const checkDriverSession = createAsyncThunk(
         if (profile && profile.role === 'DRIVER') {
           const driverInfo = {
             id: user.id,
-            firstName: profile.first_name,
-            lastName: profile.last_name,
+            fullName: profile.full_name,
             phone: profile.phone,
             email: user.email || '',
             currentArea: profile.current_area,
             licenseNo: profile.license_no,
             rating: Number(profile.rating),
             verified: profile.verified,
-            avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+            avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
             role: profile.role,
             isOnline: profile.is_online,
+            referralCode: profile.referral_code,
           } as DriverInfo
 
           localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -521,17 +520,17 @@ export const fetchDriverProfile = createAsyncThunk(
 
       const driverInfo: DriverInfo = {
         id: session.user.id,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
+        fullName: profile.full_name,
         phone: profile.phone,
         email: session.user.email || profile.email || '',
         currentArea: profile.current_area,
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
-        avatar: (profile.first_name?.[0] || '') + (profile.last_name?.[0] || ''),
+        avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
+        referralCode: profile.referral_code,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -554,8 +553,7 @@ export const updateDriverProfile = createAsyncThunk(
       const { data, error } = await supabase
         .from('users')
         .update({
-          first_name: updatedData.firstName,
-          last_name: updatedData.lastName,
+          full_name: updatedData.fullName,
           phone: updatedData.phone,
           license_no: updatedData.licenseNo,
           current_area: updatedData.currentArea,
@@ -568,16 +566,16 @@ export const updateDriverProfile = createAsyncThunk(
 
       const driverInfo: DriverInfo = {
         id: session.user.id,
-        firstName: data.first_name,
-        lastName: data.last_name,
+        fullName: data.full_name,
         phone: data.phone,
         email: session.user.email || '',
         currentArea: data.current_area,
         licenseNo: data.license_no,
         rating: Number(data.rating),
         verified: data.verified,
-        avatar: (data.first_name?.[0] || '') + (data.last_name?.[0] || ''),
+        avatar: (data.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: data.role,
+        referralCode: data.referral_code,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -612,23 +610,6 @@ export const toggleOnlineStatus = createAsyncThunk(
           .eq('id', session.user.id)
 
         if (error) throw error
-
-        const id = 'N-' + Date.now()
-        const notificationTitle = newOnlineStatus ? 'You are now Online' : 'You are now Offline'
-        const notificationDesc = newOnlineStatus
-          ? 'You will receive notifications of available bookings near you.'
-          : 'Go online to start receiving booking requests.'
-
-        await supabase
-          .from('notifications')
-          .insert({
-            driver_id: session.user.id,
-            title: notificationTitle,
-            description: notificationDesc,
-            time: 'Just now',
-            type: 'system',
-            read: false,
-          })
       }
 
       return newOnlineStatus
@@ -678,6 +659,7 @@ export const acceptBooking = createAsyncThunk(
         type: booking.type,
         driverId: booking.driver_id,
         adminApproved: booking.admin_approved,
+        tripStatus: booking.trip_status,
       } as Booking
     } catch (err: any) {
       console.warn('Supabase acceptBooking failed:', err)
@@ -707,6 +689,38 @@ export const passBooking = createAsyncThunk(
     } catch (err: any) {
       console.warn('Supabase passBooking failed, using local fallback:', err)
       return bookingId
+    }
+  }
+)
+
+// 8c. Update Trip Status Thunk
+export const updateTripStatus = createAsyncThunk(
+  'driver/updateTripStatus',
+  async ({ bookingId, tripStatus }: { bookingId: string; tripStatus: string }, { dispatch, rejectWithValue }) => {
+    try {
+      const updates: any = { trip_status: tripStatus }
+      
+      // If the final status "completed" or "cancelled_by_driver" is selected, also update the main status to 'completed'
+      if (tripStatus === 'completed' || tripStatus === 'cancelled_by_driver') {
+        updates.status = 'completed'
+      }
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .update(updates)
+        .eq('id', bookingId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Reload bookings to ensure stats and screens are fresh
+      dispatch(fetchBookings())
+
+      return { bookingId, tripStatus, status: updates.status || 'accepted' }
+    } catch (err: any) {
+      console.error('updateTripStatus error:', err)
+      return rejectWithValue(err.message || 'Failed to update status')
     }
   }
 )
@@ -922,26 +936,6 @@ export const driverSlice = createSlice({
     // Toggle Online Status
     builder.addCase(toggleOnlineStatus.fulfilled, (state, action: PayloadAction<boolean>) => {
       state.isOnline = action.payload
-      const id = 'N-' + Date.now()
-      if (state.isOnline) {
-        state.notifications.unshift({
-          id,
-          title: 'You are now Online',
-          description: 'You will receive notifications of available bookings near you.',
-          time: 'Just now',
-          type: 'system',
-          read: false,
-        })
-      } else {
-        state.notifications.unshift({
-          id,
-          title: 'You are now Offline',
-          description: 'Go online to start receiving booking requests.',
-          time: 'Just now',
-          type: 'system',
-          read: false,
-        })
-      }
     })
 
     // Accept Booking
@@ -987,6 +981,16 @@ export const driverSlice = createSlice({
       const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
       if (bookingIndex !== -1) {
         state.bookings[bookingIndex].status = 'passed'
+      }
+    })
+
+    // Update Trip Status
+    builder.addCase(updateTripStatus.fulfilled, (state, action) => {
+      const { bookingId, tripStatus, status } = action.payload
+      const index = state.bookings.findIndex((b) => b.id === bookingId)
+      if (index !== -1) {
+        state.bookings[index].tripStatus = tripStatus
+        state.bookings[index].status = status as any
       }
     })
 

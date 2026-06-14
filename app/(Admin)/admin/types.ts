@@ -1,8 +1,18 @@
+export interface DriverProfile {
+  experience: string
+  license_status: string
+  documents_available: string[]
+  availability: string
+  service_preference: string[]
+  vehicle_specialties: string[]
+  previous_platforms?: string | null
+  additional_comments?: string | null
+}
+
 export interface Driver {
   id: string
   email: string
-  first_name: string
-  last_name: string
+  full_name: string
   phone: string
   license_no: string
   current_area: string
@@ -11,6 +21,7 @@ export interface Driver {
   is_online: boolean
   role: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   created_at: string
+  driver_profiles?: DriverProfile | DriverProfile[] | null
 }
 
 export interface Booking {
@@ -30,6 +41,7 @@ export interface Booking {
   driver_id: string | null
   admin_approved: boolean
   created_at: string
+  trip_status?: string | null
 }
 
 export interface DashboardStats {

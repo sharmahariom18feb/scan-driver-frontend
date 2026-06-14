@@ -34,6 +34,7 @@ import {
   normalizePhone,
   Booking,
   fetchDriverProfile,
+  updateTripStatus,
 } from '@/redux/slices/driverSlice'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
@@ -61,26 +62,24 @@ export default function DriverApp() {
 
   // Auth local state
   const [isLoginMode, setIsLoginMode] = useState(true)
-  const [email, setEmail] = useState('')
+
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [currentArea, setCurrentArea] = useState('')
   const [licenseNo, setLicenseNo] = useState('')
 
   // Multi-option login state
-  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('otp')
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password')
   const [otpSent, setOtpSent] = useState(false)
   const [otpCode, setOtpCode] = useState('')
   const [resendTimer, setResendTimer] = useState(0)
 
   // Edit Profile local state
-  const [editFirstName, setEditFirstName] = useState('')
-  const [editLastName, setEditLastName] = useState('')
+  const [editFullName, setEditFullName] = useState('')
   const [editPhone, setEditPhone] = useState('')
-  const [editEmail, setEditEmail] = useState('')
+
   const [editCurrentArea, setEditCurrentArea] = useState('')
   const [editLicenseNo, setEditLicenseNo] = useState('')
 
@@ -88,8 +87,8 @@ export default function DriverApp() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Booking filtering: 'available' | 'trips'
-  const [bookingFilter, setBookingFilter] = useState<'available' | 'trips'>('available')
+  // Booking filtering: 'current' | 'history'
+  const [bookingFilter, setBookingFilter] = useState<'current' | 'history'>('current')
 
   // Initial check with safety timeout to prevent infinite loader
   // (e.g. BFCache / back-button navigation state freezing)
@@ -213,10 +212,8 @@ export default function DriverApp() {
   // Initialize edit profile fields when user is loaded
   useEffect(() => {
     if (info) {
-      setEditFirstName(info.firstName)
-      setEditLastName(info.lastName)
+      setEditFullName(info.fullName)
       setEditPhone(info.phone)
-      setEditEmail(info.email)
       setEditCurrentArea(info.currentArea)
       setEditLicenseNo(info.licenseNo)
     }
@@ -253,13 +250,14 @@ export default function DriverApp() {
     e.preventDefault()
     if (isLoginMode) {
       if (loginMethod === 'password') {
-        if (!email) {
-          toast.error('Please enter email address or username')
+        if (!phone) {
+          toast.error('Please enter your mobile number')
           return
         }
-        const result = await dispatch(loginDriver({ emailOrUsername: email, password }))
+        const normalizedPhone = normalizePhone(phone)
+        const result = await dispatch(loginDriver({ phone: normalizedPhone, password }))
         if (loginDriver.fulfilled.match(result)) {
-          toast.success(`Welcome back, ${result.payload.firstName}!`)
+          toast.success(`Welcome back, ${result.payload.fullName}!`)
         } else {
           const errMsg = result.payload as string || 'Failed to login'
           toast.error(errMsg)
@@ -289,7 +287,7 @@ export default function DriverApp() {
           }
           const result = await dispatch(verifyDriverOtp({ phone: normalizedPhone, code: otpCode }))
           if (verifyDriverOtp.fulfilled.match(result)) {
-            toast.success(`Welcome back, ${result.payload.firstName}!`)
+            toast.success(`Welcome back, ${result.payload.fullName}!`)
           } else {
             const errMsg = result.payload as string || 'Failed to verify OTP'
             toast.error(errMsg)
@@ -299,17 +297,15 @@ export default function DriverApp() {
         }
       }
     } else {
-      if (!firstName || !lastName || !phone || !email || !licenseNo) {
+      if (!fullName || !phone || !licenseNo) {
         toast.error('Please fill out all required fields')
         return
       }
       const normalizedPhone = normalizePhone(phone)
       const result = await dispatch(
         signupDriver({
-          firstName,
-          lastName,
+          fullName,
           phone: normalizedPhone,
-          email,
           currentArea,
           licenseNo,
           password,
@@ -358,10 +354,8 @@ export default function DriverApp() {
     e.preventDefault()
     const result = await dispatch(
       updateDriverProfile({
-        firstName: editFirstName,
-        lastName: editLastName,
+        fullName: editFullName,
         phone: editPhone,
-        email: editEmail,
         currentArea: editCurrentArea,
         licenseNo: editLicenseNo,
       })
@@ -424,6 +418,15 @@ export default function DriverApp() {
     }
   }
 
+  const handleUpdateTripStatus = async (bookingId: string, tripStatus: string) => {
+    const result = await dispatch(updateTripStatus({ bookingId, tripStatus }))
+    if (updateTripStatus.fulfilled.match(result)) {
+      toast.success('Trip status updated!')
+    } else {
+      toast.error('Failed to update trip status.')
+    }
+  }
+
   const handlePass = (bookingId: string) => {
     dispatch(passBooking(bookingId))
     setIsModalOpen(false)
@@ -446,6 +449,14 @@ export default function DriverApp() {
   const completedBookings = bookings.filter((b) => b.status === 'completed' && (!currentDriverId || b.driverId === currentDriverId))
   const myTrips = [...acceptedBookings, ...completedBookings]
 
+  // Calculate statistics dynamically based on driver profile and completed trips earnings
+  const derivedStats = {
+    trips: completedBookings.filter(b => b.tripStatus !== 'cancelled_by_driver' && b.tripStatus !== 'cancelled').length + acceptedBookings.length, // only non-cancelled completed trips + accepted ones
+    earnings: completedBookings
+      .filter(b => b.tripStatus !== 'cancelled_by_driver' && b.tripStatus !== 'cancelled')
+      .reduce((acc, curr) => acc + curr.fare, 0), // only earnings of successful completed trips
+  }
+
   // Render Loader while checking session (only if not already authenticated to prevent flash of loader)
   if (localCheckingSession && !isAuthenticated) {
     return (
@@ -461,7 +472,7 @@ export default function DriverApp() {
 
           <div className="flex items-center gap-3">
             <div className="h-5 w-5 border-2 border-gold-light border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm font-medium tracking-wide text-text-muted">
+            <p className="text-base font-medium tracking-wide text-text-muted">
               Verifying session...
             </p>
           </div>
@@ -480,16 +491,12 @@ export default function DriverApp() {
           handleAuth={handleAuth}
           handleGoogleLogin={handleGoogleLogin}
           handleResendOtp={handleResendOtp}
-          email={email}
-          setEmail={setEmail}
           password={password}
           setPassword={setPassword}
           showPassword={showPassword}
           setShowPassword={setShowPassword}
-          firstName={firstName}
-          setFirstName={setFirstName}
-          lastName={lastName}
-          setLastName={setLastName}
+          fullName={fullName}
+          setFullName={setFullName}
           phone={phone}
           setPhone={setPhone}
           currentArea={currentArea}
@@ -528,7 +535,7 @@ export default function DriverApp() {
               <ArrowLeft size={18} />
             </button>
           )}
-          <span className="font-display font-bold text-lg tracking-wider text-gold-light">
+          <span className="font-display font-bold text-xl tracking-wider text-gold-light">
             SCAN<span className="text-foreground">DRIVER</span>
           </span>
         </div>
@@ -559,7 +566,7 @@ export default function DriverApp() {
           {/* User profile initials */}
           <button
             onClick={() => setActiveTab('profile')}
-            className="h-8 w-8 rounded-full bg-gradient-to-tr from-gold to-yellow-500 text-black font-semibold text-xs flex items-center justify-center hover:opacity-90 transition-all border border-gold/30 shadow-md"
+            className="h-8 w-8 rounded-full bg-gradient-to-tr from-gold to-yellow-500 text-black font-semibold text-sm flex items-center justify-center hover:opacity-90 transition-all border border-gold/30 shadow-md"
           >
             {info?.avatar || 'RK'}
           </button>
@@ -575,7 +582,7 @@ export default function DriverApp() {
             loading={loading}
             handleToggleOnline={handleToggleOnline}
             onRefresh={handleRefreshBookings}
-            stats={stats}
+            stats={derivedStats}
             availableBookings={availableBookings}
             handleOpenDetails={handleOpenDetails}
           />
@@ -583,11 +590,12 @@ export default function DriverApp() {
 
         {activeTab === 'bookings' && (
           <BookingsTab
-            availableBookings={availableBookings}
-            myTrips={myTrips}
+            acceptedBookings={acceptedBookings}
+            completedBookings={completedBookings}
             bookingFilter={bookingFilter}
             setBookingFilter={setBookingFilter}
             handleOpenDetails={handleOpenDetails}
+            handleUpdateTripStatus={handleUpdateTripStatus}
           />
         )}
 
@@ -605,14 +613,10 @@ export default function DriverApp() {
         {activeTab === 'profile' && (
           <ProfileTab
             info={info}
-            editFirstName={editFirstName}
-            setEditFirstName={setEditFirstName}
-            editLastName={editLastName}
-            setEditLastName={setEditLastName}
+            editFullName={editFullName}
+            setEditFullName={setEditFullName}
             editPhone={editPhone}
             setEditPhone={setEditPhone}
-            editEmail={editEmail}
-            setEditEmail={setEditEmail}
             editCurrentArea={editCurrentArea}
             setEditCurrentArea={setEditCurrentArea}
             editLicenseNo={editLicenseNo}
@@ -639,7 +643,7 @@ export default function DriverApp() {
         <button
           onClick={() => {
             setActiveTab('bookings')
-            setBookingFilter('available')
+            setBookingFilter('current')
           }}
           className={cn(
             'flex flex-col items-center gap-1 transition-colors outline-none cursor-pointer',
@@ -650,7 +654,7 @@ export default function DriverApp() {
           <span className="text-[9px] uppercase tracking-wider font-bold">Bookings</span>
         </button>
 
-        <button
+        {/* <button
           onClick={() => {
             setActiveTab('alerts')
             dispatch(markAllNotificationsAsRead())
@@ -667,7 +671,7 @@ export default function DriverApp() {
             )}
           </div>
           <span className="text-[9px] uppercase tracking-wider font-bold">Alerts</span>
-        </button>
+        </button> */}
 
         <button
           onClick={() => setActiveTab('profile')}

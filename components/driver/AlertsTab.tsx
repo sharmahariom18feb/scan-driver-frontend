@@ -19,13 +19,13 @@ export default function AlertsTab({
   return (
     <div className="px-5 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground font-sans">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground font-sans">
           Notifications
         </h2>
         {unreadNotificationsCount > 0 && (
           <button
             onClick={onMarkAllRead}
-            className="text-xs text-gold-light hover:underline font-semibold bg-transparent border-0 cursor-pointer p-0"
+            className="text-sm text-gold-light hover:underline font-semibold bg-transparent border-0 cursor-pointer p-0"
           >
             Mark all read
           </button>
@@ -35,7 +35,7 @@ export default function AlertsTab({
       {notifications.length === 0 ? (
         <div className="bg-card border border-border/10 rounded-xl p-8 text-center flex flex-col items-center justify-center gap-4 text-text-muted">
           <Bell size={24} className="opacity-40" />
-          <p className="text-xs">No alerts yet.</p>
+          <p className="text-sm">No alerts yet.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -68,7 +68,7 @@ export default function AlertsTab({
 
               <div className="space-y-1 flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-xs text-foreground leading-snug">
+                  <h4 className="font-semibold text-sm text-foreground leading-snug">
                     {notif.title}
                   </h4>
                   {/* <span className="text-[9px] text-text-muted">{notif.time}</span> */}

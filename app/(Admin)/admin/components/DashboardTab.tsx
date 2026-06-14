@@ -208,7 +208,7 @@ export default function DashboardTab({
               recentDrivers.slice(0, 5).map((d) => (
                 <div key={d.id} className="py-3 flex justify-between items-center gap-4 first:pt-0 last:pb-0">
                   <div className="space-y-1">
-                    <p className="text-xs font-bold text-white">{d.first_name} {d.last_name}</p>
+                    <p className="text-xs font-bold text-white">{d.full_name}</p>
                     <p className="text-[10px] text-slate-200">{d.phone} • {d.current_area}</p>
                     <p className="text-[10px] text-slate-400">Joined {formatTime(d.created_at)}</p>
                   </div>

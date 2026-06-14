@@ -46,7 +46,7 @@ export default function BookingDetailModal({
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider block">
               {booking.id} Details
             </span>
-            <h3 className="font-bold text-lg text-foreground font-sans">
+            <h3 className="font-bold text-xl text-foreground font-sans">
               Trip Information
             </h3>
           </div>
@@ -66,14 +66,14 @@ export default function BookingDetailModal({
 
         {/* Fare callout */}
         <div className="bg-surface2/60 border border-border/10 p-3 rounded-lg flex items-center justify-between mb-5">
-          <span className="text-xs text-text-muted font-medium">Estimated Earnings</span>
-          <span className="font-bold text-xl text-emerald-500">₹{booking.fare}</span>
+          <span className="text-sm text-text-muted font-medium">Estimated Earnings</span>
+          <span className="font-bold text-2xl text-emerald-500">₹{booking.fare}</span>
         </div>
 
         <div className="space-y-5 flex-1">
           {/* Customer Info */}
           <div className="space-y-3.5">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-text-muted">
+            <h4 className="font-bold text-sm uppercase tracking-wider text-text-muted">
               Customer & Trip
             </h4>
 
@@ -85,7 +85,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Customer Name</p>
-                  <p className="text-xs font-semibold text-foreground">{booking.customerName}</p>
+                  <p className="text-sm font-semibold text-foreground">{booking.customerName}</p>
                 </div>
               </div>
 
@@ -96,7 +96,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Phone (shared after acceptance)</p>
-                  <p className="text-xs font-mono font-semibold tracking-wider text-text-muted">
+                  <p className="text-sm font-mono font-semibold tracking-wider text-text-muted">
                     {booking.status === 'accepted' ? booking.phone : '**********'}
                   </p>
                 </div>
@@ -109,7 +109,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Pickup From</p>
-                  <p className="text-xs font-semibold text-foreground leading-normal">{booking.pickup}</p>
+                  <p className="text-sm font-semibold text-foreground leading-normal">{booking.pickup}</p>
                 </div>
               </div>
 
@@ -119,7 +119,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Drop To</p>
-                  <p className="text-xs font-semibold text-foreground leading-normal">{booking.drop}</p>
+                  <p className="text-sm font-semibold text-foreground leading-normal">{booking.drop}</p>
                 </div>
               </div>
 
@@ -130,7 +130,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Date & Time</p>
-                  <p className="text-xs font-semibold text-foreground">{booking.dateTime}</p>
+                  <p className="text-sm font-semibold text-foreground">{booking.dateTime}</p>
                 </div>
               </div>
 
@@ -141,7 +141,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Duration / Distance</p>
-                  <p className="text-xs font-semibold text-foreground">
+                  <p className="text-sm font-semibold text-foreground">
                     ~{booking.duration} • {booking.distance}
                   </p>
                 </div>
@@ -151,7 +151,7 @@ export default function BookingDetailModal({
 
           {/* Vehicle & Notes */}
           <div className="space-y-3.5 pt-2">
-            <h4 className="font-bold text-xs uppercase tracking-wider text-text-muted">
+            <h4 className="font-bold text-sm uppercase tracking-wider text-text-muted">
               Vehicle & Notes
             </h4>
 
@@ -163,7 +163,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Client Vehicle</p>
-                  <p className="text-xs font-semibold text-foreground">
+                  <p className="text-sm font-semibold text-foreground">
                     {booking.status === 'accepted' ? booking.vehicle : 'Honda City - HR26-AB1234 (Masked)'}
                   </p>
                 </div>
@@ -176,7 +176,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Special Instructions</p>
-                  <p className="text-xs italic text-foreground leading-normal">
+                  <p className="text-sm italic text-foreground leading-normal">
                     "{booking.specialInstructions}"
                   </p>
                 </div>
@@ -191,13 +191,13 @@ export default function BookingDetailModal({
             <>
               <button
                 onClick={() => onAccept(booking.id)}
-                className="py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-lg shadow-md transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Check size={16} /> ACCEPT
               </button>
               <button
                 onClick={() => onPass(booking.id)}
-                className="py-3 px-4 bg-surface2 hover:bg-surface2/80 text-text-muted font-bold text-sm rounded-lg shadow-sm border border-border/15 transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-3 px-4 bg-surface2 hover:bg-surface2/80 text-text-muted font-bold text-base rounded-lg shadow-sm border border-border/15 transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <XCircle size={16} /> PASS
               </button>
@@ -205,7 +205,7 @@ export default function BookingDetailModal({
           ) : (
             <button
               onClick={onClose}
-              className="col-span-2 py-3 px-4 bg-surface2 hover:bg-surface2/80 text-foreground font-bold text-sm rounded-lg shadow-sm border border-border/15 transition-all duration-300 flex items-center justify-center cursor-pointer"
+              className="col-span-2 py-3 px-4 bg-surface2 hover:bg-surface2/80 text-foreground font-bold text-base rounded-lg shadow-sm border border-border/15 transition-all duration-300 flex items-center justify-center cursor-pointer"
             >
               CLOSE DETAILS
             </button>

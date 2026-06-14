@@ -119,6 +119,19 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-size: 103%;
+  }
+  @media (min-width: 768px) {
+    html {
+      font-size: 104%;
+    }
+  }
+  @media (min-width: 1024px) {
+    html {
+      font-size: 105%;
+    }
+  }
   body {
     @apply bg-background text-foreground;
   }

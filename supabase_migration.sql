@@ -5,8 +5,7 @@ create table if not exists public.users (
   id uuid references auth.users on delete cascade primary key,
   username text unique, -- Added unique username for custom identifier login
   email text, -- Storing email for quick lookup
-  first_name text not null,
-  last_name text not null,
+  full_name text not null,
   phone text not null,
   license_no text not null,
   current_area text not null,
@@ -14,6 +13,7 @@ create table if not exists public.users (
   verified boolean default false not null,
   is_online boolean default false not null,
   role text not null check (role in ('ADMIN', 'DRIVER', 'CUSTOMER')) default 'DRIVER',
+  referral_code text unique,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -60,7 +60,8 @@ create table if not exists public.bookings (
   status text not null check (status in ('available', 'accepted', 'passed', 'completed')) default 'available',
   type text not null check (type in ('HOURLY', 'WEEKLY', 'MONTHLY', 'OUTSTATION', 'CORPORATE', 'AIRPORT DROP', 'EVENT')),
   driver_id uuid references public.users(id) on delete set null,
-  admin_approved boolean not null default false,
+  admin_approved boolean not null default true,
+  trip_status text default 'not_started',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -81,10 +82,13 @@ create policy "Admins can insert bookings." on public.bookings
   for insert with check (public.is_admin());
 
 create policy "Anyone can insert booking requests." on public.bookings
-  for insert with check (admin_approved = false);
+  for insert with check (true);
 
 create policy "Admins can update all bookings." on public.bookings
   for update using (public.is_admin());
+
+create policy "Admins can delete bookings." on public.bookings
+  for delete using (public.is_admin());
 
 -- 3. Create notifications table
 create table if not exists public.notifications (
@@ -153,20 +157,20 @@ create policy "Admins can delete any FCM tokens." on public.driver_fcm_tokens
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.users (id, username, email, first_name, last_name, phone, license_no, current_area, rating, verified, is_online, role)
+  insert into public.users (id, username, email, full_name, phone, license_no, current_area, rating, verified, is_online, role, referral_code)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
     new.email,
-    coalesce(new.raw_user_meta_data->>'first_name', ''),
-    coalesce(new.raw_user_meta_data->>'last_name', ''),
+    coalesce(new.raw_user_meta_data->>'full_name', trim(coalesce(new.raw_user_meta_data->>'first_name', '') || ' ' || coalesce(new.raw_user_meta_data->>'last_name', '')), ''),
     coalesce(new.raw_user_meta_data->>'phone', new.phone, ''),
     coalesce(new.raw_user_meta_data->>'license_no', ''),
     coalesce(new.raw_user_meta_data->>'current_area', ''),
     5.00,
     false,
     false,
-    coalesce(new.raw_user_meta_data->>'role', 'DRIVER')
+    coalesce(new.raw_user_meta_data->>'role', 'DRIVER'),
+    'SD-' || UPPER(SUBSTRING(REPLACE(gen_random_uuid()::text, '-', '') FROM 1 FOR 6))
   );
   return new;
 end;
@@ -192,6 +196,19 @@ begin
     select email into v_email from public.users 
     where right(regexp_replace(phone, '\D', '', 'g'), 10) = right(regexp_replace(p_username, '\D', '', 'g'), 10);
   end if;
+  
+  return v_email;
+end;
+$$ language plpgsql security definer;
+
+-- 5b. Helper function to resolve email by phone number (security definer to bypass RLS)
+create or replace function public.get_email_by_phone(p_phone text)
+returns text as $$
+declare
+  v_email text;
+begin
+  select email into v_email from public.users 
+  where right(regexp_replace(phone, '\D', '', 'g'), 10) = right(regexp_replace(p_phone, '\D', '', 'g'), 10);
   
   return v_email;
 end;
@@ -313,7 +330,10 @@ returns table (email_exists boolean, phone_exists boolean) as $$
 begin
   return query
   select 
-    exists(select 1 from public.users where email = p_email) as email_exists,
+    case 
+      when p_email is not null and p_email != '' and p_email like '%@%' then exists(select 1 from public.users where email = p_email)
+      else false
+    end as email_exists,
     exists(select 1 from public.users where right(regexp_replace(phone, '\D', '', 'g'), 10) = right(regexp_replace(p_phone, '\D', '', 'g'), 10)) as phone_exists;
 end;
 $$ language plpgsql security definer;
@@ -337,5 +357,47 @@ begin
   return true;
 end;
 $$ language plpgsql security definer;
+
+-- 12. Create driver_profiles table to store advanced onboarding characteristics
+create table if not exists public.driver_profiles (
+  id uuid references public.users(id) on delete cascade primary key,
+  experience text not null,
+  license_status text not null,
+  documents_available text[] not null default '{}',
+  availability text not null,
+  service_preference text[] not null default '{}',
+  vehicle_specialties text[] not null default '{}',
+  previous_platforms text,
+  additional_comments text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS for driver_profiles
+alter table public.driver_profiles enable row level security;
+
+-- Policies for driver_profiles
+create policy "Allow select for owner or admin" on public.driver_profiles
+  for select using (auth.uid() = id or (select role from public.users where id = auth.uid()) = 'ADMIN');
+
+create policy "Allow insert for owner" on public.driver_profiles
+  for insert with check (true);
+
+create policy "Allow update for owner" on public.driver_profiles
+  for update using (auth.uid() = id);
+
+-- 13. Create auto-confirm trigger to bypass phone/email validation in auth.users
+create or replace function public.auto_confirm_user()
+returns trigger as $$
+begin
+  new.phone_confirmed_at = coalesce(new.phone_confirmed_at, now());
+  new.email_confirmed_at = coalesce(new.email_confirmed_at, now());
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created_auto_confirm on auth.users;
+create trigger on_auth_user_created_auto_confirm
+  before insert on auth.users
+  for each row execute function public.auto_confirm_user();
 
 

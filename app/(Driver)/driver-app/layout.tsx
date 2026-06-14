@@ -54,7 +54,7 @@ export default function DriverLayout({
 
       {/* Responsive native mobile wrapper layout */}
       <div className="min-h-screen bg-slate-950 dark:bg-black flex items-center justify-center py-0 sm:py-8 transition-colors duration-300">
-        <div className="w-full sm:max-w-md min-h-screen sm:min-h-[850px] sm:max-h-[900px] bg-background text-foreground sm:rounded-2xl sm:shadow-2xl overflow-hidden flex flex-col border border-border/10 relative">
+        <div className="driver-app-root w-full sm:max-w-md min-h-screen sm:min-h-[850px] sm:max-h-[900px] bg-background text-foreground sm:rounded-2xl sm:shadow-2xl overflow-hidden flex flex-col border border-border/10 relative">
           {children}
         </div>
       </div>

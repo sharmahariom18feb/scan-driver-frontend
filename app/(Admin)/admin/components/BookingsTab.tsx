@@ -15,7 +15,7 @@ interface BookingsTabProps {
 export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTabProps) {
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'accepted' | 'completed'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'accepted' | 'completed' | 'cancelled'>('all')
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all')
 
   // Create Booking Modal State
@@ -47,7 +47,14 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
       b.phone.includes(searchTerm) ||
       b.vehicle.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === 'all' ? true : b.status === statusFilter
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'cancelled'
+        ? (b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled')
+        : statusFilter === 'completed'
+        ? (b.status === 'completed' && b.trip_status !== 'cancelled_by_driver' && b.trip_status !== 'cancelled')
+        : b.status === statusFilter
 
     const matchesApproval =
       approvalFilter === 'all'
@@ -164,7 +171,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
       // 2. If assigning, insert system notification for driver
       if (driverId) {
         const selectedDriver = drivers.find((d) => d.id === driverId)
-        const driverName = selectedDriver ? `${selectedDriver.first_name}` : 'Driver'
+        const driverName = selectedDriver ? `${selectedDriver.full_name}` : 'Driver'
 
         await supabase.from('notifications').insert({
           driver_id: driverId,
@@ -232,6 +239,43 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
     }
   }
 
+  // Unapprove Booking Action
+  const handleUnapproveBooking = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ admin_approved: false })
+        .eq('id', bookingId)
+
+      if (error) throw error
+      toast.success(`Booking ${bookingId} unapproved successfully!`)
+      onRefresh()
+    } catch (err: any) {
+      console.error('Error unapproving booking:', err)
+      toast.error(err.message || 'Failed to unapprove booking')
+    }
+  }
+
+  // Delete Booking Action
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete booking ${bookingId}?`)) {
+      return
+    }
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId)
+
+      if (error) throw error
+      toast.success(`Booking ${bookingId} deleted successfully!`)
+      onRefresh()
+    } catch (err: any) {
+      console.error('Error deleting booking:', err)
+      toast.error(err.message || 'Failed to delete booking')
+    }
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-300">
       {/* Header section */}
@@ -266,7 +310,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
 
         {/* Status filters */}
         <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
-          {(['all', 'available', 'accepted', 'completed'] as const).map((status) => (
+          {(['all', 'available', 'accepted', 'completed', 'cancelled'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -384,7 +428,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                       <td className="py-4 px-5">
                         {assignedDriver ? (
                           <div className="space-y-1">
-                            <p className="font-bold text-white">{assignedDriver.first_name} {assignedDriver.last_name}</p>
+                            <p className="font-bold text-white">{assignedDriver.full_name}</p>
                             <button
                               onClick={() => setAssigningBooking(b)}
                               className="text-[9px] font-extrabold text-amber-500 hover:text-amber-400 uppercase hover:underline cursor-pointer"
@@ -406,43 +450,52 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                       {/* Actions */}
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {!b.admin_approved && (
-                            <button
-                              onClick={() => handleApproveBooking(b.id)}
-                              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
-                            >
-                              Approve
-                            </button>
+                          {b.admin_approved ? (
+                            b.status !== 'completed' && (
+                              <button
+                                onClick={() => handleUnapproveBooking(b.id)}
+                                className="border border-slate-700 hover:bg-slate-800 text-slate-355 font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1"
+                              >
+                                Unapprove
+                              </button>
+                            )
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleApproveBooking(b.id)}
+                                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBooking(b.id)}
+                                className="bg-rose-500 hover:bg-rose-650 text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
+                              >
+                                Delete
+                              </button>
+                            </>
                           )}
 
                           <span
                             className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mr-2 ${
-                              b.status === 'completed'
+                              b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
+                                ? 'bg-rose-950 text-rose-300 border border-rose-850'
+                                : b.status === 'completed'
                                 ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
                                 : b.status === 'accepted'
                                 ? 'bg-sky-950 text-sky-300 border border-sky-800'
                                 : 'bg-amber-950 text-amber-300 border border-amber-800'
                             }`}
                           >
-                            {b.status}
+                            {b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled' ? 'cancelled' : b.status}
                           </span>
 
-                          {b.status === 'accepted' && (
+                          {b.status !== 'completed' && (
                             <button
                               onClick={() => handleUpdateStatus(b.id, 'completed')}
                               className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-2.5 rounded-lg cursor-pointer transition-all"
                             >
                               Complete
-                            </button>
-                          )}
-
-                          {b.status !== 'completed' && (
-                            <button
-                              onClick={() => handleUpdateStatus(b.id, 'completed')}
-                              className="text-slate-350 hover:text-white text-[10px] font-bold py-1.5 px-2 cursor-pointer transition-all"
-                              title="Mark Completed"
-                            >
-                              Done
                             </button>
                           )}
                         </div>
@@ -475,14 +528,16 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                     </div>
                     <span
                       className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
-                        b.status === 'completed'
+                        b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
+                          ? 'bg-rose-950 text-rose-300 border border-rose-850'
+                          : b.status === 'completed'
                           ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
                           : b.status === 'accepted'
                           ? 'bg-sky-950 text-sky-300 border border-sky-800'
                           : 'bg-amber-950 text-amber-300 border border-amber-800'
                       }`}
                     >
-                      {b.status}
+                      {b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled' ? 'cancelled' : b.status}
                     </span>
                   </div>
 
@@ -498,7 +553,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                     <div className="text-xs">
                       {assignedDriver ? (
                         <p className="text-slate-200 text-[10px] font-semibold">
-                          Driver: <span className="font-extrabold text-white">{assignedDriver.first_name}</span>
+                          Driver: <span className="font-extrabold text-white">{assignedDriver.full_name}</span>
                         </p>
                       ) : (
                         <span className="text-[10px] text-slate-400 italic">No driver assigned</span>
@@ -506,13 +561,30 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                     </div>
 
                     <div className="flex gap-2">
-                      {!b.admin_approved && (
-                        <button
-                          onClick={() => handleApproveBooking(b.id)}
-                          className="bg-amber-500 hover:bg-amber-600 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
-                        >
-                          Approve
-                        </button>
+                      {b.admin_approved ? (
+                        b.status !== 'completed' && (
+                          <button
+                            onClick={() => handleUnapproveBooking(b.id)}
+                            className="bg-slate-855 hover:bg-slate-800 text-slate-300 border border-slate-700 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                          >
+                            Unapprove
+                          </button>
+                        )
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleApproveBooking(b.id)}
+                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBooking(b.id)}
+                            className="bg-rose-500 hover:bg-rose-600 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => setAssigningBooking(b)}
@@ -520,7 +592,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                       >
                         {assignedDriver ? 'Change' : 'Assign'}
                       </button>
-                      {b.status === 'accepted' && (
+                      {b.status !== 'completed' && (
                         <button
                           onClick={() => handleUpdateStatus(b.id, 'completed')}
                           className="bg-emerald-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
@@ -799,7 +871,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                       >
                         <div className="space-y-0.5">
                           <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                            {driver.first_name} {driver.last_name}
+                            {driver.full_name}
                             <span className={`inline-block h-1.5 w-1.5 rounded-full ${driver.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
                           </p>
                           <p className="text-[10px] text-slate-500 font-semibold">{driver.phone} • {driver.current_area}</p>

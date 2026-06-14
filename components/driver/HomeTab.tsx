@@ -38,11 +38,11 @@ export default function HomeTab({
         )}
       >
         <div className="space-y-1 relative z-10">
-          <h3 className="font-semibold text-base flex items-center gap-2">
-            Good afternoon, {info?.firstName}
+          <h3 className="font-semibold text-lg flex items-center gap-2">
+            Good afternoon, {info?.fullName}
             <span className="animate-float">👋</span>
           </h3>
-          <p className="text-xs text-text-muted flex items-center gap-1.5">
+          <p className="text-sm text-text-muted flex items-center gap-1.5">
             <span
               className={cn(
                 'inline-block h-2 w-2 rounded-full',
@@ -55,7 +55,7 @@ export default function HomeTab({
 
         {/* iOS toggle style */}
         <div className="flex items-center gap-2 relative z-10 sm:self-center">
-          <span className={cn('text-xs font-semibold tracking-wide uppercase', isOnline ? 'text-emerald-500' : 'text-text-muted')}>
+          <span className={cn('text-sm font-semibold tracking-wide uppercase', isOnline ? 'text-emerald-500' : 'text-text-muted')}>
             {isOnline ? 'ONLINE' : 'OFFLINE'}
           </span>
           <button
@@ -78,15 +78,15 @@ export default function HomeTab({
       {/* Stats list */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
-          <span className="block font-bold text-lg text-gold-light">{stats.trips}</span>
-          <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Today's Trips</span>
+          <span className="block font-bold text-xl text-gold-light">{stats.trips}</span>
+          <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Total Trips</span>
         </div>
         <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
-          <span className="block font-bold text-lg text-gold-light">₹{stats.earnings}</span>
-          <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Today's Earnings</span>
+          <span className="block font-bold text-xl text-gold-light">₹{stats.earnings}</span>
+          <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Total Earnings</span>
         </div>
         <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
-          <span className="block font-bold text-lg text-gold-light flex items-center justify-center gap-0.5">
+          <span className="block font-bold text-xl text-gold-light flex items-center justify-center gap-0.5">
             {info?.rating} <Star size={12} className="fill-gold-light text-gold-light" />
           </span>
           <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Your Rating</span>
@@ -97,7 +97,7 @@ export default function HomeTab({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-text-muted">
+            <h3 className="font-bold text-sm uppercase tracking-wider text-text-muted">
               Available Bookings
             </h3>
             <span className="px-2 py-0.5 rounded-full bg-surface2 border border-border/15 text-[10px] font-semibold text-gold-light">
@@ -123,8 +123,8 @@ export default function HomeTab({
               <Search size={22} className="animate-float" />
             </div>
             <div className="space-y-1">
-              <h4 className="font-semibold text-sm">Go Online to See Bookings</h4>
-              <p className="text-xs text-text-muted max-w-[240px] mx-auto leading-relaxed">
+              <h4 className="font-semibold text-base">Go Online to See Bookings</h4>
+              <p className="text-sm text-text-muted max-w-[240px] mx-auto leading-relaxed">
                 Toggle online status above to start receiving booking requests in Delhi NCR.
               </p>
             </div>
@@ -136,15 +136,15 @@ export default function HomeTab({
               <Search size={22} className="text-gold-light" />
             </div>
             <div className="space-y-1.5">
-              <h4 className="font-semibold text-sm">No bookings found</h4>
-              <p className="text-xs text-text-muted max-w-[220px] mx-auto leading-relaxed mb-2">
+              <h4 className="font-semibold text-base">No bookings found</h4>
+              <p className="text-sm text-text-muted max-w-[220px] mx-auto leading-relaxed mb-2">
                 Click search to scan for available booking requests in your area.
               </p>
             </div>
             <button
               onClick={onRefresh}
               disabled={loading}
-              className="px-4 py-2 bg-primary hover:bg-primary/95 text-black font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              className="px-4 py-2 bg-primary hover:bg-primary/95 text-black font-semibold text-sm rounded-lg flex items-center gap-1.5 shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
             >
               <Search size={14} className={cn(loading && 'hidden')} />
               {loading && <RefreshCw size={14} className="animate-spin" />}
@@ -165,7 +165,7 @@ export default function HomeTab({
                     <span className="text-[10px] font-semibold text-text-muted tracking-wider block">
                       {booking.id}
                     </span>
-                    <h4 className="font-bold text-sm text-foreground group-hover:text-gold-light transition-colors">
+                    <h4 className="font-bold text-base text-foreground group-hover:text-gold-light transition-colors">
                       {booking.customerName}
                     </h4>
                   </div>
@@ -188,22 +188,22 @@ export default function HomeTab({
                   {/* Pickup */}
                   <div className="relative">
                     <span className="absolute -left-4.5 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/10" />
-                    <p className="text-xs text-foreground font-semibold leading-none mb-1">Pickup</p>
+                    <p className="text-sm text-foreground font-semibold leading-none mb-1">Pickup</p>
                     <p className="text-[11px] text-text-muted truncate">{booking.pickup}</p>
                   </div>
                   {/* Drop */}
                   <div className="relative">
                     <span className="absolute -left-4.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 ring-4 ring-amber-500/10" />
-                    <p className="text-xs text-foreground font-semibold leading-none mb-1">Drop</p>
+                    <p className="text-sm text-foreground font-semibold leading-none mb-1">Drop</p>
                     <p className="text-[11px] text-text-muted truncate">{booking.drop}</p>
                   </div>
                 </div>
 
                 <div className="border-t border-border/10 mt-4 pt-3 flex items-center justify-between text-[11px] text-text-muted">
-                  <span className="font-semibold text-xs text-foreground">
+                  <span className="font-semibold text-sm text-foreground">
                     {booking.dateTime}
                   </span>
-                  <span className="font-bold text-sm text-emerald-500">
+                  <span className="font-extrabold text-2xl text-emerald-500">
                     ₹{booking.fare}
                   </span>
                 </div>

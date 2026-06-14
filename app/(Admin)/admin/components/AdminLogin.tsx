@@ -57,7 +57,7 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
         throw new Error('Access Denied: You do not have administrator privileges.')
       }
 
-      toast.success(`Welcome back, ${profile.first_name}!`)
+      toast.success(`Welcome back, ${profile.full_name}!`)
       localStorage.setItem('admin_login_time', Date.now().toString())
       onLoginSuccess(profile as Driver)
     } catch (err: any) {
