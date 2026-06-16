@@ -22,8 +22,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // System Data State
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([]) // Holds 5 most recent bookings for DashboardTab
+  const [drivers, setDrivers] = useState<Driver[]>([])   // Holds 5 most recent drivers for DashboardTab
   const [loading, setLoading] = useState(true)
 
   // Statistics State
@@ -38,7 +38,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     pendingBookingsCount: 0,
   })
 
-  // Fetch all system data
+  // Fetch stats and recent previews from backend
   const fetchData = async () => {
     try {
       // 0. Security check: Verify that the current user is still an ADMIN
@@ -54,49 +54,49 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         return
       }
 
-      // 1. Fetch Bookings
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false })
+      // Fetch all stats counts and recent lists in parallel
+      const [
+        totalBookingsRes,
+        availableBookingsRes,
+        acceptedBookingsRes,
+        completedBookingsRes,
+        totalDriversRes,
+        onlineDriversRes,
+        pendingDriversRes,
+        pendingBookingsRes,
+        recentBookingsRes,
+        recentDriversRes
+      ] = await Promise.all([
+        supabase.from('bookings').select('*', { count: 'exact', head: true }),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'accepted'),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER'),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_online', true),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('verified', false),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('admin_approved', false),
+        supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
+        supabase.from('users').select('*, driver_profiles(*)').eq('role', 'DRIVER').order('created_at', { ascending: false }).limit(5)
+      ])
 
-      if (bookingsError) throw bookingsError
+      if (recentBookingsRes.error) throw recentBookingsRes.error
+      if (recentDriversRes.error) throw recentDriversRes.error
 
-      // 2. Fetch Drivers (users with role = 'DRIVER')
-      const { data: driversData, error: driversError } = await supabase
-        .from('users')
-        .select('*, driver_profiles(*)')
-        .eq('role', 'DRIVER')
-        .order('created_at', { ascending: false })
-
-      if (driversError) throw driversError
-
-      const castedBookings = (bookingsData || []) as Booking[]
-      const castedDrivers = (driversData || []) as Driver[]
+      const castedBookings = (recentBookingsRes.data || []) as Booking[]
+      const castedDrivers = (recentDriversRes.data || []) as Driver[]
 
       setBookings(castedBookings)
       setDrivers(castedDrivers)
 
-      // Calculate statistics
-      const totalBookings = castedBookings.length
-      const availableBookings = castedBookings.filter((b) => b.status === 'available').length
-      const acceptedBookings = castedBookings.filter((b) => b.status === 'accepted').length
-      const completedBookings = castedBookings.filter((b) => b.status === 'completed').length
-
-      const totalDrivers = castedDrivers.length
-      const onlineDrivers = castedDrivers.filter((d) => d.is_online).length
-      const pendingDriversCount = castedDrivers.filter((d) => !d.verified).length
-      const pendingBookingsCount = castedBookings.filter((b) => !b.admin_approved).length
-
       setStats({
-        totalBookings,
-        availableBookings,
-        acceptedBookings,
-        completedBookings,
-        totalDrivers,
-        onlineDrivers,
-        pendingDriversCount,
-        pendingBookingsCount,
+        totalBookings: totalBookingsRes.count || 0,
+        availableBookings: availableBookingsRes.count || 0,
+        acceptedBookings: acceptedBookingsRes.count || 0,
+        completedBookings: completedBookingsRes.count || 0,
+        totalDrivers: totalDriversRes.count || 0,
+        onlineDrivers: onlineDriversRes.count || 0,
+        pendingDriversCount: pendingDriversRes.count || 0,
+        pendingBookingsCount: pendingBookingsRes.count || 0,
       })
     } catch (err: any) {
       console.error('Error fetching admin data:', err)
@@ -299,15 +299,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
               {activeTab === 'bookings' && (
                 <BookingsTab
-                  bookings={bookings}
-                  drivers={drivers}
                   onRefresh={fetchData}
                 />
               )}
 
               {activeTab === 'drivers' && (
                 <DriversTab
-                  drivers={drivers}
                   onRefresh={fetchData}
                 />
               )}

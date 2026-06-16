@@ -60,8 +60,10 @@ create table if not exists public.bookings (
   status text not null check (status in ('available', 'accepted', 'passed', 'completed')) default 'available',
   type text not null check (type in ('HOURLY', 'WEEKLY', 'MONTHLY', 'OUTSTATION', 'CORPORATE', 'AIRPORT DROP', 'EVENT')),
   driver_id uuid references public.users(id) on delete set null,
-  admin_approved boolean not null default true,
+  admin_approved boolean not null default false,
   trip_status text default 'not_started',
+  payment_type text check (payment_type in ('CASH', 'QR')),
+  invoice_id text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -141,8 +143,8 @@ create policy "Drivers can view their own FCM tokens." on public.driver_fcm_toke
 create policy "Drivers can insert/upsert their own FCM tokens." on public.driver_fcm_tokens
   for insert with check (auth.uid() = driver_id);
 
-create policy "Drivers can update their own FCM tokens." on public.driver_fcm_tokens
-  for update using (auth.uid() = driver_id);
+create policy "Drivers can update FCM tokens to associate with themselves." on public.driver_fcm_tokens
+  for update using (true) with check (auth.uid() = driver_id);
 
 create policy "Drivers can delete their own FCM tokens." on public.driver_fcm_tokens
   for delete using (auth.uid() = driver_id);
@@ -170,7 +172,7 @@ begin
     false,
     false,
     coalesce(new.raw_user_meta_data->>'role', 'DRIVER'),
-    'SD-' || UPPER(SUBSTRING(REPLACE(gen_random_uuid()::text, '-', '') FROM 1 FOR 6))
+    (floor(random() * 900000 + 100000))::text
   );
   return new;
 end;

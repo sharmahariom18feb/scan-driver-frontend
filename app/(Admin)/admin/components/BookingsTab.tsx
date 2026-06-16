@@ -1,22 +1,30 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Booking, Driver } from '../types'
 
 interface BookingsTabProps {
-  bookings: Booking[]
-  drivers: Driver[]
   onRefresh: () => void
 }
 
-export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTabProps) {
+export default function BookingsTab({ onRefresh }: BookingsTabProps) {
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'accepted' | 'completed' | 'cancelled'>('all')
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all')
+
+  // Pagination & Loading States
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalCount, setTotalCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  // Local drivers list for ID-to-name lookup and assignment modal
+  const [drivers, setDrivers] = useState<Driver[]>([])
 
   // Create Booking Modal State
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -32,39 +40,111 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
   const [durationValue, setDurationValue] = useState('8')
   const [fare, setFare] = useState('')
   const [specialInstructions, setSpecialInstructions] = useState('')
-  const [adminApproved, setAdminApproved] = useState(true)
+  const [adminApproved, setAdminApproved] = useState(false)
   const [creating, setCreating] = useState(false)
 
   // Driver Assignment Modal State
   const [assigningBooking, setAssigningBooking] = useState<Booking | null>(null)
   const [assigning, setAssigning] = useState(false)
 
-  // Filter Bookings
-  const filteredBookings = bookings.filter((b) => {
-    const matchesSearch =
-      b.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.phone.includes(searchTerm) ||
-      b.vehicle.toLowerCase().includes(searchTerm.toLowerCase())
+  // Fetch Drivers for assignment & lookup once
+  const fetchAllDrivers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*, driver_profiles(*)')
+        .eq('role', 'DRIVER')
+      if (error) throw error
+      setDrivers((data || []) as Driver[])
+    } catch (err) {
+      console.error('Error fetching drivers for bookings:', err)
+    }
+  }
 
-    const matchesStatus =
-      statusFilter === 'all'
-        ? true
-        : statusFilter === 'cancelled'
-        ? (b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled')
-        : statusFilter === 'completed'
-        ? (b.status === 'completed' && b.trip_status !== 'cancelled_by_driver' && b.trip_status !== 'cancelled')
-        : b.status === statusFilter
+  // Fetch paginated, filtered bookings
+  const fetchBookingsLocal = async () => {
+    setLoading(true)
+    try {
+      let query = supabase
+        .from('bookings')
+        .select('*', { count: 'exact' })
 
-    const matchesApproval =
-      approvalFilter === 'all'
-        ? true
-        : approvalFilter === 'approved'
-        ? b.admin_approved
-        : !b.admin_approved
+      // 1. Apply Search Filter
+      if (searchTerm.trim()) {
+        const term = `%${searchTerm.trim()}%`
+        query = query.or(`id.ilike.${term},customer_name.ilike.${term},phone.ilike.${term},vehicle.ilike.${term}`)
+      }
 
-    return matchesSearch && matchesStatus && matchesApproval
-  })
+      // 2. Apply Status Filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'cancelled') {
+          query = query.in('trip_status', ['cancelled_by_driver', 'cancelled'])
+        } else if (statusFilter === 'completed') {
+          query = query.eq('status', 'completed')
+            .not('trip_status', 'eq', 'cancelled')
+            .not('trip_status', 'eq', 'cancelled_by_driver')
+        } else {
+          query = query.eq('status', statusFilter)
+        }
+      }
+
+      // 3. Apply Approval Filter
+      if (approvalFilter !== 'all') {
+        query = query.eq('admin_approved', approvalFilter === 'approved')
+      }
+
+      // 4. Sorting & Range
+      const from = (page - 1) * pageSize
+      const to = from + pageSize - 1
+
+      const { data, count, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      if (error) throw error
+
+      setBookings((data || []) as Booking[])
+      setTotalCount(count || 0)
+    } catch (err: any) {
+      console.error('Error fetching bookings:', err)
+      toast.error('Failed to load bookings from database.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAllDrivers()
+  }, [])
+
+  useEffect(() => {
+    fetchBookingsLocal()
+  }, [page, pageSize, searchTerm, statusFilter, approvalFilter])
+
+  // Custom filters state updater to reset page to 1
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val)
+    setPage(1)
+  }
+
+  const handleStatusFilterChange = (val: typeof statusFilter) => {
+    setStatusFilter(val)
+    setPage(1)
+  }
+
+  const handleApprovalFilterChange = (val: typeof approvalFilter) => {
+    setApprovalFilter(val)
+    setPage(1)
+  }
+
+  // Wrapper to refresh parent statistics and local list
+  const refreshAll = () => {
+    onRefresh()
+    fetchBookingsLocal()
+    fetchAllDrivers() // Also keep drivers list updated
+  }
+
+  const filteredBookings = bookings
 
   // Format Helper
   const formatTime = (timeStr: string) => {
@@ -123,11 +203,33 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
 
       // If approved immediately, send push notifications to drivers
       if (adminApproved) {
-        fetch('/api/notify-drivers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ booking_id: bookingId }),
-        }).catch((err) => console.error('Failed to trigger push notifications:', err))
+        const getSessionAndNotify = async () => {
+          try {
+            const sessionResult = await supabase.auth.getSession()
+            const token = sessionResult.data.session?.access_token
+
+            const response = await fetch('/api/notify-drivers', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({ booking_id: bookingId }),
+            })
+
+            if (!response.ok) {
+              const errData = await response.json().catch(() => ({}))
+              console.error('Push notification dispatch failed:', errData.error || response.statusText)
+            } else {
+              const data = await response.json()
+              console.log('Push notifications dispatched successfully:', data)
+            }
+          } catch (err) {
+            console.error('Failed to trigger push notifications:', err)
+          }
+        }
+
+        getSessionAndNotify()
       }
 
       // Reset Form
@@ -140,9 +242,9 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
       setVehicleModel('')
       setFare('')
       setSpecialInstructions('')
-      setAdminApproved(true)
+      setAdminApproved(false)
 
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error creating booking:', err)
       toast.error(err.message || 'Failed to create booking')
@@ -188,7 +290,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
       }
 
       setAssigningBooking(null)
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error assigning driver:', err)
       toast.error(err.message || 'Failed to update assignment')
@@ -207,10 +309,36 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
 
       if (error) throw error
       toast.success(`Booking ${bookingId} status updated to ${status}`)
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error updating status:', err)
       toast.error(err.message || 'Failed to update status')
+    }
+  }
+
+  // Update Trip Status by Admin Action
+  const handleAdminUpdateTripStatus = async (bookingId: string, tripStatus: string) => {
+    try {
+      const updates: any = { trip_status: tripStatus }
+
+      // Map main status based on selected trip status
+      if (tripStatus === 'completed' || tripStatus === 'cancelled_by_driver' || tripStatus === 'cancelled') {
+        updates.status = 'completed'
+      } else {
+        updates.status = 'accepted'
+      }
+
+      const { error } = await supabase
+        .from('bookings')
+        .update(updates)
+        .eq('id', bookingId)
+
+      if (error) throw error
+      toast.success(`Booking ${bookingId} status updated to ${tripStatus}`)
+      refreshAll()
+    } catch (err: any) {
+      console.error('Error updating trip status:', err)
+      toast.error(err.message || 'Failed to update trip status')
     }
   }
 
@@ -226,13 +354,36 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
       toast.success(`Booking ${bookingId} approved successfully!`)
 
       // Trigger push notifications
-      fetch('/api/notify-drivers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ booking_id: bookingId }),
-      }).catch((err) => console.error('Failed to trigger push notifications:', err))
+      const getSessionAndNotify = async () => {
+        try {
+          const sessionResult = await supabase.auth.getSession()
+          const token = sessionResult.data.session?.access_token
 
-      onRefresh()
+          const response = await fetch('/api/notify-drivers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ booking_id: bookingId }),
+          })
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}))
+            console.error('Push notification dispatch failed:', errData.error || response.statusText)
+          } else {
+            const data = await response.json()
+
+            console.log('Push notifications dispatched successfully:', data)
+          }
+        } catch (err) {
+          console.error('Failed to trigger push notifications:', err)
+        }
+      }
+
+      getSessionAndNotify()
+
+      refreshAll()
     } catch (err: any) {
       console.error('Error approving booking:', err)
       toast.error(err.message || 'Failed to approve booking')
@@ -249,7 +400,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
 
       if (error) throw error
       toast.success(`Booking ${bookingId} unapproved successfully!`)
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error unapproving booking:', err)
       toast.error(err.message || 'Failed to unapprove booking')
@@ -269,7 +420,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
 
       if (error) throw error
       toast.success(`Booking ${bookingId} deleted successfully!`)
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error deleting booking:', err)
       toast.error(err.message || 'Failed to delete booking')
@@ -302,7 +453,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-3 py-2.5 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-500 transition-colors"
             placeholder="Search by ID, name, phone, vehicle..."
           />
@@ -313,12 +464,11 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
           {(['all', 'available', 'accepted', 'completed', 'cancelled'] as const).map((status) => (
             <button
               key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
-                statusFilter === status
+              onClick={() => handleStatusFilterChange(status)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${statusFilter === status
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-350 hover:text-white'
-              }`}
+                }`}
             >
               {status}
             </button>
@@ -334,12 +484,11 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
           ] as const).map((opt) => (
             <button
               key={opt.id}
-              onClick={() => setApprovalFilter(opt.id)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
-                approvalFilter === opt.id
+              onClick={() => handleApprovalFilterChange(opt.id)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${approvalFilter === opt.id
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-350 hover:text-white'
-              }`}
+                }`}
             >
               {opt.label}
             </button>
@@ -348,7 +497,15 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
       </div>
 
       {/* Bookings List */}
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-lg">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-lg relative min-h-[200px]">
+        {loading && (
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[1px] flex items-center justify-center z-10 transition-all duration-200">
+            <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-750 px-4 py-2.5 rounded-xl shadow-xl">
+              <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] uppercase tracking-wider text-slate-300 font-extrabold">Syncing with server...</span>
+            </div>
+          </div>
+        )}
         {/* Table for Desktop */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -477,27 +634,37 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                           )}
 
                           <span
-                            className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mr-2 ${
-                              b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
+                            className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mr-2 ${b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
                                 ? 'bg-rose-950 text-rose-300 border border-rose-850'
                                 : b.status === 'completed'
-                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                : b.status === 'accepted'
-                                ? 'bg-sky-950 text-sky-300 border border-sky-800'
-                                : 'bg-amber-950 text-amber-300 border border-amber-800'
-                            }`}
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                  : b.status === 'accepted'
+                                    ? 'bg-sky-950 text-sky-300 border border-sky-800'
+                                    : 'bg-amber-950 text-amber-300 border border-amber-800'
+                              }`}
                           >
                             {b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled' ? 'cancelled' : b.status}
                           </span>
 
-                          {b.status !== 'completed' && (
-                            <button
-                              onClick={() => handleUpdateStatus(b.id, 'completed')}
-                              className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-2.5 rounded-lg cursor-pointer transition-all"
-                            >
-                              Complete
-                            </button>
-                          )}
+                          <select
+                            value={b.trip_status || 'not_started'}
+                            onChange={(e) => handleAdminUpdateTripStatus(b.id, e.target.value)}
+                            className="bg-slate-950 border border-slate-700 text-white rounded-lg text-[10px] py-1.5 px-2 font-bold focus:outline-none focus:border-amber-500 cursor-pointer max-w-[130px]"
+                          >
+                            <option value="not_started">Accepted / Not Started</option>
+                            <option value="called_customer">Calling Customer</option>
+                            <option value="customer_unreachable">Unreachable</option>
+                            <option value="customer_confirmed">Confirmed</option>
+                            <option value="cancellation_request">Cancellation Req</option>
+                            <option value="cancelled_by_driver">Cancelled</option>
+                            <option value="on_the_way">On the Way</option>
+                            <option value="reached_pickup">At Pickup</option>
+                            <option value="started">Trip Started</option>
+                            <option value="ended">Trip Ended</option>
+                            <option value="invoice_generated">Invoice Generated</option>
+                            <option value="payment_received">Payment Received</option>
+                            <option value="completed">Completed</option>
+                          </select>
                         </div>
                       </td>
                     </tr>
@@ -527,15 +694,14 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                       )}
                     </div>
                     <span
-                      className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
-                        b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
+                      className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
                           ? 'bg-rose-950 text-rose-300 border border-rose-850'
                           : b.status === 'completed'
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          : b.status === 'accepted'
-                          ? 'bg-sky-950 text-sky-300 border border-sky-800'
-                          : 'bg-amber-950 text-amber-300 border border-amber-800'
-                      }`}
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                            : b.status === 'accepted'
+                              ? 'bg-sky-950 text-sky-300 border border-sky-800'
+                              : 'bg-amber-950 text-amber-300 border border-amber-800'
+                        }`}
                     >
                       {b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled' ? 'cancelled' : b.status}
                     </span>
@@ -592,20 +758,97 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                       >
                         {assignedDriver ? 'Change' : 'Assign'}
                       </button>
-                      {b.status !== 'completed' && (
-                        <button
-                          onClick={() => handleUpdateStatus(b.id, 'completed')}
-                          className="bg-emerald-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-extrabold text-slate-400 uppercase">Status:</span>
+                        <select
+                          value={b.trip_status || 'not_started'}
+                          onChange={(e) => handleAdminUpdateTripStatus(b.id, e.target.value)}
+                          className="bg-slate-950 border border-slate-700 text-white rounded-lg text-[10px] py-1 px-1.5 font-bold focus:outline-none focus:border-amber-500 cursor-pointer"
                         >
-                          Complete
-                        </button>
-                      )}
+                          <option value="not_started">Accepted</option>
+                          <option value="called_customer">Calling</option>
+                          <option value="customer_unreachable">Unreachable</option>
+                          <option value="customer_confirmed">Confirmed</option>
+                          <option value="cancellation_request">Cancel Req</option>
+                          <option value="cancelled_by_driver">Cancelled</option>
+                          <option value="on_the_way">On Way</option>
+                          <option value="reached_pickup">At Pickup</option>
+                          <option value="started">Started</option>
+                          <option value="ended">Ended</option>
+                          <option value="invoice_generated">Invoice Gen</option>
+                          <option value="payment_received">Payment Recv</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
               )
             })
           )}
+        </div>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900 border border-slate-700/80 p-4 rounded-2xl mt-4 text-xs font-semibold text-slate-350">
+        <div className="flex items-center gap-2">
+          <span>Items per page:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setPage(1)
+            }}
+            className="bg-slate-950 border border-slate-705 text-white rounded-lg px-2.5 py-1.5 font-bold focus:outline-none focus:border-amber-500 cursor-pointer text-[10px]"
+          >
+            {[5, 10, 20, 50].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+          <span className="ml-4 text-slate-400">
+            Showing {totalCount > 0 ? (page - 1) * pageSize + 1 : 0} - {Math.min(page * pageSize, totalCount)} of {totalCount} bookings
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-750 text-slate-350 hover:text-white hover:border-slate-600 transition-all cursor-pointer disabled:opacity-40 disabled:hover:text-slate-350 disabled:cursor-not-allowed uppercase text-[9px] font-extrabold tracking-wide"
+          >
+            Previous
+          </button>
+
+          {/* Page Numbers */}
+          {Array.from({ length: Math.ceil(totalCount / pageSize) }).map((_, idx) => {
+            const pageNum = idx + 1
+            if (pageNum === 1 || pageNum === Math.ceil(totalCount / pageSize) || Math.abs(pageNum - page) <= 1) {
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${page === pageNum
+                      ? 'bg-amber-500 text-slate-955 font-extrabold'
+                      : 'bg-slate-950 text-slate-350 hover:text-white hover:bg-slate-800/80 border border-slate-850'
+                    }`}
+                >
+                  {pageNum}
+                </button>
+              )
+            }
+            if (pageNum === 2 || pageNum === Math.ceil(totalCount / pageSize) - 1) {
+              return <span key={pageNum} className="px-1 text-slate-500">...</span>
+            }
+            return null
+          })}
+
+          <button
+            onClick={() => setPage((p) => Math.min(Math.ceil(totalCount / pageSize), p + 1))}
+            disabled={page >= Math.ceil(totalCount / pageSize)}
+            className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-750 text-slate-355 hover:text-white hover:border-slate-600 transition-all cursor-pointer disabled:opacity-40 disabled:hover:text-slate-355 disabled:cursor-not-allowed uppercase text-[9px] font-extrabold tracking-wide"
+          >
+            Next
+          </button>
         </div>
       </div>
 
@@ -850,7 +1093,7 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
               )}
 
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-1">Available & Verified Drivers</p>
-              
+
               {drivers.filter((d) => d.verified).length === 0 ? (
                 <p className="text-xs text-slate-500 py-6 text-center italic">No verified drivers onboarded yet.</p>
               ) : (
@@ -863,11 +1106,10 @@ export default function BookingsTab({ bookings, drivers, onRefresh }: BookingsTa
                         key={driver.id}
                         onClick={() => handleAssignDriver(driver.id)}
                         disabled={assigning}
-                        className={`w-full p-3.5 rounded-xl border text-left flex justify-between items-center transition-all cursor-pointer disabled:opacity-50 ${
-                          isSelected
+                        className={`w-full p-3.5 rounded-xl border text-left flex justify-between items-center transition-all cursor-pointer disabled:opacity-50 ${isSelected
                             ? 'bg-amber-500/10 border-amber-500 text-white'
                             : 'bg-slate-950/60 border-slate-850 hover:border-slate-700 text-slate-300'
-                        }`}
+                          }`}
                       >
                         <div className="space-y-0.5">
                           <p className="text-xs font-bold text-white flex items-center gap-1.5">

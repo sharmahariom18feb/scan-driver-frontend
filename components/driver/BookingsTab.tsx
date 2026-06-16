@@ -27,7 +27,12 @@ interface BookingsTabProps {
   bookingFilter: 'current' | 'history'
   setBookingFilter: (val: 'current' | 'history') => void
   handleOpenDetails: (booking: Booking) => void
-  handleUpdateTripStatus: (bookingId: string, tripStatus: string) => void
+  handleUpdateTripStatus: (
+    bookingId: string,
+    tripStatus: string,
+    paymentType?: 'CASH' | 'QR' | null,
+    invoiceId?: string | null
+  ) => void
 }
 
 const getStatusBadge = (current: string | undefined | null) => {
@@ -64,7 +69,12 @@ const getStatusBadge = (current: string | undefined | null) => {
 interface ActiveBookingCardProps {
   booking: Booking
   handleOpenDetails: (booking: Booking) => void
-  handleUpdateTripStatus: (bookingId: string, tripStatus: string) => void
+  handleUpdateTripStatus: (
+    bookingId: string,
+    tripStatus: string,
+    paymentType?: 'CASH' | 'QR' | null,
+    invoiceId?: string | null
+  ) => void
 }
 
 function ActiveBookingCard({
@@ -76,7 +86,6 @@ function ActiveBookingCard({
   const [otpError, setOtpError] = useState(false)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qr'>('cash')
   const [qrConfirmed, setQrConfirmed] = useState(false)
 
   const tripStatus = booking.tripStatus || 'not_started'
@@ -198,18 +207,27 @@ function ActiveBookingCard({
               <p className="text-sm font-semibold text-foreground">Is the customer reachable?</p>
               <div className="grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={() => handleUpdateTripStatus(booking.id, 'customer_confirmed')}
                   className="py-3 px-3 font-bold text-xs uppercase tracking-wider rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center gap-1 transition-all duration-300 active:scale-[0.98] cursor-pointer"
                 >
                   <Check size={14} /> Yes
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleUpdateTripStatus(booking.id, 'customer_unreachable')}
                   className="py-3 px-3 font-bold text-xs uppercase tracking-wider rounded-xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center gap-1 transition-all duration-300 active:scale-[0.98] cursor-pointer"
                 >
                   <X size={14} /> No
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => handleUpdateTripStatus(booking.id, 'cancellation_request')}
+                className="w-full py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl border border-rose-500/20 text-rose-500 hover:border-rose-500 hover:bg-rose-500/10 flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+              >
+                <X size={14} /> Cancel Booking
+              </button>
             </div>
           </div>
         )
@@ -246,24 +264,12 @@ function ActiveBookingCard({
       case 'customer_confirmed':
         return (
           <div className="space-y-3">
-            <div className="bg-surface2/30 border border-border/10 p-4 rounded-xl text-center space-y-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Cancellation Check</p>
-              <p className="text-sm font-semibold text-foreground">Does the customer want to cancel?</p>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => handleUpdateTripStatus(booking.id, 'cancellation_request')}
-                  className="py-3 px-3 font-bold text-xs uppercase tracking-wider rounded-xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center gap-1 transition-all duration-300 active:scale-[0.98] cursor-pointer"
-                >
-                  <Check size={14} /> Yes
-                </button>
-                <button
-                  onClick={() => handleUpdateTripStatus(booking.id, 'on_the_way')}
-                  className="py-3 px-3 font-bold text-xs uppercase tracking-wider rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center gap-1 transition-all duration-300 active:scale-[0.98] cursor-pointer"
-                >
-                  <X size={14} /> No
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={() => handleUpdateTripStatus(booking.id, 'on_the_way')}
+              className="w-full py-3.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl shadow-md bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+            >
+              <Car size={14} /> On the Way
+            </button>
           </div>
         )
 
@@ -286,7 +292,7 @@ function ActiveBookingCard({
                   Confirm Cancellation
                 </button>
                 <button
-                  onClick={() => handleUpdateTripStatus(booking.id, 'customer_confirmed')}
+                  onClick={() => handleUpdateTripStatus(booking.id, 'called_customer')}
                   className="w-full py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl border border-border/10 text-foreground hover:bg-surface transition-all duration-300 active:scale-[0.98] cursor-pointer"
                 >
                   Keep Booking
@@ -379,7 +385,10 @@ function ActiveBookingCard({
               <p className="text-sm font-semibold text-foreground">Trip Has Ended</p>
               <p className="text-xs text-text-muted">Please generate the customer invoice to receive payment.</p>
               <button
-                onClick={() => handleUpdateTripStatus(booking.id, 'invoice_generated')}
+                onClick={() => {
+                  const generatedInvoiceId = `INV-${booking.id}-${Math.floor(1000 + Math.random() * 9000)}`;
+                  handleUpdateTripStatus(booking.id, 'invoice_generated', null, generatedInvoiceId);
+                }}
                 className="w-full py-3.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl shadow-md bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
               >
                 <FileText size={14} /> Generate Invoice
@@ -395,65 +404,46 @@ function ActiveBookingCard({
               <div className="space-y-1 text-center">
                 <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Payment Collection</p>
                 <p className="text-2xl font-bold text-emerald-500 font-sans">₹{booking.fare}</p>
-              </div>
-
-              <div className="flex p-1 bg-surface border border-border/10 rounded-lg">
-                <button
-                  onClick={() => { setPaymentMethod('cash'); setQrConfirmed(false); }}
-                  className={cn(
-                    "flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer",
-                    paymentMethod === 'cash' ? "bg-primary text-black" : "text-text-muted hover:text-foreground"
-                  )}
-                >
-                  Cash Payment
-                </button>
-                <button
-                  onClick={() => setPaymentMethod('qr')}
-                  className={cn(
-                    "flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer",
-                    paymentMethod === 'qr' ? "bg-primary text-black" : "text-text-muted hover:text-foreground"
-                  )}
-                >
-                  Scanner (QR)
-                </button>
-              </div>
-
-              {paymentMethod === 'qr' ? (
-                <div className="space-y-3 flex flex-col items-center p-3 bg-surface rounded-lg border border-border/5">
-                  <div className="w-28 h-28 relative bg-white p-2 rounded-lg flex items-center justify-center border">
-                    <div className="w-full h-full border-2 border-slate-900 border-dashed animate-pulse flex flex-col items-center justify-center text-[10px] text-slate-800 font-bold">
-                      <span className="text-[16px] mb-1">📷</span>
-                      <span>[ QR CODE ]</span>
-                    </div>
-                  </div>
-                  <p className="text-[9px] text-text-muted text-center leading-normal">
-                    Customer scans and pays directly.
+                {booking.invoiceId && (
+                  <p className="text-[10px] text-text-muted font-mono mt-1">
+                    Invoice ID: <span className="text-gold-light font-bold">{booking.invoiceId}</span>
                   </p>
-                  
-                  <button
-                    onClick={() => setQrConfirmed(true)}
-                    className={cn(
-                      "w-full py-1.5 px-3 text-[10px] font-bold uppercase rounded-lg border transition-all cursor-pointer",
-                      qrConfirmed 
-                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
-                        : "border-border/10 text-foreground hover:bg-surface2"
-                    )}
-                  >
-                    {qrConfirmed ? "✓ QR Payment Detected" : "Simulate QR Payment Received"}
-                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3 flex flex-col items-center p-3 bg-surface rounded-lg border border-border/5">
+                <div className="w-28 h-28 relative bg-white p-2 rounded-lg flex items-center justify-center border">
+                  <div className="w-full h-full border-2 border-slate-900 border-dashed animate-pulse flex flex-col items-center justify-center text-[10px] text-slate-800 font-bold">
+                    <span className="text-[16px] mb-1">📷</span>
+                    <span>[ QR CODE ]</span>
+                  </div>
                 </div>
-              ) : (
-                <div className="p-3 bg-surface rounded-lg border border-border/5 text-center">
-                  <p className="text-xs text-text-muted">Collect cash payment directly from customer.</p>
-                </div>
-              )}
+                <p className="text-[9px] text-text-muted text-center leading-normal">
+                  Customer scans and pays directly.
+                </p>
+                
+                <button
+                  type="button"
+                  onClick={() => setQrConfirmed(prev => !prev)}
+                  className={cn(
+                    "w-full py-1.5 px-3 text-[10px] font-bold uppercase rounded-lg border transition-all cursor-pointer",
+                    qrConfirmed 
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                      : "border-border/10 text-foreground hover:bg-surface2"
+                  )}
+                >
+                  {qrConfirmed ? "✓ QR Payment Detected" : "Simulate QR Payment Received"}
+                </button>
+              </div>
 
               <button
-                onClick={() => handleUpdateTripStatus(booking.id, 'payment_received')}
-                disabled={paymentMethod === 'qr' && !qrConfirmed}
+                onClick={() => {
+                  handleUpdateTripStatus(booking.id, 'payment_received', 'QR', booking.invoiceId);
+                }}
+                disabled={!qrConfirmed}
                 className={cn(
                   "w-full py-3.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer",
-                  (paymentMethod === 'cash' || qrConfirmed)
+                  qrConfirmed
                     ? "bg-emerald-500 hover:bg-emerald-600 text-slate-950"
                     : "bg-surface text-text-muted border border-border/10 cursor-not-allowed opacity-50"
                 )}
@@ -503,7 +493,7 @@ function ActiveBookingCard({
               </div>
 
               <button
-                onClick={() => handleUpdateTripStatus(booking.id, 'completed')}
+                onClick={() => handleUpdateTripStatus(booking.id, 'completed', booking.paymentType, booking.invoiceId)}
                 className="w-full py-3.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl shadow-md bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
               >
                 Submit & Close Booking

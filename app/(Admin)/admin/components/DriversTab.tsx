@@ -1,20 +1,26 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Driver } from '../types'
 
 interface DriversTabProps {
-  drivers: Driver[]
   onRefresh: () => void
 }
 
-export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
+export default function DriversTab({ onRefresh }: DriversTabProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'pending'>('all')
   const [onlineFilter, setOnlineFilter] = useState<'all' | 'online' | 'offline'>('all')
+
+  // Pagination & Loading States
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalCount, setTotalCount] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null)
@@ -86,30 +92,78 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
     }
   }
 
-  // Filter Drivers
-  const filteredDrivers = drivers.filter((d) => {
-    const matchesSearch =
-      d.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.phone.includes(searchTerm) ||
-      d.license_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.current_area.toLowerCase().includes(searchTerm.toLowerCase())
+  // Fetch paginated, filtered drivers
+  const fetchDriversLocal = async () => {
+    setLoading(true)
+    try {
+      let query = supabase
+        .from('users')
+        .select('*, driver_profiles(*)', { count: 'exact' })
+        .eq('role', 'DRIVER')
 
-    const matchesVerification =
-      verificationFilter === 'all'
-        ? true
-        : verificationFilter === 'verified'
-        ? d.verified
-        : !d.verified
+      // 1. Apply Search Filter
+      if (searchTerm.trim()) {
+        const term = `%${searchTerm.trim()}%`
+        query = query.or(`full_name.ilike.${term},phone.ilike.${term},license_no.ilike.${term},current_area.ilike.${term}`)
+      }
 
-    const matchesOnline =
-      onlineFilter === 'all'
-        ? true
-        : onlineFilter === 'online'
-        ? d.is_online
-        : !d.is_online
+      // 2. Apply Verification Filter
+      if (verificationFilter !== 'all') {
+        query = query.eq('verified', verificationFilter === 'verified')
+      }
 
-    return matchesSearch && matchesVerification && matchesOnline
-  })
+      // 3. Apply Online Status Filter
+      if (onlineFilter !== 'all') {
+        query = query.eq('is_online', onlineFilter === 'online')
+      }
+
+      // 4. Sorting & Range
+      const from = (page - 1) * pageSize
+      const to = from + pageSize - 1
+
+      const { data, count, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      if (error) throw error
+
+      setDrivers((data || []) as Driver[])
+      setTotalCount(count || 0)
+    } catch (err: any) {
+      console.error('Error fetching drivers:', err)
+      toast.error('Failed to load drivers from database.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDriversLocal()
+  }, [page, pageSize, searchTerm, verificationFilter, onlineFilter])
+
+  // Custom filters state updater to reset page to 1
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val)
+    setPage(1)
+  }
+
+  const handleVerificationFilterChange = (val: typeof verificationFilter) => {
+    setVerificationFilter(val)
+    setPage(1)
+  }
+
+  const handleOnlineFilterChange = (val: typeof onlineFilter) => {
+    setOnlineFilter(val)
+    setPage(1)
+  }
+
+  // Wrapper to refresh parent statistics and local list
+  const refreshAll = () => {
+    onRefresh()
+    fetchDriversLocal()
+  }
+
+  const filteredDrivers = drivers
 
   // Verify/Suspend Action
   const toggleVerification = async (driverId: string, currentStatus: boolean) => {
@@ -138,7 +192,7 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
         read: false,
       })
 
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error toggling driver verification:', err)
       toast.error(err.message || 'Failed to update verification status')
@@ -176,7 +230,7 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
       }
 
       toast.success('Driver application rejected and deleted successfully!')
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error rejecting driver:', err)
       toast.error(err.message || 'Failed to reject driver')
@@ -195,7 +249,7 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
 
       if (error) throw error
       toast.success(`Driver set to ${!currentStatus ? 'Online' : 'Offline'}`)
-      onRefresh()
+      refreshAll()
     } catch (err: any) {
       console.error('Error toggling online status:', err)
       toast.error(err.message || 'Failed to update online status')
@@ -220,7 +274,7 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-3 py-2.5 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-500 transition-colors"
             placeholder="Search by name, phone, license, area..."
           />
@@ -231,11 +285,11 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
           {(['all', 'verified', 'pending'] as const).map((status) => (
             <button
               key={status}
-              onClick={() => setVerificationFilter(status)}
+              onClick={() => handleVerificationFilterChange(status)}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer ${
                 verificationFilter === status
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-350 hover:text-white'
+                  : 'text-slate-355 hover:text-white'
               }`}
             >
               {status === 'pending' ? 'Pending Approval' : status}
@@ -248,7 +302,7 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
           {(['all', 'online', 'offline'] as const).map((status) => (
             <button
               key={status}
-              onClick={() => setOnlineFilter(status)}
+              onClick={() => handleOnlineFilterChange(status)}
               className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer ${
                 onlineFilter === status
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
@@ -262,7 +316,15 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
       </div>
 
       {/* Drivers List */}
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-lg">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-lg relative min-h-[200px]">
+        {loading && (
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[1px] flex items-center justify-center z-10 transition-all duration-200">
+            <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-750 px-4 py-2.5 rounded-xl shadow-xl">
+              <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] uppercase tracking-wider text-slate-300 font-extrabold">Syncing with server...</span>
+            </div>
+          </div>
+        )}
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -528,6 +590,70 @@ export default function DriversTab({ drivers, onRefresh }: DriversTabProps) {
               </div>
             ))
           )}
+        </div>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900 border border-slate-700/80 p-4 rounded-2xl mt-4 text-xs font-semibold text-slate-350">
+        <div className="flex items-center gap-2">
+          <span>Items per page:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setPage(1)
+            }}
+            className="bg-slate-950 border border-slate-705 text-white rounded-lg px-2.5 py-1.5 font-bold focus:outline-none focus:border-amber-500 cursor-pointer text-[10px]"
+          >
+            {[5, 10, 20, 50].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+          <span className="ml-4 text-slate-400">
+            Showing {totalCount > 0 ? (page - 1) * pageSize + 1 : 0} - {Math.min(page * pageSize, totalCount)} of {totalCount} drivers
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-750 text-slate-350 hover:text-white hover:border-slate-600 transition-all cursor-pointer disabled:opacity-40 disabled:hover:text-slate-350 disabled:cursor-not-allowed uppercase text-[9px] font-extrabold tracking-wide"
+          >
+            Previous
+          </button>
+          
+          {/* Page Numbers */}
+          {Array.from({ length: Math.ceil(totalCount / pageSize) }).map((_, idx) => {
+            const pageNum = idx + 1
+            if (pageNum === 1 || pageNum === Math.ceil(totalCount / pageSize) || Math.abs(pageNum - page) <= 1) {
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                    page === pageNum
+                      ? 'bg-amber-500 text-slate-955 font-extrabold'
+                      : 'bg-slate-950 text-slate-355 hover:text-white hover:bg-slate-800/80 border border-slate-850'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              )
+            }
+            if (pageNum === 2 || pageNum === Math.ceil(totalCount / pageSize) - 1) {
+              return <span key={pageNum} className="px-1 text-slate-500">...</span>
+            }
+            return null
+          })}
+
+          <button
+            onClick={() => setPage((p) => Math.min(Math.ceil(totalCount / pageSize), p + 1))}
+            disabled={page >= Math.ceil(totalCount / pageSize)}
+            className="px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-750 text-slate-355 hover:text-white hover:border-slate-600 transition-all cursor-pointer disabled:opacity-40 disabled:hover:text-slate-355 disabled:cursor-not-allowed uppercase text-[9px] font-extrabold tracking-wide"
+          >
+            Next
+          </button>
         </div>
       </div>
 

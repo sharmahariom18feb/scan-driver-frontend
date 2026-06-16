@@ -58,7 +58,6 @@ export default function DriverApp() {
 
   // Tabs: 'home' | 'bookings' | 'alerts' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'bookings' | 'alerts' | 'profile'>('home')
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   // Auth local state
   const [isLoginMode, setIsLoginMode] = useState(true)
@@ -104,14 +103,9 @@ export default function DriverApp() {
     return () => clearTimeout(timer)
   }, [dispatch])
 
-  // Fetch fresh data when tab changes, excluding the initial mount fetch
+  // Fetch fresh data when tab changes, excluding when session is still checking
   useEffect(() => {
-    if (!isAuthenticated) return
-
-    if (isInitialLoad) {
-      setIsInitialLoad(false)
-      return
-    }
+    if (!isAuthenticated || localCheckingSession) return
 
     if (activeTab === 'home') {
       dispatch(fetchDriverProfile())
@@ -124,7 +118,7 @@ export default function DriverApp() {
     } else if (activeTab === 'profile') {
       dispatch(fetchDriverProfile())
     }
-  }, [activeTab, isAuthenticated, dispatch, isInitialLoad])
+  }, [activeTab, isAuthenticated, localCheckingSession, dispatch])
 
   // Periodic session expiration checker (7 days limit check for drivers)
   useEffect(() => {
@@ -223,28 +217,48 @@ export default function DriverApp() {
   useEffect(() => {
     if (!isAuthenticated || !info || !info.id) return
 
+    let unsubscribe: (() => void) | null = null
+
     const registerFcm = async () => {
       try {
-        const { requestForToken } = await import('@/lib/firebase')
+        // Force session load/verification on Supabase client
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          console.warn('FCM registration delayed: Supabase session not fully loaded yet.')
+          return
+        }
+
+        const { requestForToken, messaging } = await import('@/lib/firebase')
         const token = await requestForToken()
         if (token) {
           const { error } = await supabase
             .from('driver_fcm_tokens')
             .upsert({
-              driver_id: info.id,
+              driver_id: user.id,
               fcm_token: token,
             }, { onConflict: 'fcm_token' })
 
           if (error) throw error
           console.log('FCM token registered successfully:', token)
         }
+
+        if (messaging) {
+          const { onMessage } = await import('firebase/messaging')
+          unsubscribe = onMessage(messaging, (payload) => {
+            console.log("Message received:", payload);
+          })
+        }
       } catch (err) {
-        console.error('Failed to register FCM token:', err)
+        console.error('Failed to register FCM token or setup notification listener:', err)
       }
     }
 
     registerFcm()
-  }, [isAuthenticated, info])
+
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [isAuthenticated, info, localCheckingSession])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -418,8 +432,13 @@ export default function DriverApp() {
     }
   }
 
-  const handleUpdateTripStatus = async (bookingId: string, tripStatus: string) => {
-    const result = await dispatch(updateTripStatus({ bookingId, tripStatus }))
+  const handleUpdateTripStatus = async (
+    bookingId: string,
+    tripStatus: string,
+    paymentType?: 'CASH' | 'QR' | null,
+    invoiceId?: string | null
+  ) => {
+    const result = await dispatch(updateTripStatus({ bookingId, tripStatus, paymentType, invoiceId }))
     if (updateTripStatus.fulfilled.match(result)) {
       toast.success('Trip status updated!')
     } else {

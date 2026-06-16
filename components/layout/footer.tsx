@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { FOOTER_COLUMNS, EMAIL, WEBSITE } from '@/constants'
+import { FOOTER_COLUMNS, EMAIL, WEBSITE, WHATSAPP_CUSTOMER } from '@/constants'
 import logoSd from '../../public/icons/logo-sd.png'
+import { Facebook, Instagram, MessageCircle } from 'lucide-react'
 
 export function Footer() {
   return (
@@ -24,6 +25,35 @@ export function Footer() {
             <p className="text-muted-foreground text-[13px] leading-relaxed max-w-[260px]">
               Delhi NCR&apos;s most trusted on-demand verified driver service. Professional drivers for every need — no app required.
             </p>
+            <div className="flex items-center gap-3 mt-5">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-center w-8 h-8 rounded-full border border-border bg-card hover:bg-card/80 transition-all hover:border-[#1877F2]/40 hover:shadow-[0_0_10px_rgba(24,119,242,0.15)]"
+                aria-label="Facebook"
+              >
+                <Facebook size={16} className="text-muted-foreground group-hover:text-[#1877F2] transition-colors duration-300" />
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-center w-8 h-8 rounded-full border border-border bg-card hover:bg-card/80 transition-all hover:border-[#E1306C]/40 hover:shadow-[0_0_10px_rgba(225,48,108,0.15)]"
+                aria-label="Instagram"
+              >
+                <Instagram size={16} className="text-muted-foreground group-hover:text-[#E1306C] transition-colors duration-300" />
+              </a>
+              <a
+                href={`https://wa.me/${WHATSAPP_CUSTOMER}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-center w-8 h-8 rounded-full border border-border bg-card hover:bg-card/80 transition-all hover:border-[#25D366]/40 hover:shadow-[0_0_10px_rgba(37,211,102,0.15)]"
+                aria-label="WhatsApp"
+              >
+                <MessageCircle size={16} className="text-muted-foreground group-hover:text-[#25D366] transition-colors duration-300" />
+              </a>
+            </div>
           </div>
 
           {/* Footer Columns */}

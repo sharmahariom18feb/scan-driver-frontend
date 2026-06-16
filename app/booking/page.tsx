@@ -443,7 +443,7 @@ export default function BookingPage() {
       special_instructions: comments + (emailVal ? ` | Email: ${emailVal}` : ''),
       status: 'available' as const,
       type: mappedType,
-      admin_approved: true,
+      admin_approved: false,
     }
 
     try {
@@ -815,6 +815,24 @@ ${commentsStr}${gpsStr}
           transition: all 0.2s;
           appearance: none;
           -webkit-appearance: none;
+        }
+
+        .booking-page-root input[type="date"],
+        .booking-page-root input[type="time"] {
+          color-scheme: light;
+        }
+
+        .booking-page-root input[type="date"]::-webkit-calendar-picker-indicator,
+        .booking-page-root input[type="time"]::-webkit-calendar-picker-indicator {
+          filter: invert(0.3) grayscale(1);
+          opacity: 0.7;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+
+        .booking-page-root input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        .booking-page-root input[type="time"]::-webkit-calendar-picker-indicator:hover {
+          opacity: 1;
         }
         
         .booking-page-root input:focus,

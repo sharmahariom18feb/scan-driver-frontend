@@ -36,6 +36,8 @@ export interface Booking {
   driverId?: string | null
   adminApproved?: boolean
   tripStatus?: string
+  paymentType?: 'CASH' | 'QR' | null
+  invoiceId?: string | null
 }
 
 export interface DriverNotification {
@@ -142,6 +144,8 @@ export const fetchBookings = createAsyncThunk(
         driverId: b.driver_id,
         adminApproved: b.admin_approved,
         tripStatus: b.trip_status,
+        paymentType: b.payment_type,
+        invoiceId: b.invoice_id,
       })) as Booking[]
     } catch (err: any) {
       console.error('Supabase fetchBookings error:', err)
@@ -505,7 +509,15 @@ export const fetchDriverProfile = createAsyncThunk(
   'driver/fetchProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      let { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        // Fallback session recovery check (forces Supabase to load token from storage if getSession is not ready)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: { session: recoveredSession } } = await supabase.auth.getSession()
+          session = recoveredSession
+        }
+      }
       if (!session) throw new Error('Not authenticated')
 
       const { data: profile, error } = await supabase
@@ -660,6 +672,8 @@ export const acceptBooking = createAsyncThunk(
         driverId: booking.driver_id,
         adminApproved: booking.admin_approved,
         tripStatus: booking.trip_status,
+        paymentType: booking.payment_type,
+        invoiceId: booking.invoice_id,
       } as Booking
     } catch (err: any) {
       console.warn('Supabase acceptBooking failed:', err)
@@ -696,13 +710,32 @@ export const passBooking = createAsyncThunk(
 // 8c. Update Trip Status Thunk
 export const updateTripStatus = createAsyncThunk(
   'driver/updateTripStatus',
-  async ({ bookingId, tripStatus }: { bookingId: string; tripStatus: string }, { dispatch, rejectWithValue }) => {
+  async (
+    {
+      bookingId,
+      tripStatus,
+      paymentType,
+      invoiceId,
+    }: {
+      bookingId: string
+      tripStatus: string
+      paymentType?: 'CASH' | 'QR' | null
+      invoiceId?: string | null
+    },
+    { dispatch, rejectWithValue }
+  ) => {
     try {
       const updates: any = { trip_status: tripStatus }
       
       // If the final status "completed" or "cancelled_by_driver" is selected, also update the main status to 'completed'
       if (tripStatus === 'completed' || tripStatus === 'cancelled_by_driver') {
         updates.status = 'completed'
+      }
+      if (paymentType !== undefined) {
+        updates.payment_type = paymentType
+      }
+      if (invoiceId !== undefined) {
+        updates.invoice_id = invoiceId
       }
 
       const { data, error } = await supabase
@@ -717,7 +750,13 @@ export const updateTripStatus = createAsyncThunk(
       // Reload bookings to ensure stats and screens are fresh
       dispatch(fetchBookings())
 
-      return { bookingId, tripStatus, status: updates.status || 'accepted' }
+      return { 
+        bookingId, 
+        tripStatus, 
+        status: updates.status || 'accepted',
+        paymentType: updates.payment_type !== undefined ? updates.payment_type : undefined,
+        invoiceId: updates.invoice_id !== undefined ? updates.invoice_id : undefined
+      }
     } catch (err: any) {
       console.error('updateTripStatus error:', err)
       return rejectWithValue(err.message || 'Failed to update status')
@@ -892,10 +931,15 @@ export const driverSlice = createSlice({
             .filter(b => b.status === 'accepted' || b.status === 'completed')
             .reduce((acc, curr) => acc + curr.fare, 0),
         }
+      } else {
+        state.isAuthenticated = false
+        state.info = null
       }
     })
     builder.addCase(checkDriverSession.rejected, (state) => {
       state.checkingSession = false
+      state.isAuthenticated = false
+      state.info = null
     })
 
     // Fetch Profile
@@ -984,13 +1028,18 @@ export const driverSlice = createSlice({
       }
     })
 
-    // Update Trip Status
     builder.addCase(updateTripStatus.fulfilled, (state, action) => {
-      const { bookingId, tripStatus, status } = action.payload
+      const { bookingId, tripStatus, status, paymentType, invoiceId } = action.payload
       const index = state.bookings.findIndex((b) => b.id === bookingId)
       if (index !== -1) {
         state.bookings[index].tripStatus = tripStatus
         state.bookings[index].status = status as any
+        if (paymentType !== undefined) {
+          state.bookings[index].paymentType = paymentType
+        }
+        if (invoiceId !== undefined) {
+          state.bookings[index].invoiceId = invoiceId
+        }
       }
     })
 

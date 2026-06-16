@@ -5,6 +5,16 @@ import { Star, Search, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Booking, DriverInfo } from '@/redux/slices/driverSlice'
 
+const getVehicleIcon = (vehicle: string) => {
+  if (!vehicle) return '';
+  const v = vehicle.toLowerCase();
+  if (v.includes('hatchback')) return '🚗';
+  if (v.includes('sedan')) return '🚙';
+  if (v.includes('suv')) return '🚐';
+  if (v.includes('luxury')) return '🏎️';
+  return '🚗';
+};
+
 interface HomeTabProps {
   info: DriverInfo | null
   isOnline: boolean
@@ -76,7 +86,7 @@ export default function HomeTab({
       </div>
 
       {/* Stats list */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
           <span className="block font-bold text-xl text-gold-light">{stats.trips}</span>
           <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Total Trips</span>
@@ -85,12 +95,12 @@ export default function HomeTab({
           <span className="block font-bold text-xl text-gold-light">₹{stats.earnings}</span>
           <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Total Earnings</span>
         </div>
-        <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
+        {/* <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
           <span className="block font-bold text-xl text-gold-light flex items-center justify-center gap-0.5">
             {info?.rating} <Star size={12} className="fill-gold-light text-gold-light" />
           </span>
           <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Your Rating</span>
-        </div>
+        </div> */}
       </div>
 
       {/* AVAILABLE BOOKINGS */}
@@ -169,18 +179,28 @@ export default function HomeTab({
                       {booking.customerName}
                     </h4>
                   </div>
-                  <span
-                    className={cn(
-                      'text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider',
-                      booking.type === 'AIRPORT DROP'
-                        ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-                        : booking.type === 'OUTSTATION'
-                          ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                          : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  <div className="flex flex-col items-end gap-1">
+                    {booking.vehicle && (
+                      <span 
+                        title={`Vehicle Category: ${booking.vehicle}`} 
+                        className="text-base leading-none select-none filter drop-shadow-xs"
+                      >
+                        {getVehicleIcon(booking.vehicle)}
+                      </span>
                     )}
-                  >
-                    {booking.type}
-                  </span>
+                    <span
+                      className={cn(
+                        'text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border',
+                        booking.type === 'AIRPORT DROP'
+                          ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                          : booking.type === 'OUTSTATION'
+                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                      )}
+                    >
+                      {booking.type}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Route vertical line style */}

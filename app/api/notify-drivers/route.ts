@@ -38,15 +38,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing booking_id' }, { status: 400 })
     }
 
-    if (!admin.apps.length) {
-      return NextResponse.json(
-        { error: 'Firebase Admin SDK is not initialized. Please configure the FIREBASE_SERVICE_ACCOUNT_KEY environment variable.' },
-        { status: 500 }
-      )
-    }
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.replace('Bearer ', '')
+
+    const clientToUse = token
+      ? createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '', {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      })
+      : supabaseAdminClient
 
     // 1. Fetch booking details from database
-    const { data: booking, error: bookingError } = await supabaseAdminClient
+    const { data: booking, error: bookingError } = await clientToUse
       .from('bookings')
       .select('*')
       .eq('id', booking_id)
@@ -58,33 +68,82 @@ export async function POST(request: Request) {
     }
 
     // 2. Fetch all drivers who are currently online
-    const { data: onlineDrivers, error: driversError } = await supabaseAdminClient
+    const { data: onlineDrivers, error: driversError } = await clientToUse
       .from('users')
       .select('id')
       .eq('role', 'DRIVER')
       .eq('is_online', true)
 
-    if (driversError || !onlineDrivers || onlineDrivers.length === 0) {
+    if (driversError) {
+      console.error('Error fetching online drivers:', driversError)
+      return NextResponse.json({ error: `Failed to fetch online drivers: ${driversError.message}` }, { status: 500 })
+    }
+
+    if (!onlineDrivers || onlineDrivers.length === 0) {
       return NextResponse.json({ success: true, message: 'No online drivers found to notify' })
     }
 
     const driverIds = onlineDrivers.map((d) => d.id)
 
-    // 3. Fetch FCM tokens for these online drivers
-    const { data: tokensData, error: tokensError } = await supabaseAdminClient
+    // 3. Insert real-time database notifications for all online drivers
+    const description = `${booking.type}: ${booking.pickup} to ${booking.drop} • ₹${booking.fare}`
+    const title = 'New Booking Available!'
+
+    const notificationsToInsert = driverIds.map((driverId) => ({
+      driver_id: driverId,
+      title,
+      description,
+      time: 'Just now',
+      type: 'booking',
+      read: false,
+    }))
+
+    const { error: insertError } = await clientToUse
+      .from('notifications')
+      .insert(notificationsToInsert)
+
+    if (insertError) {
+      console.error('Error inserting database notifications:', insertError)
+    } else {
+      console.log(`Inserted ${notificationsToInsert.length} database notifications successfully.`)
+    }
+
+    // 4. Fetch FCM tokens for these online drivers
+    const { data: tokensData, error: tokensError } = await clientToUse
       .from('driver_fcm_tokens')
       .select('fcm_token')
       .in('driver_id', driverIds)
 
-    if (tokensError || !tokensData || tokensData.length === 0) {
-      return NextResponse.json({ success: true, message: 'No active FCM tokens found for online drivers' })
+    if (tokensError) {
+      console.error('Error fetching FCM tokens:', tokensError)
+      return NextResponse.json({ error: `Failed to fetch FCM tokens: ${tokensError.message}` }, { status: 500 })
+    }
+    console.log("tokensData", tokensData);
+
+
+    if (!tokensData || tokensData.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'Database notifications inserted, but no active FCM tokens found for online drivers.'
+      })
     }
 
     const registrationTokens = tokensData.map((t) => t.fcm_token)
 
-    // 4. Send multicast FCM notification message
-    const title = 'New Booking Available!'
-    const description = `${booking.type}: ${booking.pickup} to ${booking.drop} • ₹${booking.fare}`
+    // 5. Send multicast FCM notification message (or mock if Firebase Admin SDK is not initialized)
+    if (!admin.apps.length) {
+      console.warn('[FCM Mock] Firebase Admin SDK is not initialized. Mocking push notifications.')
+      console.log('[FCM Mock] Target VAPID/Registration Tokens:', registrationTokens)
+      console.log(`[FCM Mock] Notification payload: { title: "${title}", body: "${description}" }`)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Database notifications inserted. FCM was mocked (Firebase Admin SDK not initialized).',
+        mocked: true,
+        sentCount: registrationTokens.length,
+        failureCount: 0,
+      })
+    }
 
     const message: admin.messaging.MulticastMessage = {
       notification: {

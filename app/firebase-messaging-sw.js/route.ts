@@ -24,7 +24,7 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.log('[FCM Background Notification] Received background push notification:', payload);
 
   const notificationTitle = payload.notification?.title || 'New Booking Available!';
   const notificationOptions = {

@@ -7,7 +7,6 @@ import {
   MapPin,
   Calendar,
   Clock,
-  Car,
   Check,
   XCircle,
 } from 'lucide-react'
@@ -149,37 +148,20 @@ export default function BookingDetailModal({
             </div>
           </div>
 
-          {/* Vehicle & Notes */}
+          {/* Special Instructions */}
           <div className="space-y-3.5 pt-2">
             <h4 className="font-bold text-sm uppercase tracking-wider text-text-muted">
-              Vehicle & Notes
+              Special Instructions
             </h4>
 
-            <div className="space-y-4">
-              {/* Client Vehicle */}
-              <div className="flex gap-3">
-                <div className="h-7 w-7 rounded bg-surface border border-border/10 flex items-center justify-center text-text-muted shrink-0">
-                  <Car size={14} />
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[10px] text-text-muted leading-none">Client Vehicle</p>
-                  <p className="text-sm font-semibold text-foreground">
-                    {booking.status === 'accepted' ? booking.vehicle : 'Honda City - HR26-AB1234 (Masked)'}
-                  </p>
-                </div>
+            <div className="flex gap-3">
+              <div className="h-7 w-7 rounded bg-surface border border-border/10 flex items-center justify-center text-text-muted shrink-0">
+                <FileText size={14} />
               </div>
-
-              {/* Special Instructions */}
-              <div className="flex gap-3">
-                <div className="h-7 w-7 rounded bg-surface border border-border/10 flex items-center justify-center text-text-muted shrink-0">
-                  <FileText size={14} />
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-[10px] text-text-muted leading-none">Special Instructions</p>
-                  <p className="text-sm italic text-foreground leading-normal">
-                    "{booking.specialInstructions}"
-                  </p>
-                </div>
+              <div className="space-y-0.5">
+                <p className="text-sm italic text-foreground leading-normal">
+                  {booking.specialInstructions ? `"${booking.specialInstructions}"` : 'No special instructions provided.'}
+                </p>
               </div>
             </div>
           </div>

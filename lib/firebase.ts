@@ -11,6 +11,12 @@ const firebaseConfig = {
 }
 
 // Initialize Firebase (safely checks if app is already initialized)
+console.log('Firebase Config Loaded:', {
+  hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  hasSenderId: !!process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  hasVapidKey: !!process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+})
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
 let messaging: Messaging | null = null
@@ -30,13 +36,20 @@ export { app, messaging }
  */
 export const requestForToken = async (): Promise<string | null> => {
   if (typeof window === 'undefined' || !messaging) return null
-  
+
   try {
     const permission = await Notification.requestPermission()
     if (permission === 'granted') {
+      let registration: ServiceWorkerRegistration | undefined = undefined
+      if ('serviceWorker' in navigator) {
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      }
+
       const currentToken = await getToken(messaging, {
         vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+        ...(registration ? { serviceWorkerRegistration: registration } : {}),
       })
+
       if (currentToken) {
         return currentToken
       } else {
