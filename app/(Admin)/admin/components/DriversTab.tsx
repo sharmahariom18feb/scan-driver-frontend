@@ -33,6 +33,81 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     return d.driver_profiles
   }
 
+  const getDocuments = (d: Driver) => {
+    if (!d.driver_documents) return null
+    if (Array.isArray(d.driver_documents)) {
+      return d.driver_documents[0] || null
+    }
+    return d.driver_documents
+  }
+
+  const renderVerificationSection = (d: Driver) => {
+    const docs = getDocuments(d)
+    if (!docs) {
+      return (
+        <div className="mt-4 pt-4 border-t border-slate-800/80">
+          <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] mb-2">Verification Documents & References</h4>
+          <p className="text-xs text-slate-400 italic">No verification documents uploaded (Old registration profile).</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-4">
+        {/* Document images */}
+        <div>
+          <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] mb-2">Uploaded Verification Documents</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: 'Aadhaar Front', url: docs.aadhaar_front_url },
+              { label: 'Aadhaar Back', url: docs.aadhaar_back_url },
+              { label: 'Driving License', url: docs.driving_license_url },
+              { label: 'PAN Card', url: docs.pan_card_url },
+              { label: 'Selfie', url: docs.selfie_url },
+            ].map((doc, idx) => (
+              <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-col items-center space-y-1.5">
+                <span className="text-[9px] font-bold text-slate-400 text-center">{doc.label}</span>
+                {doc.url ? (
+                  <a 
+                    href={doc.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="relative block w-full h-20 rounded-lg overflow-hidden border border-slate-750 hover:border-amber-500 transition-all group"
+                  >
+                    <img src={doc.url} alt={doc.label} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-[8px] font-extrabold text-white bg-slate-950/80 px-1.5 py-0.5 rounded">VIEW</span>
+                    </div>
+                  </a>
+                ) : (
+                  <span className="text-[9px] text-rose-450 italic py-5">Not Uploaded</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* References */}
+        {docs.references && Array.isArray(docs.references) && (
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Verification References</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {docs.references.map((ref: any, refIdx: number) => (
+                <div key={refIdx} className="bg-slate-900 border border-slate-850 p-3 rounded-xl space-y-1">
+                  <p className="text-[9px] font-extrabold text-amber-500 uppercase font-display">Reference {refIdx + 1}</p>
+                  <p className="text-[11px] text-slate-200"><span className="font-bold text-slate-400">Name:</span> {ref.fullName || 'N/A'}</p>
+                  <p className="text-[11px] text-slate-200"><span className="font-bold text-slate-400">Phone:</span> {ref.phone || 'N/A'}</p>
+                  <p className="text-[11px] text-slate-200"><span className="font-bold text-slate-400">Relation:</span> {ref.relation || 'N/A'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+
   // Password reset states
   const [resetModalOpen, setResetModalOpen] = useState(false)
   const [targetDriverId, setTargetDriverId] = useState<string | null>(null)
@@ -98,7 +173,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     try {
       let query = supabase
         .from('users')
-        .select('*, driver_profiles(*)', { count: 'exact' })
+        .select('*, driver_profiles(*), driver_documents(*)', { count: 'exact' })
         .eq('role', 'DRIVER')
 
       // 1. Apply Search Filter
@@ -470,6 +545,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                               <p className="whitespace-pre-wrap"><span className="font-bold text-white">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
                             </div>
                           </div>
+                          {renderVerificationSection(d)}
                         </td>
                       </tr>
                     )
@@ -543,6 +619,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                         <p><span className="font-bold text-slate-200">Pehle Platform:</span> {profile ? (profile.previous_platforms || 'Nahi') : 'N/A'}</p>
                         <p className="whitespace-pre-wrap"><span className="font-bold text-slate-200">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
                       </div>
+                      {renderVerificationSection(d)}
                     </div>
                   )
                 })()}

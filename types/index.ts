@@ -54,6 +54,7 @@ export interface FooterColumn {
     label: string
     href: string
     external?: boolean
+    icon?: string
   }[]
 }
 

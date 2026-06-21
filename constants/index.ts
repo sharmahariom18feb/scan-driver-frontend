@@ -222,10 +222,11 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
   {
     title: 'Contact',
     links: [
-      { label: '📞 Customer: 97174 98198', href: 'tel:+919717498198' },
-      { label: '🚗 Driver: 97181 81498', href: 'tel:+919718181498' },
-      { label: `✉️ ${EMAIL}`, href: `mailto:${EMAIL}` },
-      { label: `🌐 ${WEBSITE}`, href: `https://${WEBSITE}`, external: true },
+      { label: 'Customer: 97174 98198', href: 'tel:+919717498198', icon: 'Phone' },
+      { label: 'Driver: 97181 81498', href: 'tel:+919718181498', icon: 'Car' },
+      { label: EMAIL, href: `mailto:${EMAIL}`, icon: 'Mail' },
+      { label: 'Grievance@scandriver.in', href: `mailto:grievance@scandriver.in`, icon: 'Mail' },
+      { label: WEBSITE, href: `https://${WEBSITE}`, external: true, icon: 'Globe' },
     ],
   },
 ]

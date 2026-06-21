@@ -9,6 +9,23 @@ export interface DriverProfile {
   additional_comments?: string | null
 }
 
+export interface DriverReference {
+  fullName: string
+  phone: string
+  relation: string
+}
+
+export interface DriverDocument {
+  driver_id: string
+  aadhaar_front_url: string
+  aadhaar_back_url: string
+  driving_license_url: string
+  pan_card_url: string
+  selfie_url: string
+  references: DriverReference[]
+  created_at: string
+}
+
 export interface Driver {
   id: string
   email: string
@@ -22,7 +39,9 @@ export interface Driver {
   role: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   created_at: string
   driver_profiles?: DriverProfile | DriverProfile[] | null
+  driver_documents?: DriverDocument | DriverDocument[] | null
 }
+
 
 export interface Booking {
   id: string

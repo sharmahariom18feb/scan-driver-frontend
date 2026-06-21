@@ -5,20 +5,26 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
-import { ArrowLeft, User, Shield, Briefcase, FileText, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Shield, CheckCircle, Eye, EyeOff, Upload } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { AppDispatch, RootState } from '@/redux/store'
 import { signupDriver, normalizePhone } from '@/redux/slices/driverSlice'
 import { cn } from '@/lib/utils'
 import logoSd from '../../../../public/icons/logo-sd.png'
 import { supabase } from '@/lib/supabaseClient'
+import { uploadToCloudinary } from '@/lib/cloudinary'
 
 export default function OnboardingPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
-  const { loading, error } = useSelector((state: RootState) => state.driver)
+  const { loading } = useSelector((state: RootState) => state.driver)
 
-  // Steps: 1: Basic Info, 2: Experience & Documents, 3: Availability & Preference, 4: One Last Thing, 5: Success
+  // Steps: 
+  // 1: Basic Info
+  // 2: Experience & Preferences (Merged Experience & Preference)
+  // 3: Required Document Uploads (Aadhaar Front/Back, DL, PAN, Selfie)
+  // 4: References & One Last Thing (3 References + Platforms & Comments)
+  // 5: Success
   const [step, setStep] = useState(1)
 
   // Step 1: Basic Info
@@ -28,17 +34,42 @@ export default function OnboardingPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [zone, setZone] = useState('')
 
-  // Step 2: Experience & Documents
+  // Step 2: Experience & Preferences
   const [experience, setExperience] = useState('1-3 saal')
   const [licenseStatus, setLicenseStatus] = useState('Haan, valid hai')
-  const [documentsAvailable, setDocumentsAvailable] = useState<string[]>([])
-
-  // Step 3: Availability & Preference
   const [availability, setAvailability] = useState('Full Time')
   const [servicePreference, setServicePreference] = useState<string[]>([])
   const [vehicleSpecialties, setVehicleSpecialties] = useState<string[]>([])
 
-  // Step 4: One Last Thing
+  // Step 3: Required Document Uploads
+  const [aadhaarFrontUrl, setAadhaarFrontUrl] = useState('')
+  const [aadhaarBackUrl, setAadhaarBackUrl] = useState('')
+  const [drivingLicenseUrl, setDrivingLicenseUrl] = useState('')
+  const [panCardUrl, setPanCardUrl] = useState('')
+  const [selfieUrl, setSelfieUrl] = useState('')
+
+  const [uploadingStates, setUploadingStates] = useState({
+    aadhaarFront: false,
+    aadhaarBack: false,
+    drivingLicense: false,
+    panCard: false,
+    selfie: false
+  })
+
+  const [uploadProgress, setUploadProgress] = useState({
+    aadhaarFront: 0,
+    aadhaarBack: 0,
+    drivingLicense: 0,
+    panCard: 0,
+    selfie: 0
+  })
+
+  // Step 4: References & One Last Thing
+  const [references, setReferences] = useState([
+    { fullName: '', phone: '', relation: '' },
+    { fullName: '', phone: '', relation: '' },
+    { fullName: '', phone: '', relation: '' }
+  ])
   const [previousPlatforms, setPreviousPlatforms] = useState('')
   const [additionalComments, setAdditionalComments] = useState('')
 
@@ -67,13 +98,6 @@ export default function OnboardingPage() {
     { value: 'Renew karana hai', label: 'Renew karana hai', subtext: 'Expiry 3 mahinon mein' }
   ]
 
-  const documentOptions = [
-    'Aadhaar Card',
-    'Driving Licence',
-    'Police Verification',
-    'PAN Card'
-  ]
-
   const availabilityOptions = [
     { value: 'Full Time', label: 'Full Time', subtext: '6+ ghante roz available' },
     { value: 'Part Time', label: 'Part Time', subtext: 'Morning ya Evening shift' },
@@ -94,6 +118,35 @@ export default function OnboardingPage() {
       setList(list.filter((item) => item !== option))
     } else {
       setList([...list, option])
+    }
+  }
+
+  const handleReferenceChange = (index: number, key: string, value: string) => {
+    const updated = [...references]
+    updated[index] = { ...updated[index], [key]: value }
+    setReferences(updated)
+  }
+
+  const handleUpload = async (key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie', file: File) => {
+    if (!file) return
+    setUploadingStates(prev => ({ ...prev, [key]: true }))
+    setUploadProgress(prev => ({ ...prev, [key]: 0 }))
+
+    try {
+      const url = await uploadToCloudinary(file, (percent) => {
+        setUploadProgress(prev => ({ ...prev, [key]: percent }))
+      })
+      if (key === 'aadhaarFront') setAadhaarFrontUrl(url)
+      else if (key === 'aadhaarBack') setAadhaarBackUrl(url)
+      else if (key === 'drivingLicense') setDrivingLicenseUrl(url)
+      else if (key === 'panCard') setPanCardUrl(url)
+      else if (key === 'selfie') setSelfieUrl(url)
+      toast.success('Document uploaded successfully!')
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message || 'Failed to upload document')
+    } finally {
+      setUploadingStates(prev => ({ ...prev, [key]: false }))
     }
   }
 
@@ -134,14 +187,30 @@ export default function OnboardingPage() {
         toast.error('Please select your driving licence validity')
         return
       }
-      if (documentsAvailable.length === 0) {
-        toast.error('Please select at least one document you have available')
+      if (!availability) {
+        toast.error('Please select when you can work')
         return
       }
       setStep(3)
     } else if (step === 3) {
-      if (!availability) {
-        toast.error('Please select when you can work')
+      if (!aadhaarFrontUrl) {
+        toast.error('Please upload Aadhaar Card Front photo')
+        return
+      }
+      if (!aadhaarBackUrl) {
+        toast.error('Please upload Aadhaar Card Back photo')
+        return
+      }
+      if (!drivingLicenseUrl) {
+        toast.error('Please upload Driving Licence photo')
+        return
+      }
+      if (!panCardUrl) {
+        toast.error('Please upload PAN Card photo')
+        return
+      }
+      if (!selfieUrl) {
+        toast.error('Please upload your Selfie photo')
         return
       }
       setStep(4)
@@ -156,6 +225,29 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate references
+    for (let i = 0; i < 3; i++) {
+      const ref = references[i]
+      if (!ref.fullName.trim()) {
+        toast.error(`Please enter Full Name for Reference ${i + 1}`)
+        return
+      }
+      if (!ref.phone.trim()) {
+        toast.error(`Please enter Phone Number for Reference ${i + 1}`)
+        return
+      }
+      const refPhoneDigits = ref.phone.replace(/\D/g, '')
+      if (refPhoneDigits.length !== 10) {
+        toast.error(`Please enter a valid 10-digit Phone Number for Reference ${i + 1}`)
+        return
+      }
+      if (!ref.relation) {
+        toast.error(`Please select Relation for Reference ${i + 1}`)
+        return
+      }
+    }
+
     setSubmitting(true)
     const normalizedPhone = normalizePhone(phone)
 
@@ -206,7 +298,7 @@ export default function OnboardingPage() {
             id: user.id,
             experience,
             license_status: licenseStatus,
-            documents_available: documentsAvailable,
+            documents_available: ['Aadhaar Card', 'Driving Licence', 'PAN Card', 'Selfie'],
             availability,
             service_preference: servicePreference,
             vehicle_specialties: vehicleSpecialties,
@@ -216,6 +308,23 @@ export default function OnboardingPage() {
 
         if (profileError) {
           throw new Error(profileError.message || 'Failed to register additional profile details')
+        }
+
+        // Step 3: Write documents and references into driver_documents table
+        const { error: docsError } = await supabase
+          .from('driver_documents')
+          .insert({
+            driver_id: user.id,
+            aadhaar_front_url: aadhaarFrontUrl,
+            aadhaar_back_url: aadhaarBackUrl,
+            driving_license_url: drivingLicenseUrl,
+            pan_card_url: panCardUrl,
+            selfie_url: selfieUrl,
+            references: references
+          })
+
+        if (docsError) {
+          throw new Error(docsError.message || 'Failed to save documents and references')
         }
 
         setStep(5) // success step
@@ -230,6 +339,77 @@ export default function OnboardingPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const renderUploadCard = (
+    label: string,
+    key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie',
+    urlValue: string,
+    subtext: string
+  ) => {
+    const isUploading = uploadingStates[key]
+    const progress = uploadProgress[key]
+
+    return (
+      <div className="relative bg-surface2 border border-border/40 hover:border-[#A3E635]/50 transition-all duration-200 p-4 rounded-2xl flex flex-col justify-between items-stretch min-h-[145px]">
+        <div className="flex justify-between items-start">
+          <div>
+            <span className="text-xs font-bold text-foreground block mb-0.5">{label}</span>
+            <span className="text-[10px] text-text-muted block leading-tight">{subtext}</span>
+          </div>
+          {urlValue && (
+            <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              Uploaded
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 relative flex items-center justify-center flex-grow">
+          {isUploading ? (
+            <div className="flex flex-col items-center justify-center py-3 space-y-1.5 w-full">
+              <div className="h-5 w-5 border-2 border-[#A3E635] border-t-transparent rounded-full animate-spin" />
+              <span className="text-[9px] text-[#A3E635] font-extrabold">{progress}% uploading</span>
+            </div>
+          ) : urlValue ? (
+            <div className="relative w-full h-24 rounded-xl overflow-hidden border border-border/30 group">
+              <img 
+                src={urlValue} 
+                alt={label} 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <label className="cursor-pointer text-white font-extrabold text-[9px] uppercase tracking-wider bg-black/80 px-2.5 py-1.5 rounded-lg border border-white/20 hover:bg-[#A3E635] hover:text-slate-950 transition-all">
+                  Change Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleUpload(key, file)
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          ) : (
+            <label className="w-full flex flex-col items-center justify-center py-5 border border-dashed border-border/40 rounded-xl cursor-pointer hover:bg-muted/10 transition-colors">
+              <Upload className="h-5 w-5 text-text-muted mb-1" />
+              <span className="text-[9px] font-extrabold text-[#A3E635] uppercase tracking-wider">Upload File</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleUpload(key, file)
+                }}
+              />
+            </label>
+          )}
+        </div>
+      </div>
+    )
   }
 
   // Calculate Progress Percentage
@@ -396,196 +576,115 @@ export default function OnboardingPage() {
           <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
-                EXPERIENCE & DOCUMENTS
+                EXPERIENCE & PREFERENCES
               </span>
               <div className="h-[1px] bg-border/20 flex-grow" />
             </div>
 
-            {/* 4. Driving Experience */}
+            {/* Driving Experience */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">4</span> Driving Experience
+                  Driving Experience
                 </label>
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
                   Required
                 </span>
               </div>
-              <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
                 {experienceOptions.map((opt) => (
                   <div
                     key={opt.value}
                     onClick={() => setExperience(opt.value)}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 bg-surface2 border rounded-2xl cursor-pointer transition-all select-none",
+                      "flex flex-col items-center justify-center p-3 bg-surface2 border rounded-2xl cursor-pointer transition-all text-center select-none",
                       experience === opt.value
                         ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]"
                         : "border-border/40 text-foreground/80 hover:bg-muted/30"
                     )}
                   >
-                    <div className={cn(
-                      "h-4 w-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
-                      experience === opt.value ? "border-[#A3E635]" : "border-text-muted"
-                    )}>
-                      {experience === opt.value && (
-                        <div className="h-2 w-2 rounded-full bg-[#A3E635]" />
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold block">{opt.label}</span>
-                      {opt.subtext && (
-                        <span className="text-[10px] text-text-muted mt-0.5 block">{opt.subtext}</span>
-                      )}
-                    </div>
+                    <span className="text-xs font-bold block">{opt.label}</span>
+                    {opt.subtext && (
+                      <span className="text-[8px] text-text-muted mt-0.5 block">{opt.subtext}</span>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 5. Valid Driving Licence */}
+            {/* Valid Driving Licence */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">5</span> Valid Driving Licence
+                  Valid Driving Licence
                 </label>
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
                   Required
                 </span>
               </div>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
                 {licenseOptions.map((opt) => (
                   <div
                     key={opt.value}
                     onClick={() => setLicenseStatus(opt.value)}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 bg-surface2 border rounded-2xl cursor-pointer transition-all select-none",
+                      "flex flex-col items-center justify-center p-3 bg-surface2 border rounded-2xl cursor-pointer transition-all text-center select-none",
                       licenseStatus === opt.value
                         ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]"
                         : "border-border/40 text-foreground/80 hover:bg-muted/30"
                     )}
                   >
-                    <div className={cn(
-                      "h-4 w-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
-                      licenseStatus === opt.value ? "border-[#A3E635]" : "border-text-muted"
-                    )}>
-                      {licenseStatus === opt.value && (
-                        <div className="h-2 w-2 rounded-full bg-[#A3E635]" />
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold block">{opt.label}</span>
-                      {opt.subtext && (
-                        <span className="text-[10px] text-text-muted mt-0.5 block">{opt.subtext}</span>
-                      )}
-                    </div>
+                    <span className="text-xs font-bold block">{opt.label}</span>
+                    {opt.subtext && (
+                      <span className="text-[9px] text-text-muted mt-0.5 block">{opt.subtext}</span>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 6. Documents Available */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">6</span> Documents Available
-                </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
-                  Required
-                </span>
-              </div>
-              <p className="text-[10px] text-text-muted mb-1.5">Jo bhi hai woh chunein (sab nahi hone chahiye abhi)</p>
-              <div className="grid grid-cols-2 gap-2">
-                {documentOptions.map((opt) => {
-                  const isChecked = documentsAvailable.includes(opt)
-                  return (
-                    <div
-                      key={opt}
-                      onClick={() => handleCheckboxToggle(documentsAvailable, setDocumentsAvailable, opt)}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-3 bg-surface2 border rounded-2xl cursor-pointer text-xs font-bold transition-all select-none",
-                        isChecked ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]" : "border-border/40 text-foreground/80"
-                      )}
-                    >
-                      <div className={cn(
-                        "h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition-all",
-                        isChecked ? "border-[#A3E635] bg-[#A3E635]" : "border-text-muted"
-                      )}>
-                        {isChecked && (
-                          <svg className="h-3 w-3 text-black fill-current" viewBox="0 0 20 20">
-                            <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
-                          </svg>
-                        )}
-                      </div>
-                      <span>{opt}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
-                AVAILABILITY & PREFERENCE
-              </span>
-              <div className="h-[1px] bg-border/20 flex-grow" />
-            </div>
-
-            {/* 7. Kab kaam kar sakte hain? */}
+            {/* Kab kaam kar sakte hain? */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">7</span> Kab kaam kar sakte hain?
+                  Kab kaam kar sakte hain?
                 </label>
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
                   Required
                 </span>
               </div>
-              <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
                 {availabilityOptions.map((opt) => (
                   <div
                     key={opt.value}
                     onClick={() => setAvailability(opt.value)}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 bg-surface2 border rounded-2xl cursor-pointer transition-all select-none",
+                      "flex flex-col items-center justify-center p-2.5 bg-surface2 border rounded-2xl cursor-pointer transition-all text-center select-none",
                       availability === opt.value
                         ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]"
                         : "border-border/40 text-foreground/80 hover:bg-muted/30"
                     )}
                   >
-                    <div className={cn(
-                      "h-4 w-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
-                      availability === opt.value ? "border-[#A3E635]" : "border-text-muted"
-                    )}>
-                      {availability === opt.value && (
-                        <div className="h-2 w-2 rounded-full bg-[#A3E635]" />
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold block">{opt.label}</span>
-                      {opt.subtext && (
-                        <span className="text-[10px] text-text-muted mt-0.5 block">{opt.subtext}</span>
-                      )}
-                    </div>
+                    <span className="text-xs font-bold block">{opt.label}</span>
+                    {opt.subtext && (
+                      <span className="text-[8px] text-text-muted mt-0.5 block">{opt.subtext}</span>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 8. Kaunsa service prefer karoge? */}
+            {/* Kaunsa service prefer karoge? */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">8</span> Kaunsa service prefer karoge?
+                  Kaunsa service prefer karoge?
                 </label>
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
                   Optional
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 {serviceOptions.map((opt) => {
                   const isChecked = servicePreference.includes(opt)
                   return (
@@ -593,20 +692,10 @@ export default function OnboardingPage() {
                       key={opt}
                       onClick={() => handleCheckboxToggle(servicePreference, setServicePreference, opt)}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-3 bg-surface2 border rounded-2xl cursor-pointer text-xs font-bold transition-all select-none",
+                        "flex items-center justify-center py-2 bg-surface2 border rounded-2xl cursor-pointer text-[10px] font-bold text-center transition-all select-none",
                         isChecked ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]" : "border-border/40 text-foreground/80"
                       )}
                     >
-                      <div className={cn(
-                        "h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition-all",
-                        isChecked ? "border-[#A3E635] bg-[#A3E635]" : "border-text-muted"
-                      )}>
-                        {isChecked && (
-                          <svg className="h-3 w-3 text-black fill-current" viewBox="0 0 20 20">
-                            <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
-                          </svg>
-                        )}
-                      </div>
                       <span>{opt}</span>
                     </div>
                   )
@@ -632,16 +721,16 @@ export default function OnboardingPage() {
                       key={option}
                       onClick={() => handleCheckboxToggle(vehicleSpecialties, setVehicleSpecialties, option)}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-3 bg-surface2 border rounded-2xl cursor-pointer text-xs font-bold transition-all select-none",
+                        "flex items-center gap-2 px-3 py-2.5 bg-surface2 border rounded-2xl cursor-pointer text-xs font-bold transition-all select-none",
                         isChecked ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]" : "border-border/40 text-foreground/80"
                       )}
                     >
                       <div className={cn(
-                        "h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition-all",
+                        "h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 transition-all",
                         isChecked ? "border-[#A3E635] bg-[#A3E635]" : "border-text-muted"
                       )}>
                         {isChecked && (
-                          <svg className="h-3 w-3 text-black fill-current" viewBox="0 0 20 20">
+                          <svg className="h-2.5 w-2.5 text-black fill-current" viewBox="0 0 20 20">
                             <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
                           </svg>
                         )}
@@ -655,20 +744,122 @@ export default function OnboardingPage() {
           </div>
         )}
 
+        {step === 3 && (
+          <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
+                REQUIRED DOCUMENT UPLOADS
+              </span>
+              <div className="h-[1px] bg-border/20 flex-grow" />
+            </div>
+
+            <p className="text-[10px] text-text-muted">
+              Sabhi documents required hain. Please original scan ya saaf photo upload karein.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {renderUploadCard('Aadhaar Card - Front Side', 'aadhaarFront', aadhaarFrontUrl, 'Front side clear photo')}
+              {renderUploadCard('Aadhaar Card - Back Side', 'aadhaarBack', aadhaarBackUrl, 'Back side clear photo with address')}
+              {renderUploadCard('Driving Licence', 'drivingLicense', drivingLicenseUrl, 'Valid DL clear photo')}
+              {renderUploadCard('PAN Card', 'panCard', panCardUrl, 'PAN card clear photo')}
+              {renderUploadCard('Your Selfie', 'selfie', selfieUrl, 'Clear face selfie without glasses / cap')}
+            </div>
+          </div>
+        )}
+
         {step === 4 && (
           <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
-                ONE LAST THING
+                REFERENCES & FINAL DETAILS
               </span>
               <div className="h-[1px] bg-border/20 flex-grow" />
+            </div>
+
+            {/* References Forms */}
+            <div className="space-y-4">
+              <div>
+                <span className="text-[10.5px] font-bold text-foreground">
+                  REFERENCES (3 required)
+                </span>
+                <p className="text-[9.5px] text-text-muted mt-0.5">
+                  We may contact these references for background verification.
+                </p>
+              </div>
+
+              {[0, 1, 2].map((idx) => (
+                <div key={idx} className="bg-surface2 border border-border/40 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="h-4.5 w-4.5 rounded-full bg-[#A3E635] text-slate-950 font-extrabold text-[9px] flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <span className="text-xs font-extrabold tracking-wider text-[#A3E635] uppercase">
+                      REFERENCE {idx + 1}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {/* Full Name */}
+                    <div>
+                      <label className="text-[9px] font-extrabold text-foreground block mb-1">
+                        FULL NAME <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={references[idx].fullName}
+                        onChange={(e) => handleReferenceChange(idx, 'fullName', e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-background border border-border/30 rounded-xl focus:border-primary focus:outline-none text-foreground placeholder:text-text-muted/40"
+                        placeholder="Reference full name"
+                      />
+                    </div>
+
+                    {/* Phone Number */}
+                    <div>
+                      <label className="text-[9px] font-extrabold text-foreground block mb-1">
+                        PHONE NUMBER <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={references[idx].phone}
+                        onChange={(e) => handleReferenceChange(idx, 'phone', e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-background border border-border/30 rounded-xl focus:border-primary focus:outline-none text-foreground placeholder:text-text-muted/40"
+                        placeholder="10-digit mobile number"
+                      />
+                    </div>
+
+                    {/* Relation */}
+                    <div>
+                      <label className="text-[9px] font-extrabold text-foreground block mb-1">
+                        YOUR RELATION <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={references[idx].relation}
+                        onChange={(e) => handleReferenceChange(idx, 'relation', e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-background border border-border/30 rounded-xl focus:border-primary focus:outline-none text-foreground"
+                      >
+                        <option value="" disabled>-- Select Relation --</option>
+                        <option value="Parent">Parent (Mata / Pita)</option>
+                        <option value="Sibling">Sibling (Bhai / Behan)</option>
+                        <option value="Spouse">Spouse (Pati / Patni)</option>
+                        <option value="Relative">Relative (Rishtedar)</option>
+                        <option value="Friend">Friend (Dost)</option>
+                        <option value="Employer">Employer (Pehle ke malik)</option>
+                        <option value="Other">Other (Koi aur)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* 9. Pehle kisi platform pe kaam kiya? */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">9</span> Pehle kisi platform pe kaam kiya?
+                  Pehle kisi platform pe kaam kiya?
                 </label>
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
                   Optional
@@ -688,7 +879,7 @@ export default function OnboardingPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">10</span> Kuch aur bolna chahte hain?
+                  Kuch aur bolna chahte hain?
                 </label>
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
                   Optional
@@ -742,7 +933,7 @@ export default function OnboardingPage() {
               </h3>
               <p className="text-sm text-text-muted mt-2 max-w-[300px] leading-relaxed mx-auto">
                 Thank you for applying, <span className="text-primary dark:text-[#A3E635] font-bold">{fullName}</span>. 
-                Your driver profile has been successfully generated. 
+                Your driver profile and documents have been successfully uploaded. 
               </p>
             </div>
 
@@ -753,7 +944,7 @@ export default function OnboardingPage() {
               <ul className="space-y-1.5 text-[10px] text-text-muted">
                 <li className="flex items-start gap-1.5">
                   <span className="text-primary font-bold">1.</span>
-                  <span>Document check (Aadhaar & Driving License).</span>
+                  <span>Document check (Aadhaar, PAN & Driving License).</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <span className="text-primary font-bold">2.</span>

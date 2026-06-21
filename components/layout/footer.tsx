@@ -2,7 +2,14 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { FOOTER_COLUMNS, EMAIL, WEBSITE, WHATSAPP_CUSTOMER } from '@/constants'
 import logoSd from '../../public/icons/logo-sd.png'
-import { Facebook, Instagram, MessageCircle } from 'lucide-react'
+import { Facebook, Instagram, MessageCircle, Phone, Car, Mail, Globe } from 'lucide-react'
+
+const iconMap: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
+  Phone: Phone,
+  Car: Car,
+  Mail: Mail,
+  Globe: Globe,
+}
 
 export function Footer() {
   return (
@@ -27,7 +34,7 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-3 mt-5">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/profile.php?id=61590935150854"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center justify-center w-8 h-8 rounded-full border border-border bg-card hover:bg-card/80 transition-all hover:border-[#1877F2]/40 hover:shadow-[0_0_10px_rgba(24,119,242,0.15)]"
@@ -36,7 +43,7 @@ export function Footer() {
                 <Facebook size={16} className="text-muted-foreground group-hover:text-[#1877F2] transition-colors duration-300" />
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/scan_driver/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center justify-center w-8 h-8 rounded-full border border-border bg-card hover:bg-card/80 transition-all hover:border-[#E1306C]/40 hover:shadow-[0_0_10px_rgba(225,48,108,0.15)]"
@@ -63,27 +70,36 @@ export function Footer() {
                 {column.title}
               </h4>
               <ul className="flex flex-col gap-2.5 list-none">
-                {column.links.map((link) => (
-                  <li key={link.label}>
-                    {link.external ? (
-                      <a
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-muted-foreground hover:text-gold-light transition-colors"
-                      >
-                        {link.label}
-                      </a>
-                    ) : (
-                      <Link
-                        href={link.href}
-                        className="text-sm text-muted-foreground hover:text-gold-light transition-colors"
-                      >
-                        {link.label}
-                      </Link>
-                    )}
-                  </li>
-                ))}
+                {column.links.map((link) => {
+                  const IconComponent = link.icon ? iconMap[link.icon] : null
+                  return (
+                    <li key={link.label}>
+                      {link.external ? (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gold-light transition-colors group/link"
+                        >
+                          {IconComponent && (
+                            <IconComponent size={15} className="text-muted-foreground group-hover/link:text-gold-light transition-colors" />
+                          )}
+                          <span>{link.label}</span>
+                        </a>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gold-light transition-colors group/link"
+                        >
+                          {IconComponent && (
+                            <IconComponent size={15} className="text-muted-foreground group-hover/link:text-gold-light transition-colors" />
+                          )}
+                          <span>{link.label}</span>
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
