@@ -113,7 +113,7 @@ export default function AuthScreen({
           </div>
 
           {/* Login Method Sub-selector */}
-          {/* {isLoginMode && (
+          {isLoginMode && (
             <div className="flex justify-center gap-6 mb-6 border-b border-border/10 pb-3">
               <button
                 type="button"
@@ -147,7 +147,7 @@ export default function AuthScreen({
               </button>
 
             </div>
-          )} */}
+          )}
 
           <form className="space-y-4" onSubmit={handleAuth}>
 
