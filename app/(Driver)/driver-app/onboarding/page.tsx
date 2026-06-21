@@ -123,7 +123,11 @@ export default function OnboardingPage() {
 
   const handleReferenceChange = (index: number, key: string, value: string) => {
     const updated = [...references]
-    updated[index] = { ...updated[index], [key]: value }
+    let finalValue = value
+    if (key === 'phone') {
+      finalValue = value.replace(/\D/g, '').slice(0, 10)
+    }
+    updated[index] = { ...updated[index], [key]: finalValue }
     setReferences(updated)
   }
 
@@ -510,10 +514,11 @@ export default function OnboardingPage() {
               <input
                 type="tel"
                 required
+                maxLength={10}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 className="w-full px-3 py-2 text-sm bg-surface2 border border-border/40 rounded-xl focus:border-primary focus:outline-none text-foreground transition-colors placeholder:text-text-muted/50"
-                placeholder="+91 XXXXX XXXXX"
+                placeholder="10-digit mobile number"
               />
             </div>
 
@@ -822,6 +827,7 @@ export default function OnboardingPage() {
                       <input
                         type="tel"
                         required
+                        maxLength={10}
                         value={references[idx].phone}
                         onChange={(e) => handleReferenceChange(idx, 'phone', e.target.value)}
                         className="w-full px-3 py-2 text-xs bg-background border border-border/30 rounded-xl focus:border-primary focus:outline-none text-foreground placeholder:text-text-muted/40"
