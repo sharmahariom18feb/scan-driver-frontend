@@ -62,6 +62,7 @@ export interface DriverInfo {
   role?: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   isOnline?: boolean
   referralCode?: string
+  referredBy?: string
 }
 
 export interface DriverState {
@@ -369,6 +370,7 @@ export const signupDriver = createAsyncThunk(
             license_no: profileData.licenseNo,
             current_area: profileData.currentArea,
             role: 'DRIVER',
+            referred_by: profileData.referredBy || null,
           }
         }
       })

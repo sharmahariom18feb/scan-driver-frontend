@@ -33,6 +33,7 @@ export default function OnboardingPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [zone, setZone] = useState('')
+  const [referredBy, setReferredBy] = useState('')
 
   // Step 2: Experience & Preferences
   const [experience, setExperience] = useState('1-3 saal')
@@ -286,6 +287,7 @@ export default function OnboardingPage() {
           currentArea: zone,
           licenseNo: 'PENDING_VERIFICATION',
           password,
+          referredBy: referredBy || undefined,
         })
       )
 
@@ -573,6 +575,25 @@ export default function OnboardingPage() {
                   <option key={z} value={z}>{z}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Referral Code */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-foreground">
+                  Referral Code (Optional)
+                </label>
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
+                  Optional
+                </span>
+              </div>
+              <input
+                type="text"
+                value={referredBy}
+                onChange={(e) => setReferredBy(e.target.value.trim())}
+                className="w-full px-3 py-2 text-sm bg-surface2 border border-border/40 rounded-xl focus:border-primary focus:outline-none text-foreground transition-colors placeholder:text-text-muted/50 font-medium"
+                placeholder="Enter referral code if any (e.g. 123456)"
+              />
             </div>
           </div>
         )}
