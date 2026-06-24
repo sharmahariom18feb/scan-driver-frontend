@@ -22,6 +22,19 @@ import { cn } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 
+const parseAddress = (address: string) => {
+  if (!address) return { text: '', gpsUrl: null }
+  const gpsRegex = /\(GPS:\s*(https?:\/\/[^\s\)]+)\)/i
+  const match = address.match(gpsRegex)
+  if (match) {
+    return {
+      text: address.replace(gpsRegex, '').trim(),
+      gpsUrl: match[1]
+    }
+  }
+  return { text: address, gpsUrl: null }
+}
+
 interface BookingsTabProps {
   acceptedBookings: Booking[]
   completedBookings: Booking[]
@@ -595,12 +608,70 @@ function ActiveBookingCard({
         <div className="relative">
           <span className="absolute -left-4.5 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/10" />
           <p className="text-[9px] text-text-muted uppercase tracking-wider font-semibold leading-none mb-1">Pickup</p>
-          <p className="text-xs text-foreground font-medium truncate">{booking.pickup}</p>
+          <div className="text-xs text-foreground font-medium truncate">
+            {(() => {
+              const { text, gpsUrl } = parseAddress(booking.pickup)
+              if (gpsUrl) {
+                return (
+                  <span className="flex items-center gap-1.5 max-w-full">
+                    <span className="truncate">{text}</span>
+                    <a
+                      href={gpsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all shrink-0 select-none"
+                    >
+                      📍 GPS Link
+                    </a>
+                  </span>
+                )
+              }
+              return (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.pickup)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-400 hover:underline transition-colors"
+                >
+                  {booking.pickup}
+                </a>
+              )
+            })()}
+          </div>
         </div>
         <div className="relative">
           <span className="absolute -left-4.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 ring-4 ring-amber-500/10" />
           <p className="text-[9px] text-text-muted uppercase tracking-wider font-semibold leading-none mb-1">Drop</p>
-          <p className="text-xs text-foreground font-medium truncate">{booking.drop}</p>
+          <div className="text-xs text-foreground font-medium truncate">
+            {(() => {
+              const { text, gpsUrl } = parseAddress(booking.drop)
+              if (gpsUrl) {
+                return (
+                  <span className="flex items-center gap-1.5 max-w-full">
+                    <span className="truncate">{text}</span>
+                    <a
+                      href={gpsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all shrink-0 select-none"
+                    >
+                      📍 GPS Link
+                    </a>
+                  </span>
+                )
+              }
+              return (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.drop)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-400 hover:underline transition-colors"
+                >
+                  {booking.drop}
+                </a>
+              )
+            })()}
+          </div>
         </div>
       </div>
 

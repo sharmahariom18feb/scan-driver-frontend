@@ -11,6 +11,7 @@ import { WhyUsSection } from '@/components/sections/why-us-section'
 import { TestimonialsSection } from '@/components/sections/testimonials-section'
 import { WhatsAppFirstSection } from '@/components/sections/whatsapp-first-section'
 import { DriverJoinSection } from '@/components/sections/driver-join-section'
+import { CustomerEnquirySection } from '@/components/sections/customer-enquiry-section'
 import { ContactStripSection } from '@/components/sections/contact-strip-section'
 import { TermsSection } from '@/components/sections/terms-section'
 import {
@@ -116,6 +117,7 @@ export default function HomePage() {
           <TestimonialsSection />
           <WhatsAppFirstSection />
           <DriverJoinSection />
+          <CustomerEnquirySection />
           <ContactStripSection />
           <TermsSection />
         </main>

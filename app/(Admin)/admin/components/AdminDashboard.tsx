@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -10,6 +10,7 @@ import { Driver, Booking, DashboardStats } from '../types'
 import DashboardTab from './DashboardTab'
 import BookingsTab from './BookingsTab'
 import DriversTab from './DriversTab'
+import EnquiriesTab from './EnquiriesTab'
 
 interface AdminDashboardProps {
   adminUser: Driver
@@ -18,7 +19,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'drivers'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'drivers' | 'enquiries'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // System Data State
@@ -36,6 +37,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     onlineDrivers: 0,
     pendingDriversCount: 0,
     pendingBookingsCount: 0,
+    pendingEnquiriesCount: 0,
   })
 
   // Fetch stats and recent previews from backend
@@ -65,7 +67,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         pendingDriversRes,
         pendingBookingsRes,
         recentBookingsRes,
-        recentDriversRes
+        recentDriversRes,
+        pendingEnquiriesRes
       ] = await Promise.all([
         supabase.from('bookings').select('*', { count: 'exact', head: true }),
         supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
@@ -76,7 +79,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('verified', false),
         supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('admin_approved', false),
         supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
-        supabase.from('users').select('*, driver_profiles(*)').eq('role', 'DRIVER').order('created_at', { ascending: false }).limit(5)
+        supabase.from('users').select('*, driver_profiles(*)').eq('role', 'DRIVER').order('created_at', { ascending: false }).limit(5),
+        supabase.from('customer_enquiries').select('*', { count: 'exact', head: true }).eq('status', 'pending')
       ])
 
       if (recentBookingsRes.error) throw recentBookingsRes.error
@@ -97,6 +101,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         onlineDrivers: onlineDriversRes.count || 0,
         pendingDriversCount: pendingDriversRes.count || 0,
         pendingBookingsCount: pendingBookingsRes.count || 0,
+        pendingEnquiriesCount: pendingEnquiriesRes.count || 0,
       })
     } catch (err: any) {
       console.error('Error fetching admin data:', err)
@@ -145,9 +150,26 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       )
       .subscribe()
 
+    // Subscribe to enquiry changes
+    const enquiriesChannel = supabase
+      .channel('admin-enquiries-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customer_enquiries' },
+        (payload) => {
+          console.log('Real-time enquiries update received in admin:', payload)
+          fetchData()
+          if (payload.eventType === 'INSERT') {
+            toast.info(`New Enquiry: Callback request from ${payload.new.name}!`)
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(bookingsChannel)
       supabase.removeChannel(driversChannel)
+      supabase.removeChannel(enquiriesChannel)
     }
   }, [])
 
@@ -200,6 +222,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               { id: 'dashboard' as const, label: 'Overview', icon: LayoutDashboard },
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
+              { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
             ].map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id
@@ -212,11 +235,16 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   }}
                   className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${isActive
                     ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    : 'text-slate-330 hover:text-white hover:bg-slate-800/60'
                     }`}
                 >
                   <Icon size={18} />
                   {item.label}
+                  {item.id === 'enquiries' && stats.pendingEnquiriesCount && stats.pendingEnquiriesCount > 0 ? (
+                    <span className="ml-auto bg-amber-400 text-slate-950 font-extrabold text-[9px] px-2 py-0.5 rounded-full">
+                      {stats.pendingEnquiriesCount}
+                    </span>
+                  ) : null}
                 </button>
               )
             })}
@@ -272,7 +300,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             {/* Notification alert */}
             <div className="relative p-2 rounded-xl border border-slate-750 text-slate-300 hover:text-white hover:bg-slate-800/40 transition-all">
               <Bell size={15} />
-              {stats.pendingDriversCount > 0 && (
+              {(stats.pendingDriversCount > 0 || (stats.pendingEnquiriesCount && stats.pendingEnquiriesCount > 0)) && (
                 <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
               )}
             </div>
@@ -305,6 +333,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
               {activeTab === 'drivers' && (
                 <DriversTab
+                  onRefresh={fetchData}
+                />
+              )}
+
+              {activeTab === 'enquiries' && (
+                <EnquiriesTab
                   onRefresh={fetchData}
                 />
               )}

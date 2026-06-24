@@ -383,4 +383,32 @@ create trigger on_auth_user_created_auto_confirm
   before insert on auth.users
   for each row execute function public.auto_confirm_user();
 
+-- 14. Create customer_enquiries table for customer support & quotes
+create table if not exists public.customer_enquiries (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  phone text not null,
+  email text,
+  message text,
+  status text not null check (status in ('pending', 'in_progress', 'completed')) default 'pending',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS
+alter table public.customer_enquiries enable row level security;
+
+-- Policies
+create policy "Anyone can submit an enquiry." on public.customer_enquiries
+  for insert with check (true);
+
+create policy "Admins can view enquiries." on public.customer_enquiries
+  for select using (public.is_admin());
+
+create policy "Admins can update enquiries." on public.customer_enquiries
+  for update using (public.is_admin());
+
+create policy "Admins can delete enquiries." on public.customer_enquiries
+  for delete using (public.is_admin());
+
+
 

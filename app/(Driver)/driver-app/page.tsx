@@ -605,6 +605,10 @@ export default function DriverApp() {
             stats={derivedStats}
             availableBookings={availableBookings}
             handleOpenDetails={handleOpenDetails}
+            onTotalTripsClick={() => {
+              setActiveTab('bookings')
+              setBookingFilter('history')
+            }}
           />
         )}
 

@@ -86,9 +86,10 @@ export default function RootLayout({
                   var host = window.location.hostname;
                   var path = window.location.pathname;
                   if (host.indexOf('partner') !== -1 || path.indexOf('/driver-app') !== -1) {
-                    document.documentElement.classList.add('light');
-                    document.documentElement.classList.remove('dark');
-                    document.documentElement.style.colorScheme = 'light';
+                    var savedDriverTheme = localStorage.getItem('driver-theme') || 'light';
+                    document.documentElement.classList.add(savedDriverTheme);
+                    document.documentElement.classList.remove(savedDriverTheme === 'dark' ? 'light' : 'dark');
+                    document.documentElement.style.colorScheme = savedDriverTheme;
                   } else {
                     document.documentElement.classList.add('dark');
                     document.documentElement.classList.remove('light');

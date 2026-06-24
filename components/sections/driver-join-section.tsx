@@ -3,6 +3,8 @@ import { SectionLabel } from '@/components/common/section-label'
 import { CTAButton } from '@/components/common/cta-button'
 import { WhatsAppIcon } from '@/components/common/icons'
 import { DRIVER_BENEFITS, WHATSAPP_DRIVER, getWhatsAppLink } from '@/constants'
+import Image from 'next/image'
+import driverPicImg from '../../public/driver_pic.png'
 
 export function DriverJoinSection() {
   return (
@@ -59,7 +61,7 @@ export function DriverJoinSection() {
           <div className="lg:order-1">
             <Reveal delay={0.2}>
               <div className="bg-surface border border-border rounded-3xl p-12 text-center">
-                <span className="text-7xl mb-5 block">🧑‍✈️</span>
+                <Image src={driverPicImg} width={300} height={300} alt='driver pic' className="mx-auto mb-5 rounded-2xl object-cover" />
                 <h3 className="font-display text-[34px] font-bold text-foreground mb-3">
                   Start Earning Today
                 </h3>

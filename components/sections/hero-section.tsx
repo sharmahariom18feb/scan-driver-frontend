@@ -14,8 +14,8 @@ export function HeroSection() {
       {/* Grid Lines */}
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(201,146,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(201,146,42,0.04)_1px,transparent_1px)] bg-[size:60px_60px] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black_0%,transparent_100%)]" />
 
-      <div className="w-[1160px] flex align-middle justify-center px-6 relative z-10">
-        <div className="w-[700px]">
+      <div className="max-w-[1160px] w-full mx-auto flex items-center justify-center lg:justify-start px-6 relative z-10">
+        <div className="max-w-[700px] w-full flex flex-col items-center lg:items-start text-center lg:text-left">
           {/* Badge */}
           <Reveal>
             <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/25 rounded-full px-4 py-1.5 text-xs font-medium text-gold-light mb-7">
@@ -26,7 +26,7 @@ export function HeroSection() {
 
           {/* Heading */}
           <Reveal delay={0.1}>
-            <h1 className=" text-[clamp(44px,6vw,76px)] font-[1000] leading-[1.08] text-foreground mb-6">
+            <h1 className="text-[clamp(32px,7vw,76px)] font-[1000] leading-[1.08] text-foreground mb-6">
               Your Driver,
               <em className="block italic text-gold-light">One Scan Away.</em>
             </h1>
@@ -34,14 +34,14 @@ export function HeroSection() {
 
           {/* Subtext */}
           <Reveal delay={0.2}>
-            <p className="text-base md:text-[17px] text-muted-foreground max-w-[480px] leading-relaxed font-light mb-10">
+            <p className="text-base md:text-[17px] text-muted-foreground max-w-[480px] mx-auto lg:mx-0 leading-relaxed font-light mb-10">
               Verified, background-checked, and professionally trained drivers — available hourly, weekly, or monthly. No app needed. Just WhatsApp.
             </p>
           </Reveal>
 
           {/* CTAs */}
           <Reveal delay={0.3}>
-            <div className="flex gap-3.5 flex-wrap">
+            <div className="flex gap-3.5 flex-wrap justify-center lg:justify-start">
               <CTAButton
                 href="/booking"
                 variant="gold"
@@ -56,7 +56,7 @@ export function HeroSection() {
 
           {/* Trust Items */}
           <Reveal delay={0.4}>
-            <div className="flex items-center gap-6 mt-12 flex-wrap">
+            <div className="flex items-center justify-center lg:justify-start gap-6 mt-12 flex-wrap">
               <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
                 <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center">
                   <Check className="w-3.5 h-3.5 text-gold-light" />

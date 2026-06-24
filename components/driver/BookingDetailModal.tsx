@@ -13,6 +13,19 @@ import {
 import { cn } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
 
+const parseAddress = (address: string) => {
+  if (!address) return { text: '', gpsUrl: null }
+  const gpsRegex = /\(GPS:\s*(https?:\/\/[^\s\)]+)\)/i
+  const match = address.match(gpsRegex)
+  if (match) {
+    return {
+      text: address.replace(gpsRegex, '').trim(),
+      gpsUrl: match[1]
+    }
+  }
+  return { text: address, gpsUrl: null }
+}
+
 interface BookingDetailModalProps {
   isOpen: boolean
   booking: Booking
@@ -108,7 +121,40 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Pickup From</p>
-                  <p className="text-sm font-semibold text-foreground leading-normal">{booking.pickup}</p>
+                  {booking.status === 'accepted' || booking.status === 'completed' ? (
+                    <div className="text-sm font-semibold leading-normal">
+                      {(() => {
+                        const { text, gpsUrl } = parseAddress(booking.pickup)
+                        if (gpsUrl) {
+                          return (
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-foreground">{text}</span>
+                              <a
+                                href={gpsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all select-none"
+                              >
+                                📍 GPS Link
+                              </a>
+                            </span>
+                          )
+                        }
+                        return (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.pickup)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-400 hover:underline transition-colors"
+                          >
+                            {booking.pickup}
+                          </a>
+                        )
+                      })()}
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold text-foreground leading-normal">{booking.pickup}</p>
+                  )}
                 </div>
               </div>
 
@@ -118,7 +164,40 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Drop To</p>
-                  <p className="text-sm font-semibold text-foreground leading-normal">{booking.drop}</p>
+                  {booking.status === 'accepted' || booking.status === 'completed' ? (
+                    <div className="text-sm font-semibold leading-normal">
+                      {(() => {
+                        const { text, gpsUrl } = parseAddress(booking.drop)
+                        if (gpsUrl) {
+                          return (
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-foreground">{text}</span>
+                              <a
+                                href={gpsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all select-none"
+                              >
+                                📍 GPS Link
+                              </a>
+                            </span>
+                          )
+                        }
+                        return (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.drop)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-400 hover:underline transition-colors"
+                          >
+                            {booking.drop}
+                          </a>
+                        )
+                      })()}
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold text-foreground leading-normal">{booking.drop}</p>
+                  )}
                 </div>
               </div>
 

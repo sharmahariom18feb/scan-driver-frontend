@@ -597,7 +597,9 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                           <p className="text-[10px] text-slate-300 font-semibold flex items-center gap-1">
                             <Calendar size={10} className="text-amber-500 shrink-0" /> {b.date_time}
                           </p>
-                          <p className="text-[10px] text-slate-200 font-bold">₹{b.fare} • {b.duration}</p>
+                          <p className="text-xs text-slate-200 font-semibold">
+                            <span className="text-sm font-extrabold text-amber-400">₹{b.fare}</span> • {b.duration}
+                          </p>
                           {b.invoice_id && (
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <p className="text-[9px] text-amber-400 font-mono">
@@ -766,7 +768,9 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                   <div className="space-y-1.5 text-slate-200 text-xs">
                     <p className="font-extrabold text-white">{b.customer_name} • {b.phone}</p>
                     <p className="font-bold text-slate-300">{b.vehicle} ({b.type})</p>
-                    <p className="text-[10px] text-slate-300 font-semibold">{b.date_time} • ₹{b.fare} ({b.duration})</p>
+                    <p className="text-[10px] text-slate-300 font-semibold">
+                      {b.date_time} • <span className="text-xs font-extrabold text-amber-400">₹{b.fare}</span> ({b.duration})
+                    </p>
                     {b.invoice_id && (
                       <div className="flex items-center gap-1.5">
                         <p className="text-[9px] text-amber-400 font-mono">Inv: {b.invoice_id}</p>

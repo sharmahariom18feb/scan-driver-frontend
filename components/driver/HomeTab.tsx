@@ -24,6 +24,7 @@ interface HomeTabProps {
   stats: { trips: number; earnings: number }
   availableBookings: Booking[]
   handleOpenDetails: (booking: Booking) => void
+  onTotalTripsClick?: () => void
 }
 
 export default function HomeTab({
@@ -35,6 +36,7 @@ export default function HomeTab({
   stats,
   availableBookings,
   handleOpenDetails,
+  onTotalTripsClick,
 }: HomeTabProps) {
   return (
     <div className="px-5 py-6 space-y-6">
@@ -87,7 +89,13 @@ export default function HomeTab({
 
       {/* Stats list */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
+        <div
+          onClick={onTotalTripsClick}
+          className={cn(
+            'bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs select-none',
+            onTotalTripsClick && 'cursor-pointer hover:border-gold/30 hover:bg-surface2 transition-all'
+          )}
+        >
           <span className="block font-bold text-xl text-gold-light">{stats.trips}</span>
           <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Total Trips</span>
         </div>

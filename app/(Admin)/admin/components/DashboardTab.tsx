@@ -165,7 +165,7 @@ export default function DashboardTab({
                   </div>
 
                   <div className="text-right space-y-1">
-                    <p className="text-xs font-bold text-white">₹{b.fare}</p>
+                    <p className="text-sm font-extrabold text-amber-400">₹{b.fare}</p>
                     <span
                       className={`inline-block text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
                         b.status === 'completed'

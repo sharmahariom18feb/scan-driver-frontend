@@ -76,4 +76,16 @@ export interface DashboardStats {
   onlineDrivers: number
   pendingDriversCount: number
   pendingBookingsCount: number
+  pendingEnquiriesCount?: number
 }
+
+export interface Enquiry {
+  id: string
+  name: string
+  phone: string
+  email: string | null
+  message: string | null
+  status: 'pending' | 'in_progress' | 'completed'
+  created_at: string
+}
+
