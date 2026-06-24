@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
+import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 
 interface BookingsTabProps {
   acceptedBookings: Booking[]
@@ -31,7 +32,8 @@ interface BookingsTabProps {
     bookingId: string,
     tripStatus: string,
     paymentType?: 'CASH' | 'QR' | null,
-    invoiceId?: string | null
+    invoiceId?: string | null,
+    invoiceImage?: string | null
   ) => void
 }
 
@@ -73,7 +75,8 @@ interface ActiveBookingCardProps {
     bookingId: string,
     tripStatus: string,
     paymentType?: 'CASH' | 'QR' | null,
-    invoiceId?: string | null
+    invoiceId?: string | null,
+    invoiceImage?: string | null
   ) => void
 }
 
@@ -87,6 +90,8 @@ function ActiveBookingCard({
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
   const [qrConfirmed, setQrConfirmed] = useState(false)
+  const [viewingInvoice, setViewingInvoice] = useState<string | null>(null)
+  const [viewingQr, setViewingQr] = useState(false)
 
   const tripStatus = booking.tripStatus || 'not_started'
 
@@ -135,23 +140,23 @@ function ActiveBookingCard({
           const Icon = step.icon
           const isActive = idx === currentIndex
           const isCompleted = idx < currentIndex
-          
+
           return (
             <React.Fragment key={idx}>
               <div className="flex flex-col items-center gap-1 flex-1 relative">
                 <div
                   className={cn(
                     "h-8 w-8 rounded-full flex items-center justify-center border transition-all duration-300",
-                    isActive 
-                      ? "bg-gold text-black border-gold shadow-md shadow-gold/10 scale-105 font-bold" 
-                      : isCompleted 
-                        ? "bg-emerald-500 border-emerald-500 text-white" 
+                    isActive
+                      ? "bg-gold text-black border-gold shadow-md shadow-gold/10 scale-105 font-bold"
+                      : isCompleted
+                        ? "bg-emerald-500 border-emerald-500 text-white"
                         : "bg-surface text-text-muted border-border/10"
                   )}
                 >
                   {isCompleted ? <Check size={12} strokeWidth={3} /> : <Icon size={12} />}
                 </div>
-                <span 
+                <span
                   className={cn(
                     "text-[8px] uppercase tracking-wider font-bold",
                     isActive ? "text-gold-light" : isCompleted ? "text-emerald-500" : "text-text-muted"
@@ -162,7 +167,7 @@ function ActiveBookingCard({
               </div>
 
               {idx < steps.length - 1 && (
-                <div 
+                <div
                   className={cn(
                     "h-[1.5px] -mt-3.5 flex-1 bg-border/10 mx-1 rounded",
                     idx < currentIndex ? "bg-emerald-500" : ""
@@ -321,11 +326,11 @@ function ActiveBookingCard({
               <div className="space-y-1 text-center">
                 <p className="text-xs font-bold uppercase tracking-wider text-text-muted">OTP Verification</p>
                 <p className="text-sm font-semibold text-foreground">Enter Ride OTP from customer</p>
-                <p className="text-[10px] text-emerald-500 font-mono">
+                {/* <p className="text-[10px] text-emerald-500 font-mono">
                   For testing, use suffix of customer phone: <span className="font-bold underline">{correctOtp}</span>
-                </p>
+                </p> */}
               </div>
-              
+
               <div className="space-y-2">
                 <input
                   type="text"
@@ -385,9 +390,22 @@ function ActiveBookingCard({
               <p className="text-sm font-semibold text-foreground">Trip Has Ended</p>
               <p className="text-xs text-text-muted">Please generate the customer invoice to receive payment.</p>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const generatedInvoiceId = `INV-${booking.id}-${Math.floor(1000 + Math.random() * 9000)}`;
-                  handleUpdateTripStatus(booking.id, 'invoice_generated', null, generatedInvoiceId);
+                  const generatedInvoiceImage = await generateInvoiceImage({
+                    id: booking.id,
+                    customerName: booking.customerName,
+                    phone: booking.phone,
+                    pickup: booking.pickup,
+                    drop: booking.drop,
+                    dateTime: booking.dateTime,
+                    fare: booking.fare,
+                    vehicle: booking.vehicle,
+                    invoiceId: generatedInvoiceId,
+                    duration: booking.duration,
+                    type: booking.type,
+                  });
+                  handleUpdateTripStatus(booking.id, 'invoice_generated', null, generatedInvoiceId, generatedInvoiceImage);
                 }}
                 className="w-full py-3.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl shadow-md bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
               >
@@ -409,26 +427,39 @@ function ActiveBookingCard({
                     Invoice ID: <span className="text-gold-light font-bold">{booking.invoiceId}</span>
                   </p>
                 )}
+                {booking.invoiceImage && (
+                  <button
+                    onClick={() => setViewingInvoice(booking.invoiceImage || null)}
+                    className="text-[10px] text-blue-400 hover:text-blue-350 font-bold hover:underline cursor-pointer flex items-center justify-center gap-1 mx-auto mt-2"
+                  >
+                    <FileText size={12} /> View Generated Invoice
+                  </button>
+                )}
               </div>
 
               <div className="space-y-3 flex flex-col items-center p-3 bg-surface rounded-lg border border-border/5">
-                <div className="w-28 h-28 relative bg-white p-2 rounded-lg flex items-center justify-center border">
-                  <div className="w-full h-full border-2 border-slate-900 border-dashed animate-pulse flex flex-col items-center justify-center text-[10px] text-slate-800 font-bold">
-                    <span className="text-[16px] mb-1">📷</span>
-                    <span>[ QR CODE ]</span>
-                  </div>
+                <div
+                  onClick={() => setViewingQr(true)}
+                  className="w-28 h-28 relative bg-white p-2 rounded-lg flex items-center justify-center border cursor-zoom-in hover:ring-2 hover:ring-primary/50 transition-all"
+                  title="Click to zoom in"
+                >
+                  <img
+                    src="/QRCODE.jpeg"
+                    alt="QR Code"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <p className="text-[9px] text-text-muted text-center leading-normal">
                   Customer scans and pays directly.
                 </p>
-                
+
                 <button
                   type="button"
                   onClick={() => setQrConfirmed(prev => !prev)}
                   className={cn(
                     "w-full py-1.5 px-3 text-[10px] font-bold uppercase rounded-lg border transition-all cursor-pointer",
-                    qrConfirmed 
-                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                    qrConfirmed
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       : "border-border/10 text-foreground hover:bg-surface2"
                   )}
                 >
@@ -509,13 +540,13 @@ function ActiveBookingCard({
 
   return (
     <div className="bg-card border border-primary/25 rounded-xl p-5 shadow-lg relative overflow-hidden transition-all duration-300">
-      <div 
+      <div
         className={cn(
           "absolute top-0 left-0 w-1.5 h-full transition-colors duration-300",
-          tripStatus === 'completed' || tripStatus === 'cancelled_by_driver' 
-            ? "bg-rose-500" 
-            : tripStatus === 'started' 
-              ? "bg-blue-600" 
+          tripStatus === 'completed' || tripStatus === 'cancelled_by_driver'
+            ? "bg-rose-500"
+            : tripStatus === 'started'
+              ? "bg-blue-600"
               : "bg-emerald-500"
         )}
       />
@@ -553,7 +584,7 @@ function ActiveBookingCard({
         </span>
       </div>
 
-      <h4 
+      <h4
         onClick={() => handleOpenDetails(booking)}
         className="font-bold text-lg text-foreground mb-3 hover:text-gold-light hover:underline transition-colors cursor-pointer inline-block"
       >
@@ -612,6 +643,83 @@ function ActiveBookingCard({
           </span>
         </div>
       </div>
+
+      {/* Modal: View QR Code */}
+      {viewingQr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
+              <h3 className="font-bold text-foreground text-xs uppercase tracking-wider">Payment QR Code</h3>
+              <button
+                onClick={() => setViewingQr(false)}
+                className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="p-6 flex flex-col items-center justify-center bg-white overflow-y-auto max-h-[70vh]">
+              <img
+                src="/QRCODE.jpeg"
+                alt="Payment QR Code"
+                className="max-w-full h-auto object-contain"
+              />
+            </div>
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
+              <button
+                onClick={() => setViewingQr(false)}
+                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View Invoice Receipt */}
+      {viewingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
+              <h3 className="font-bold text-foreground text-xs uppercase tracking-wider">Invoice Receipt</h3>
+              <button
+                onClick={() => setViewingInvoice(null)}
+                className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="p-4 flex flex-col items-center justify-center bg-surface/50 overflow-y-auto max-h-[70vh]">
+              <img
+                src={viewingInvoice}
+                alt="Invoice Receipt"
+                className="max-w-full h-auto rounded-lg border border-border/10 shadow-md"
+              />
+            </div>
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-border/10 flex justify-end gap-2 bg-surface">
+              <a
+                href={viewingInvoice}
+                download={`Invoice-${booking.id}.png`}
+                className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-bold shadow-md transition-all text-center cursor-pointer"
+              >
+                DOWNLOAD
+              </a>
+              <button
+                onClick={() => setViewingInvoice(null)}
+                className="px-3.5 py-1.5 rounded-lg border border-border/10 hover:bg-surface2 text-[10px] font-bold text-text-muted hover:text-foreground cursor-pointer transition-all"
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

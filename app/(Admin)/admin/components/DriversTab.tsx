@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key } from 'lucide-react'
+import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Driver } from '../types'
@@ -21,6 +21,10 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  // Image viewing modal states
+  const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null)
+  const [viewingImageLabel, setViewingImageLabel] = useState<string>('')
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null)
@@ -57,28 +61,31 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
         {/* Document images */}
         <div>
           <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] mb-2">Uploaded Verification Documents</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
             {[
               { label: 'Aadhaar Front', url: docs.aadhaar_front_url },
               { label: 'Aadhaar Back', url: docs.aadhaar_back_url },
               { label: 'Driving License', url: docs.driving_license_url },
               { label: 'PAN Card', url: docs.pan_card_url },
               { label: 'Selfie', url: docs.selfie_url },
+              { label: 'Payment Receipt', url: docs.payment },
             ].map((doc, idx) => (
-              <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-col items-center space-y-1.5">
+              <div key={idx} className="bg-slate-900 border border-slate-880 rounded-xl p-2.5 flex flex-col items-center space-y-1.5">
                 <span className="text-[9px] font-bold text-slate-400 text-center">{doc.label}</span>
                 {doc.url ? (
-                  <a 
-                    href={doc.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="relative block w-full h-20 rounded-lg overflow-hidden border border-slate-750 hover:border-amber-500 transition-all group"
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setViewingImageUrl(doc.url || null)
+                      setViewingImageLabel(doc.label)
+                    }}
+                    className="relative block w-full h-20 rounded-lg overflow-hidden border border-slate-750 hover:border-amber-500 transition-all group cursor-zoom-in"
                   >
                     <img src={doc.url} alt={doc.label} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="text-[8px] font-extrabold text-white bg-slate-950/80 px-1.5 py-0.5 rounded">VIEW</span>
+                    <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-[8px] font-extrabold text-white bg-slate-950/80 px-1.5 py-0.5 rounded">ZOOM</span>
                     </div>
-                  </a>
+                  </button>
                 ) : (
                   <span className="text-[9px] text-rose-450 italic py-5">Not Uploaded</span>
                 )}
@@ -785,6 +792,57 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View Driver Document */}
+      {viewingImageUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-slate-800/60 flex justify-between items-center bg-slate-950">
+              <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-amber-500">{viewingImageLabel}</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingImageUrl(null)
+                  setViewingImageLabel('')
+                }}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-full cursor-pointer hover:bg-slate-800 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="p-4 flex flex-col items-center justify-center bg-slate-950 overflow-y-auto max-h-[70vh] w-full">
+              <img
+                src={viewingImageUrl}
+                alt={viewingImageLabel}
+                className="max-w-full h-auto max-h-[60vh] object-contain rounded-lg shadow-md"
+              />
+            </div>
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-slate-800/60 flex justify-between items-center bg-slate-950">
+              <a
+                href={viewingImageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 text-slate-350 text-[10px] font-bold cursor-pointer transition-all uppercase tracking-wider"
+              >
+                Open Raw File
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingImageUrl(null)
+                  setViewingImageLabel('')
+                }}
+                className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                CLOSE
+              </button>
+            </div>
           </div>
         </div>
       )}

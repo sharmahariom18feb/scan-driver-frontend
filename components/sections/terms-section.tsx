@@ -1,6 +1,18 @@
 import { Reveal } from '@/components/common/reveal'
 import { SectionLabel } from '@/components/common/section-label'
 import { TERMS, EMAIL, WHATSAPP_CUSTOMER } from '@/constants'
+import { ClipboardList, Users, ShieldCheck, Coins, ShieldAlert, Car, Lock, Scale } from 'lucide-react'
+
+const iconMap: Record<number, React.ReactNode> = {
+  0: <ClipboardList className="w-6 h-6 text-gold" />,
+  1: <Users className="w-6 h-6 text-gold" />,
+  2: <ShieldCheck className="w-6 h-6 text-gold" />,
+  3: <Coins className="w-6 h-6 text-gold" />,
+  4: <ShieldAlert className="w-6 h-6 text-gold" />,
+  5: <Car className="w-6 h-6 text-gold" />,
+  6: <Lock className="w-6 h-6 text-gold" />,
+  7: <Scale className="w-6 h-6 text-gold" />,
+}
 
 export function TermsSection() {
   return (
@@ -26,14 +38,18 @@ export function TermsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {TERMS.map((term, index) => (
             <Reveal key={term.title} delay={0.1 * (index % 4)}>
-              <div className="bg-background border border-border rounded-[14px] p-7 transition-all duration-300 hover:border-gold/35">
-                <div className="text-[26px] mb-3">{term.icon}</div>
-                <h3 className="text-[17px] font-bold text-foreground mb-2.5 leading-tight">
-                  {term.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {term.description}
-                </p>
+              <div className="bg-background border border-border rounded-[14px] p-7 transition-all duration-300 hover:border-gold/35 flex flex-col gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
+                  {iconMap[index] || <span className="text-[26px]">{term.icon}</span>}
+                </div>
+                <div>
+                  <h3 className="text-[17px] font-bold text-foreground mb-2.5 leading-tight">
+                    {term.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {term.description}
+                  </p>
+                </div>
               </div>
             </Reveal>
           ))}

@@ -2,6 +2,7 @@ import { Reveal } from '@/components/common/reveal'
 import { CTAButton } from '@/components/common/cta-button'
 import { WhatsAppIcon } from '@/components/common/icons'
 import { WHATSAPP_CUSTOMER, getWhatsAppLink } from '@/constants'
+import { Check, Lock, Zap } from 'lucide-react'
 
 export function HeroSection() {
   return (
@@ -57,17 +58,23 @@ export function HeroSection() {
           <Reveal delay={0.4}>
             <div className="flex items-center gap-6 mt-12 flex-wrap">
               <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center text-[13px]">✓</div>
+                <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5 text-gold-light" />
+                </div>
                 Background Verified, 2 Refs
               </div>
               <div className="w-px h-5 bg-border hidden sm:block" />
               <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center text-[13px]">🔒</div>
+                <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center">
+                  <Lock className="w-3.5 h-3.5 text-gold-light" />
+                </div>
                 100% Safe
               </div>
               <div className="w-px h-5 bg-border hidden sm:block" />
               <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center text-[13px]">⚡</div>
+                <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center">
+                  <Zap className="w-3.5 h-3.5 text-gold-light" />
+                </div>
                 24/7 Available
               </div>
             </div>

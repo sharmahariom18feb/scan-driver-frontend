@@ -1,7 +1,7 @@
 import { Reveal } from '@/components/common/reveal'
 import { SectionLabel } from '@/components/common/section-label'
 import { CTAButton } from '@/components/common/cta-button'
-// No WhatsApp constants or icons needed in imports anymore
+import { Smartphone, Zap, ShieldCheck } from 'lucide-react'
 
 export function WhatsAppFirstSection() {
   return (
@@ -90,14 +90,17 @@ export function WhatsAppFirstSection() {
 
               {/* Features Row */}
               <div className="flex gap-2 px-4 py-3.5 bg-[#1f2c33] border-t border-white/5 flex-wrap">
-                <div className="bg-wa-green/10 border border-wa-green/25 rounded-full px-3 py-1 text-[11px] font-semibold text-wa-green">
-                  📲 No App
+                <div className="bg-wa-green/10 border border-wa-green/25 rounded-full px-3 py-1.5 text-[11px] font-semibold text-wa-green flex items-center gap-1">
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>No App</span>
                 </div>
-                <div className="bg-wa-green/10 border border-wa-green/25 rounded-full px-3 py-1 text-[11px] font-semibold text-wa-green">
-                  ⚡ &lt;2 Min Reply
+                <div className="bg-wa-green/10 border border-wa-green/25 rounded-full px-3 py-1.5 text-[11px] font-semibold text-wa-green flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>&lt;2 Min Reply</span>
                 </div>
-                <div className="bg-wa-green/10 border border-wa-green/25 rounded-full px-3 py-1 text-[11px] font-semibold text-wa-green">
-                  🔒 Verified
+                <div className="bg-wa-green/10 border border-wa-green/25 rounded-full px-3 py-1.5 text-[11px] font-semibold text-wa-green flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Verified</span>
                 </div>
               </div>
             </div>

@@ -436,9 +436,10 @@ export default function DriverApp() {
     bookingId: string,
     tripStatus: string,
     paymentType?: 'CASH' | 'QR' | null,
-    invoiceId?: string | null
+    invoiceId?: string | null,
+    invoiceImage?: string | null
   ) => {
-    const result = await dispatch(updateTripStatus({ bookingId, tripStatus, paymentType, invoiceId }))
+    const result = await dispatch(updateTripStatus({ bookingId, tripStatus, paymentType, invoiceId, invoiceImage }))
     if (updateTripStatus.fulfilled.match(result)) {
       toast.success('Trip status updated!')
     } else {

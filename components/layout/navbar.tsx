@@ -108,7 +108,7 @@ export function Navbar() {
       {/* Mobile Menu Overlay */}
       <div
         className={cn(
-          'fixed inset-0 z-[950] bg-background/97 flex flex-col items-center justify-center gap-8 transition-opacity duration-300',
+          'fixed inset-0 z-[950] bg-[#ffffff]/98 dark:bg-[#080808]/98 flex flex-col items-center justify-center gap-8 transition-opacity duration-300',
           mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
       >

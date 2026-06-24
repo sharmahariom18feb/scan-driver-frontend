@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { FOOTER_COLUMNS, EMAIL, WEBSITE, WHATSAPP_CUSTOMER } from '@/constants'
 import logoSd from '../../public/icons/logo-sd.png'
-import { Facebook, Instagram, MessageCircle, Phone, Car, Mail, Globe } from 'lucide-react'
+import { Facebook, Instagram, MessageCircle, Phone, Car, Mail, Globe, Check, Lock, Zap } from 'lucide-react'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
   Phone: Phone,
@@ -110,15 +110,15 @@ export function Footer() {
           <p className="text-xs text-muted-foreground">
             © 2025 ScanDriver Private Limited. All rights reserved. | Delhi NCR, India
           </p>
-          <div className="flex gap-2.5">
+          <div className="flex gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-              <span>✓</span> Verified Drivers
+              <Check size={11} className="text-gold-light" /> Verified Drivers
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-              <span>🔒</span> Safe & Trusted
+              <Lock size={11} className="text-gold-light" /> Safe & Trusted
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-              <span>⚡</span> 24/7 Available
+              <Zap size={11} className="text-gold-light" /> 24/7 Available
             </div>
           </div>
         </div>

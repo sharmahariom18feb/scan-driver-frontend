@@ -1,6 +1,13 @@
 import { Reveal } from '@/components/common/reveal'
 import { CTAButton } from '@/components/common/cta-button'
 import { CONTACT_INFO } from '@/constants'
+import { User, Car, Mail } from 'lucide-react'
+
+const iconMap: Record<number, React.ReactNode> = {
+  0: <User size={15} className="text-gold-light" />,
+  1: <Car size={15} className="text-gold-light" />,
+  2: <Mail size={15} className="text-gold-light" />,
+}
 
 export function ContactStripSection() {
   return (
@@ -21,10 +28,10 @@ export function ContactStripSection() {
 
           {/* Contact Info */}
           <Reveal delay={0.1}>
-            <div className="flex flex-col gap-2">
-              {CONTACT_INFO.map((info) => (
+            <div className="flex flex-col gap-2.5">
+              {CONTACT_INFO.map((info, index) => (
                 <div key={info.value} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                  <span>{info.icon}</span>
+                  <span className="flex items-center shrink-0 w-4 justify-center">{iconMap[index] || info.icon}</span>
                   {info.label && <span>{info.label}</span>}
                   <a href={info.href} className="text-foreground hover:text-gold-light transition-colors">
                     {info.value}

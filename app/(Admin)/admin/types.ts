@@ -23,6 +23,7 @@ export interface DriverDocument {
   pan_card_url: string
   selfie_url: string
   references: DriverReference[]
+  payment?: string | null
   created_at: string
 }
 
@@ -61,6 +62,9 @@ export interface Booking {
   admin_approved: boolean
   created_at: string
   trip_status?: string | null
+  invoice_id?: string | null
+  payment_type?: 'CASH' | 'QR' | null
+  invoice_image?: string | null
 }
 
 export interface DashboardStats {

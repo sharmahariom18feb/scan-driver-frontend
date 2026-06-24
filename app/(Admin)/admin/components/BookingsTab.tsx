@@ -5,6 +5,7 @@ import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCirc
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Booking, Driver } from '../types'
+import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 
 interface BookingsTabProps {
   onRefresh: () => void
@@ -46,6 +47,9 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
   // Driver Assignment Modal State
   const [assigningBooking, setAssigningBooking] = useState<Booking | null>(null)
   const [assigning, setAssigning] = useState(false)
+
+  // Viewing Invoice Modal State
+  const [viewingInvoice, setViewingInvoice] = useState<string | null>(null)
 
   // Fetch Drivers for assignment & lookup once
   const fetchAllDrivers = async () => {
@@ -328,6 +332,34 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
         updates.status = 'accepted'
       }
 
+      // Generate invoice_id if transitioning to invoice_generated, payment_received, or completed and none exists
+      const booking = bookings.find((b) => b.id === bookingId)
+      if (
+        (tripStatus === 'invoice_generated' || tripStatus === 'payment_received' || tripStatus === 'completed') &&
+        (!booking || !booking.invoice_id)
+      ) {
+        const generatedInvoiceId = `INV-${bookingId}-${Math.floor(1000 + Math.random() * 9000)}`
+        updates.invoice_id = generatedInvoiceId
+
+        if (booking) {
+          const assignedDriver = drivers.find((d) => d.id === booking.driver_id)
+          updates.invoice_image = await generateInvoiceImage({
+            id: booking.id,
+            customerName: booking.customer_name,
+            phone: booking.phone,
+            pickup: booking.pickup,
+            drop: booking.drop,
+            dateTime: booking.date_time,
+            fare: booking.fare,
+            vehicle: booking.vehicle,
+            invoiceId: generatedInvoiceId,
+            driverName: assignedDriver ? assignedDriver.full_name : null,
+            duration: booking.duration,
+            type: booking.type,
+          })
+        }
+      }
+
       const { error } = await supabase
         .from('bookings')
         .update(updates)
@@ -566,6 +598,21 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                             <Calendar size={10} className="text-amber-500 shrink-0" /> {b.date_time}
                           </p>
                           <p className="text-[10px] text-slate-200 font-bold">₹{b.fare} • {b.duration}</p>
+                          {b.invoice_id && (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <p className="text-[9px] text-amber-400 font-mono">
+                                Inv: {b.invoice_id}
+                              </p>
+                              {b.invoice_image && (
+                                <button
+                                  onClick={() => setViewingInvoice(b.invoice_image || null)}
+                                  className="text-[9px] text-blue-400 hover:text-blue-300 font-bold hover:underline cursor-pointer"
+                                >
+                                  (View)
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -646,6 +693,15 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                             {b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled' ? 'cancelled' : b.status}
                           </span>
 
+                          {b.invoice_image && (
+                            <button
+                              onClick={() => setViewingInvoice(b.invoice_image || null)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
+                            >
+                              View Invoice
+                            </button>
+                          )}
+
                           <select
                             value={b.trip_status || 'not_started'}
                             onChange={(e) => handleAdminUpdateTripStatus(b.id, e.target.value)}
@@ -711,6 +767,19 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                     <p className="font-extrabold text-white">{b.customer_name} • {b.phone}</p>
                     <p className="font-bold text-slate-300">{b.vehicle} ({b.type})</p>
                     <p className="text-[10px] text-slate-300 font-semibold">{b.date_time} • ₹{b.fare} ({b.duration})</p>
+                    {b.invoice_id && (
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[9px] text-amber-400 font-mono">Inv: {b.invoice_id}</p>
+                        {b.invoice_image && (
+                          <button
+                            onClick={() => setViewingInvoice(b.invoice_image || null)}
+                            className="text-[9px] text-blue-400 hover:text-blue-300 font-bold hover:underline cursor-pointer"
+                          >
+                            (View Image)
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <p className="text-[10px] truncate"><span className="text-emerald-400 font-bold">Pick:</span> {b.pickup}</p>
                     <p className="text-[10px] truncate"><span className="text-rose-455 font-bold">Drop:</span> {b.drop}</p>
                   </div>
@@ -758,6 +827,14 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                       >
                         {assignedDriver ? 'Change' : 'Assign'}
                       </button>
+                      {b.invoice_image && (
+                        <button
+                          onClick={() => setViewingInvoice(b.invoice_image || null)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                        >
+                          View Invoice
+                        </button>
+                      )}
                       <div className="flex items-center gap-1.5">
                         <span className="text-[9px] font-extrabold text-slate-400 uppercase">Status:</span>
                         <select
@@ -1124,6 +1201,48 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                     )
                   })
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View Invoice */}
+      {viewingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/40">
+              <h3 className="font-bold text-white text-sm">Ride Invoice Receipt</h3>
+              <button
+                onClick={() => setViewingInvoice(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer hover:bg-slate-800 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="p-6 flex flex-col items-center justify-center bg-slate-955/20 overflow-y-auto max-h-[70vh]">
+              <img
+                src={viewingInvoice}
+                alt="Invoice Receipt"
+                className="max-w-full h-auto rounded-lg border border-slate-800 shadow-md"
+              />
+            </div>
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-slate-800 flex justify-end gap-3 bg-slate-950/40">
+              <a
+                href={viewingInvoice}
+                download={`Invoice-${Date.now()}.png`}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-lg transition-all text-center cursor-pointer"
+              >
+                DOWNLOAD INVOICE
+              </a>
+              <button
+                onClick={() => setViewingInvoice(null)}
+                className="px-4 py-2 rounded-xl border border-slate-800 hover:bg-slate-850 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer transition-all"
+              >
+                CLOSE
+              </button>
             </div>
           </div>
         </div>

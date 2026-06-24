@@ -3,6 +3,7 @@ import { Navbar } from '@/components/layout/navbar'
 import { Footer } from '@/components/layout/footer'
 import { FloatingWhatsApp } from '@/components/layout/floating-whatsapp'
 import { HeroSection } from '@/components/sections/hero-section'
+import { AboutUsSection } from '@/components/sections/about-us-section'
 import { MarqueeStrip } from '@/components/sections/marquee-strip'
 import { ServicesSection } from '@/components/sections/services-section'
 import { HowItWorksSection } from '@/components/sections/how-it-works-section'
@@ -107,6 +108,7 @@ export default function HomePage() {
         <Navbar />
         <main className="flex-grow">
           <HeroSection />
+          <AboutUsSection />
           <MarqueeStrip />
           <ServicesSection />
           <HowItWorksSection />

@@ -38,6 +38,7 @@ export interface Booking {
   tripStatus?: string
   paymentType?: 'CASH' | 'QR' | null
   invoiceId?: string | null
+  invoiceImage?: string | null
 }
 
 export interface DriverNotification {
@@ -147,6 +148,7 @@ export const fetchBookings = createAsyncThunk(
         tripStatus: b.trip_status,
         paymentType: b.payment_type,
         invoiceId: b.invoice_id,
+        invoiceImage: b.invoice_image,
       })) as Booking[]
     } catch (err: any) {
       console.error('Supabase fetchBookings error:', err)
@@ -676,6 +678,7 @@ export const acceptBooking = createAsyncThunk(
         tripStatus: booking.trip_status,
         paymentType: booking.payment_type,
         invoiceId: booking.invoice_id,
+        invoiceImage: booking.invoice_image,
       } as Booking
     } catch (err: any) {
       console.warn('Supabase acceptBooking failed:', err)
@@ -718,11 +721,13 @@ export const updateTripStatus = createAsyncThunk(
       tripStatus,
       paymentType,
       invoiceId,
+      invoiceImage,
     }: {
       bookingId: string
       tripStatus: string
       paymentType?: 'CASH' | 'QR' | null
       invoiceId?: string | null
+      invoiceImage?: string | null
     },
     { dispatch, rejectWithValue }
   ) => {
@@ -738,6 +743,9 @@ export const updateTripStatus = createAsyncThunk(
       }
       if (invoiceId !== undefined) {
         updates.invoice_id = invoiceId
+      }
+      if (invoiceImage !== undefined) {
+        updates.invoice_image = invoiceImage
       }
 
       const { data, error } = await supabase
@@ -757,7 +765,8 @@ export const updateTripStatus = createAsyncThunk(
         tripStatus, 
         status: updates.status || 'accepted',
         paymentType: updates.payment_type !== undefined ? updates.payment_type : undefined,
-        invoiceId: updates.invoice_id !== undefined ? updates.invoice_id : undefined
+        invoiceId: updates.invoice_id !== undefined ? updates.invoice_id : undefined,
+        invoiceImage: updates.invoice_image !== undefined ? updates.invoice_image : undefined
       }
     } catch (err: any) {
       console.error('updateTripStatus error:', err)
@@ -1031,7 +1040,7 @@ export const driverSlice = createSlice({
     })
 
     builder.addCase(updateTripStatus.fulfilled, (state, action) => {
-      const { bookingId, tripStatus, status, paymentType, invoiceId } = action.payload
+      const { bookingId, tripStatus, status, paymentType, invoiceId, invoiceImage } = action.payload
       const index = state.bookings.findIndex((b) => b.id === bookingId)
       if (index !== -1) {
         state.bookings[index].tripStatus = tripStatus
@@ -1041,6 +1050,9 @@ export const driverSlice = createSlice({
         }
         if (invoiceId !== undefined) {
           state.bookings[index].invoiceId = invoiceId
+        }
+        if (invoiceImage !== undefined) {
+          state.bookings[index].invoiceImage = invoiceImage
         }
       }
     })

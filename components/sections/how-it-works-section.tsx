@@ -1,6 +1,13 @@
 import { Reveal } from '@/components/common/reveal'
 import { SectionLabel } from '@/components/common/section-label'
 import { STEPS } from '@/constants'
+import { Smartphone, UserCheck, Car } from 'lucide-react'
+
+const iconMap: Record<number, React.ReactNode> = {
+  1: <Smartphone className="w-7 h-7 text-gold-light" />,
+  2: <UserCheck className="w-7 h-7 text-gold-light" />,
+  3: <Car className="w-7 h-7 text-gold-light" />,
+}
 
 export function HowItWorksSection() {
   return (
@@ -28,16 +35,19 @@ export function HowItWorksSection() {
 
           {STEPS.map((step, index) => (
             <Reveal key={step.number} delay={0.1 * index}>
-              <div className="text-center px-6 py-6 md:py-0">
+              <div className="text-center px-6 py-6 md:py-0 flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-background border-2 border-gold flex items-center justify-center font-display text-[22px] font-bold text-gold-light mx-auto mb-6 relative z-10">
                   {step.number}
                 </div>
-                <span className="text-[26px] mb-4 block">{step.icon}</span>
+                <div className="h-10 flex items-center justify-center mb-4">
+                  {iconMap[step.number] || <span className="text-[26px]">{step.icon}</span>}
+                </div>
                 <h3 className="text-[21px] font-semibold text-foreground mb-3">{step.title}</h3>
                 <p className="text-base text-muted-foreground leading-relaxed">{step.description}</p>
                 {step.tagline && (
                   <div className="inline-flex items-center gap-1.5 mt-3.5 text-xs font-bold text-gold-light tracking-wide bg-gold/10 border border-gold/25 rounded-full px-3.5 py-1.5">
-                    {step.tagline}
+                    <Smartphone className="w-3 h-3 text-gold-light" />
+                    <span>{step.tagline.replace('📲 ', '')}</span>
                   </div>
                 )}
               </div>

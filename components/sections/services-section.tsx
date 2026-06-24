@@ -2,6 +2,17 @@ import { Reveal } from '@/components/common/reveal'
 import { SectionLabel } from '@/components/common/section-label'
 import { SERVICES } from '@/constants'
 import Link from 'next/link'
+import { Clock, Calendar, CalendarDays, Compass, Briefcase, Plane, Sparkles } from 'lucide-react'
+
+const iconMap: Record<string, React.ReactNode> = {
+  hourly: <Clock className="w-6 h-6 text-gold" />,
+  monthly: <Calendar className="w-6 h-6 text-gold" />,
+  weekly: <CalendarDays className="w-6 h-6 text-gold" />,
+  outstation: <Compass className="w-6 h-6 text-gold" />,
+  corporate: <Briefcase className="w-6 h-6 text-gold" />,
+  airport: <Plane className="w-6 h-6 text-gold" />,
+  event: <Sparkles className="w-6 h-6 text-gold" />,
+}
 
 export function ServicesSection() {
   return (
@@ -31,8 +42,8 @@ export function ServicesSection() {
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-gold/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 <div className="relative z-10">
-                  <div className="w-[54px] h-[54px] rounded-[14px] bg-gold/10 flex items-center justify-center text-[26px] mb-5 group-hover:bg-gold/20 transition-colors">
-                    {service.icon}
+                  <div className="w-[54px] h-[54px] rounded-[14px] bg-gold/10 flex items-center justify-center mb-5 group-hover:bg-gold/20 transition-colors">
+                    {iconMap[service.id] || <span className="text-[26px]">{service.icon}</span>}
                   </div>
                   <h3 className="font-sans text-[19px] font-semibold text-foreground mb-2.5">
                     {service.name}

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
-import { ArrowLeft, Shield, CheckCircle, Eye, EyeOff, Upload } from 'lucide-react'
+import { ArrowLeft, Shield, CheckCircle, Eye, EyeOff, Upload, X } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { AppDispatch, RootState } from '@/redux/store'
 import { signupDriver, normalizePhone } from '@/redux/slices/driverSlice'
@@ -48,13 +48,23 @@ export default function OnboardingPage() {
   const [drivingLicenseUrl, setDrivingLicenseUrl] = useState('')
   const [panCardUrl, setPanCardUrl] = useState('')
   const [selfieUrl, setSelfieUrl] = useState('')
+  const [paymentUrl, setPaymentUrl] = useState('')
+
+  // Selected File objects for deferred upload
+  const [aadhaarFrontFile, setAadhaarFrontFile] = useState<File | null>(null)
+  const [aadhaarBackFile, setAadhaarBackFile] = useState<File | null>(null)
+  const [drivingLicenseFile, setDrivingLicenseFile] = useState<File | null>(null)
+  const [panCardFile, setPanCardFile] = useState<File | null>(null)
+  const [selfieFile, setSelfieFile] = useState<File | null>(null)
+  const [paymentFile, setPaymentFile] = useState<File | null>(null)
 
   const [uploadingStates, setUploadingStates] = useState({
     aadhaarFront: false,
     aadhaarBack: false,
     drivingLicense: false,
     panCard: false,
-    selfie: false
+    selfie: false,
+    payment: false
   })
 
   const [uploadProgress, setUploadProgress] = useState({
@@ -62,7 +72,8 @@ export default function OnboardingPage() {
     aadhaarBack: 0,
     drivingLicense: 0,
     panCard: 0,
-    selfie: 0
+    selfie: 0,
+    payment: 0
   })
 
   // Step 4: References & One Last Thing
@@ -75,6 +86,9 @@ export default function OnboardingPage() {
   const [additionalComments, setAdditionalComments] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
+  const [viewingQr, setViewingQr] = useState(false)
+  const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null)
+  const [viewingImageLabel, setViewingImageLabel] = useState<string>('')
 
   const zones = [
     'Dwarka & West Delhi',
@@ -132,27 +146,82 @@ export default function OnboardingPage() {
     setReferences(updated)
   }
 
-  const handleUpload = async (key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie', file: File) => {
+  const handleFileSelect = (key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie' | 'payment', file: File) => {
     if (!file) return
-    setUploadingStates(prev => ({ ...prev, [key]: true }))
-    setUploadProgress(prev => ({ ...prev, [key]: 0 }))
 
-    try {
-      const url = await uploadToCloudinary(file, (percent) => {
-        setUploadProgress(prev => ({ ...prev, [key]: percent }))
-      })
-      if (key === 'aadhaarFront') setAadhaarFrontUrl(url)
-      else if (key === 'aadhaarBack') setAadhaarBackUrl(url)
-      else if (key === 'drivingLicense') setDrivingLicenseUrl(url)
-      else if (key === 'panCard') setPanCardUrl(url)
-      else if (key === 'selfie') setSelfieUrl(url)
-      toast.success('Document uploaded successfully!')
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || 'Failed to upload document')
-    } finally {
-      setUploadingStates(prev => ({ ...prev, [key]: false }))
+    let oldUrl = ''
+    if (key === 'aadhaarFront') {
+      oldUrl = aadhaarFrontUrl
+      setAadhaarFrontFile(file)
+      const previewUrl = URL.createObjectURL(file)
+      setAadhaarFrontUrl(previewUrl)
+    } else if (key === 'aadhaarBack') {
+      oldUrl = aadhaarBackUrl
+      setAadhaarBackFile(file)
+      const previewUrl = URL.createObjectURL(file)
+      setAadhaarBackUrl(previewUrl)
+    } else if (key === 'drivingLicense') {
+      oldUrl = drivingLicenseUrl
+      setDrivingLicenseFile(file)
+      const previewUrl = URL.createObjectURL(file)
+      setDrivingLicenseUrl(previewUrl)
+    } else if (key === 'panCard') {
+      oldUrl = panCardUrl
+      setPanCardFile(file)
+      const previewUrl = URL.createObjectURL(file)
+      setPanCardUrl(previewUrl)
+    } else if (key === 'selfie') {
+      oldUrl = selfieUrl
+      setSelfieFile(file)
+      const previewUrl = URL.createObjectURL(file)
+      setSelfieUrl(previewUrl)
+    } else if (key === 'payment') {
+      oldUrl = paymentUrl
+      setPaymentFile(file)
+      const previewUrl = URL.createObjectURL(file)
+      setPaymentUrl(previewUrl)
     }
+
+    if (oldUrl && oldUrl.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(oldUrl)
+      } catch (e) {
+        console.error('Failed to revoke object URL:', e)
+      }
+    }
+
+    toast.success('Document selected successfully!')
+  }
+
+  const handleCancel = () => {
+    // Revoke all local object URLs
+    [aadhaarFrontUrl, aadhaarBackUrl, drivingLicenseUrl, panCardUrl, selfieUrl, paymentUrl].forEach((url) => {
+      if (url && url.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(url)
+        } catch (e) {
+          console.error('Failed to revoke object URL:', e)
+        }
+      }
+    })
+
+    // Reset all files and URLs
+    setAadhaarFrontFile(null)
+    setAadhaarBackFile(null)
+    setDrivingLicenseFile(null)
+    setPanCardFile(null)
+    setSelfieFile(null)
+    setPaymentFile(null)
+
+    setAadhaarFrontUrl('')
+    setAadhaarBackUrl('')
+    setDrivingLicenseUrl('')
+    setPanCardUrl('')
+    setSelfieUrl('')
+    setPaymentUrl('')
+
+    toast.info('Registration cancelled.')
+    router.push('/driver-app')
   }
 
   const handleNextStep = () => {
@@ -198,27 +267,56 @@ export default function OnboardingPage() {
       }
       setStep(3)
     } else if (step === 3) {
-      if (!aadhaarFrontUrl) {
-        toast.error('Please upload Aadhaar Card Front photo')
+      if (!aadhaarFrontFile) {
+        toast.error('Please select Aadhaar Card Front photo')
         return
       }
-      if (!aadhaarBackUrl) {
-        toast.error('Please upload Aadhaar Card Back photo')
+      if (!aadhaarBackFile) {
+        toast.error('Please select Aadhaar Card Back photo')
         return
       }
-      if (!drivingLicenseUrl) {
-        toast.error('Please upload Driving Licence photo')
+      if (!drivingLicenseFile) {
+        toast.error('Please select Driving Licence photo')
         return
       }
-      if (!panCardUrl) {
-        toast.error('Please upload PAN Card photo')
+      if (!panCardFile) {
+        toast.error('Please select PAN Card photo')
         return
       }
-      if (!selfieUrl) {
-        toast.error('Please upload your Selfie photo')
+      if (!selfieFile) {
+        toast.error('Please select your Selfie photo')
         return
       }
       setStep(4)
+    } else if (step === 4) {
+      // Validate references
+      for (let i = 0; i < 3; i++) {
+        const ref = references[i]
+        if (!ref.fullName.trim()) {
+          toast.error(`Please enter Full Name for Reference ${i + 1}`)
+          return
+        }
+        if (!ref.phone.trim()) {
+          toast.error(`Please enter Phone Number for Reference ${i + 1}`)
+          return
+        }
+        const refPhoneDigits = ref.phone.replace(/\D/g, '')
+        if (refPhoneDigits.length !== 10) {
+          toast.error(`Please enter a valid 10-digit Phone Number for Reference ${i + 1}`)
+          return
+        }
+        if (!ref.relation) {
+          toast.error(`Please select Relation for Reference ${i + 1}`)
+          return
+        }
+      }
+      setStep(5)
+    } else if (step === 5) {
+      if (!paymentFile) {
+        toast.error('Please select your ₹300 payment screenshot')
+        return
+      }
+      handleSubmit()
     }
   }
 
@@ -228,8 +326,8 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
 
     // Validate references
     for (let i = 0; i < 3; i++) {
@@ -279,7 +377,50 @@ export default function OnboardingPage() {
         }
       }
 
-      // Step 1: Sign up user
+      // Step 1.5: Upload files to Cloudinary in parallel now that check passes
+      toast.loading('Uploading documents to Cloudinary...', { id: 'submit-toast' })
+      
+      const uploadPromises = [
+        aadhaarFrontFile ? uploadToCloudinary(aadhaarFrontFile) : Promise.resolve(''),
+        aadhaarBackFile ? uploadToCloudinary(aadhaarBackFile) : Promise.resolve(''),
+        drivingLicenseFile ? uploadToCloudinary(drivingLicenseFile) : Promise.resolve(''),
+        panCardFile ? uploadToCloudinary(panCardFile) : Promise.resolve(''),
+        selfieFile ? uploadToCloudinary(selfieFile) : Promise.resolve(''),
+        paymentFile ? uploadToCloudinary(paymentFile) : Promise.resolve(''),
+      ]
+
+      let aadhaarFrontCloudUrl = ''
+      let aadhaarBackCloudUrl = ''
+      let drivingLicenseCloudUrl = ''
+      let panCardCloudUrl = ''
+      let selfieCloudUrl = ''
+      let paymentCloudUrl = ''
+
+      try {
+        const [
+          afUrl,
+          abUrl,
+          dlUrl,
+          pcUrl,
+          sfUrl,
+          pyUrl
+        ] = await Promise.all(uploadPromises)
+        
+        aadhaarFrontCloudUrl = afUrl
+        aadhaarBackCloudUrl = abUrl
+        drivingLicenseCloudUrl = dlUrl
+        panCardCloudUrl = pcUrl
+        selfieCloudUrl = sfUrl
+        paymentCloudUrl = pyUrl
+      } catch (uploadErr: any) {
+        console.error('Document upload failed:', uploadErr)
+        toast.error(uploadErr.message || 'Document upload failed. Please try again.', { id: 'submit-toast' })
+        setSubmitting(false)
+        return
+      }
+
+      // Step 2: Sign up user
+      toast.loading('Registering profile...', { id: 'submit-toast' })
       const result = await dispatch(
         signupDriver({
           fullName,
@@ -297,14 +438,14 @@ export default function OnboardingPage() {
           throw new Error('Authentication signup succeeded but returned no profile details')
         }
 
-        // Step 2: Write additional attributes into driver_profiles table
+        // Step 3: Write additional attributes into driver_profiles table
         const { error: profileError } = await supabase
           .from('driver_profiles')
           .insert({
             id: user.id,
             experience,
             license_status: licenseStatus,
-            documents_available: ['Aadhaar Card', 'Driving Licence', 'PAN Card', 'Selfie'],
+            documents_available: ['Aadhaar Card', 'Driving Licence', 'PAN Card', 'Selfie', 'Registration Payment'],
             availability,
             service_preference: servicePreference,
             vehicle_specialties: vehicleSpecialties,
@@ -316,32 +457,42 @@ export default function OnboardingPage() {
           throw new Error(profileError.message || 'Failed to register additional profile details')
         }
 
-        // Step 3: Write documents and references into driver_documents table
+        // Step 4: Write documents and references into driver_documents table
         const { error: docsError } = await supabase
           .from('driver_documents')
           .insert({
             driver_id: user.id,
-            aadhaar_front_url: aadhaarFrontUrl,
-            aadhaar_back_url: aadhaarBackUrl,
-            driving_license_url: drivingLicenseUrl,
-            pan_card_url: panCardUrl,
-            selfie_url: selfieUrl,
-            references: references
+            aadhaar_front_url: aadhaarFrontCloudUrl,
+            aadhaar_back_url: aadhaarBackCloudUrl,
+            driving_license_url: drivingLicenseCloudUrl,
+            pan_card_url: panCardCloudUrl,
+            selfie_url: selfieCloudUrl,
+            references: references,
+            payment: paymentCloudUrl
           })
 
         if (docsError) {
           throw new Error(docsError.message || 'Failed to save documents and references')
         }
 
-        setStep(5) // success step
-        toast.success('Registration completed successfully!')
+        // Clean up object URLs to release memory
+        [aadhaarFrontUrl, aadhaarBackUrl, drivingLicenseUrl, panCardUrl, selfieUrl, paymentUrl].forEach((url) => {
+          if (url && url.startsWith('blob:')) {
+            try {
+              URL.revokeObjectURL(url)
+            } catch (e) {}
+          }
+        })
+
+        setStep(6) // success step is now step 6
+        toast.success('Registration completed successfully!', { id: 'submit-toast' })
       } else {
         const errMsg = result.payload as string || 'Registration failed'
-        toast.error(errMsg)
+        toast.error(errMsg, { id: 'submit-toast' })
       }
     } catch (err: any) {
       console.error('Signup error:', err)
-      toast.error(err.message || 'An error occurred during registration')
+      toast.error(err.message || 'An error occurred during registration', { id: 'submit-toast' })
     } finally {
       setSubmitting(false)
     }
@@ -349,7 +500,7 @@ export default function OnboardingPage() {
 
   const renderUploadCard = (
     label: string,
-    key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie',
+    key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie' | 'payment',
     urlValue: string,
     subtext: string
   ) => {
@@ -365,7 +516,7 @@ export default function OnboardingPage() {
           </div>
           {urlValue && (
             <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              Uploaded
+              Selected
             </span>
           )}
         </div>
@@ -383,16 +534,26 @@ export default function OnboardingPage() {
                 alt={label} 
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <label className="cursor-pointer text-white font-extrabold text-[9px] uppercase tracking-wider bg-black/80 px-2.5 py-1.5 rounded-lg border border-white/20 hover:bg-[#A3E635] hover:text-slate-950 transition-all">
-                  Change Photo
+              <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewingImageUrl(urlValue)
+                    setViewingImageLabel(label)
+                  }}
+                  className="cursor-pointer text-white font-extrabold text-[9px] uppercase tracking-wider bg-[#A3E635] text-slate-950 px-2 py-1.5 rounded-lg border border-[#A3E635]/30 hover:bg-[#A3E635]/90 transition-all"
+                >
+                  View
+                </button>
+                <label className="cursor-pointer text-white font-extrabold text-[9px] uppercase tracking-wider bg-slate-950/80 px-2 py-1.5 rounded-lg border border-white/10 hover:border-white/30 hover:bg-slate-900 transition-all">
+                  Change
                   <input
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) handleUpload(key, file)
+                      if (file) handleFileSelect(key, file)
                     }}
                   />
                 </label>
@@ -408,7 +569,7 @@ export default function OnboardingPage() {
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0]
-                  if (file) handleUpload(key, file)
+                  if (file) handleFileSelect(key, file)
                 }}
               />
             </label>
@@ -419,7 +580,7 @@ export default function OnboardingPage() {
   }
 
   // Calculate Progress Percentage
-  const progressPercent = step === 1 ? 25 : step === 2 ? 50 : step === 3 ? 75 : step === 4 ? 90 : 100
+  const progressPercent = step === 1 ? 20 : step === 2 ? 40 : step === 3 ? 60 : step === 4 ? 80 : step === 5 ? 95 : 100
 
   return (
     <div className="flex-grow flex flex-col bg-background text-foreground overflow-y-auto driver-app-root">
@@ -435,7 +596,7 @@ export default function OnboardingPage() {
             <Image src={logoSd} alt="ScanDriver Logo" width={140} className="object-contain" priority />
           </div>
           
-          {step < 5 ? (
+          {step < 6 ? (
             <>
               <h2 className="text-2xl font-bold tracking-tight text-foreground font-display">
                 Become a Driver Partner
@@ -462,7 +623,7 @@ export default function OnboardingPage() {
       </header>
 
       {/* 2. Progress Indicator Bar */}
-      {step < 5 && (
+      {step < 6 && (
         <div className="w-full h-[3px] bg-surface2 relative shrink-0">
           <div 
             className="h-full bg-[#A3E635] transition-all duration-300"
@@ -920,24 +1081,6 @@ export default function OnboardingPage() {
               />
             </div>
 
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading || submitting}
-                className="w-full py-3 px-4 bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 font-extrabold text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {(loading || submitting) ? (
-                  <div className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle size={16} className="fill-slate-950 text-[#A3E635]" />
-                    <span>Form Submit Karo</span>
-                  </>
-                )}
-              </button>
-            </div>
-
             <div className="pt-2 text-center">
               <p className="text-[10px] text-text-muted leading-relaxed">
                 Aapki information sirf ScanDriver team ke paas rahegi.
@@ -949,6 +1092,46 @@ export default function OnboardingPage() {
         )}
 
         {step === 5 && (
+          <div className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
+                REGISTRATION FEE PAYMENT
+              </span>
+              <div className="h-[1px] bg-border/20 flex-grow" />
+            </div>
+
+            <div className="bg-surface2 border border-border/30 rounded-2xl p-4 text-center space-y-4">
+              <p className="text-xs text-text-muted leading-relaxed">
+                Scan Driver partner registration verification ke liye aapko onboarding fees **₹300** pay karni hogi.
+              </p>
+              
+              <div className="flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-border/10 max-w-[200px] mx-auto font-sans">
+                <img
+                  src="/QRCODE.jpeg"
+                  alt="Registration QR Code"
+                  onClick={() => setViewingQr(true)}
+                  className="w-full h-auto object-contain rounded-lg shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
+                  title="Click to zoom in"
+                />
+                <span className="text-xs font-bold text-slate-900 mt-2">Scan & Pay ₹ 300</span>
+              </div>
+              
+              <p className="text-[10px] text-text-muted">
+                Payment complete karne ke baad, screenshot niche upload karein verification ke liye.
+              </p>
+            </div>
+
+            {/* Upload payment screenshot card */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-foreground">
+                Payment Screenshot
+              </label>
+              {renderUploadCard('Payment Screenshot', 'payment', paymentUrl, 'Upload screenshot of your transaction')}
+            </div>
+          </div>
+        )}
+
+        {step === 6 && (
           <div className="flex-1 flex flex-col justify-center items-center text-center space-y-5 animate-in fade-in-50 zoom-in-95 duration-400 py-6">
             <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-950 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/5">
               <CheckCircle size={32} />
@@ -975,7 +1158,7 @@ export default function OnboardingPage() {
                 </li>
                 <li className="flex items-start gap-1.5">
                   <span className="text-primary font-bold">2.</span>
-                  <span>Reference validation & background screening.</span>
+                  <span>Payment verification & reference validation.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <span className="text-primary font-bold">3.</span>
@@ -994,34 +1177,120 @@ export default function OnboardingPage() {
         )}
 
         {/* 4. Action Buttons Footer */}
-        {step < 4 && (
+        {step < 6 && (
           <div className="pt-6 border-t border-border/10 flex items-center justify-between gap-4 shrink-0">
-            {step > 1 ? (
+            <div className="flex items-center gap-2">
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={handleBackStep}
+                  disabled={loading || submitting}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-surface2 hover:bg-muted text-foreground/90 font-semibold text-sm rounded-xl transition-colors cursor-pointer border border-border/30 disabled:opacity-50"
+                >
+                  <ArrowLeft size={14} /> Back
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleBackStep}
-                className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-surface2 hover:bg-muted text-foreground/90 font-semibold text-sm rounded-xl transition-colors cursor-pointer border border-border/30"
-              >
-                <ArrowLeft size={14} /> Back
-              </button>
-            ) : (
-              <Link
-                href="/driver-app"
-                className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-surface2 hover:bg-muted text-text-muted hover:text-foreground font-semibold text-sm rounded-xl transition-colors cursor-pointer border border-border/30"
+                onClick={handleCancel}
+                disabled={loading || submitting}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-surface2 hover:bg-muted text-text-muted hover:text-foreground font-semibold text-sm rounded-xl transition-colors cursor-pointer border border-border/30 disabled:opacity-50"
               >
                 Cancel
-              </Link>
-            )}
+              </button>
+            </div>
 
             <button
               type="button"
               onClick={handleNextStep}
-              className="flex-grow py-2.5 px-4 bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 font-semibold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center cursor-pointer"
+              disabled={loading || submitting}
+              className="flex-grow py-2.5 px-4 bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 font-semibold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center cursor-pointer disabled:opacity-50"
             >
-              Continue
+              {submitting || loading ? (
+                <div className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              ) : step === 5 ? (
+                'Submit Registration'
+              ) : (
+                'Continue'
+              )}
             </button>
           </div>
         )}
+      {/* Modal: View QR Code */}
+      {viewingQr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
+          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
+              <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">Registration Payment QR</h3>
+              <button
+                onClick={() => setViewingQr(false)}
+                className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="p-6 flex flex-col items-center justify-center bg-white overflow-y-auto max-h-[70vh]">
+              <img
+                src="/QRCODE.jpeg"
+                alt="Registration QR Code"
+                className="max-w-full h-auto object-contain rounded-lg"
+              />
+            </div>
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
+              <button
+                onClick={() => setViewingQr(false)}
+                className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View Uploaded Document */}
+      {viewingImageUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
+          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
+              <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">{viewingImageLabel} Preview</h3>
+              <button
+                onClick={() => {
+                  setViewingImageUrl(null)
+                  setViewingImageLabel('')
+                }}
+                className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="p-4 flex flex-col items-center justify-center bg-slate-950 overflow-y-auto max-h-[70vh] w-full">
+              <img
+                src={viewingImageUrl}
+                alt={viewingImageLabel}
+                className="max-w-full h-auto max-h-[60vh] object-contain rounded-lg shadow-md"
+              />
+            </div>
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
+              <button
+                onClick={() => {
+                  setViewingImageUrl(null)
+                  setViewingImageLabel('')
+                }}
+                className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </main>
     </div>
   )
