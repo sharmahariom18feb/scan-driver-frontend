@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DriverServiceWorker } from '@/components/driver/service-worker'
+import { DriverThemeSync } from './theme-sync'
 
 export const metadata: Metadata = {
   title: 'SD Partner – Driver Dashboard',
@@ -51,6 +52,7 @@ export default function DriverLayout({
       <link rel="manifest" href="/driver-manifest.json" />
       <link rel="apple-touch-icon" href="/icons/apple-icon.png" />
       <DriverServiceWorker />
+      <DriverThemeSync />
 
       {/* Responsive native mobile wrapper layout */}
       <div className="min-h-screen bg-slate-950 dark:bg-black flex items-center justify-center py-0 sm:py-8 transition-colors duration-300">

@@ -77,6 +77,29 @@ export default function RootLayout({
       suppressHydrationWarning
       data-scroll-behavior="smooth"
       className="bg-background">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var host = window.location.hostname;
+                  var path = window.location.pathname;
+                  if (host.indexOf('partner') !== -1 || path.indexOf('/driver-app') !== -1) {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.style.colorScheme = 'light';
+                  } else {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                    document.documentElement.style.colorScheme = 'dark';
+                  }
+                } catch (e) {}
+              })();
+            `
+          }}
+        />
+      </head>
       <body
         className={`${manrope.variable} antialiased`}
         suppressHydrationWarning>
