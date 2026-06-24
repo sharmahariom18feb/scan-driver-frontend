@@ -127,7 +127,7 @@ export default function OnboardingPage() {
     'Monthly'
   ]
 
-  const vehicleOptions = ['Hatchback', 'Sedan', 'SUV', 'Luxury / Automatic']
+  const vehicleOptions = ['Manual', 'Automatic']
 
   const handleCheckboxToggle = (list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>, option: string) => {
     if (list.includes(option)) {
@@ -380,7 +380,7 @@ export default function OnboardingPage() {
 
       // Step 1.5: Upload files to Cloudinary in parallel now that check passes
       toast.loading('Uploading documents to Cloudinary...', { id: 'submit-toast' })
-      
+
       const uploadPromises = [
         aadhaarFrontFile ? uploadToCloudinary(aadhaarFrontFile) : Promise.resolve(''),
         aadhaarBackFile ? uploadToCloudinary(aadhaarBackFile) : Promise.resolve(''),
@@ -406,7 +406,7 @@ export default function OnboardingPage() {
           sfUrl,
           pyUrl
         ] = await Promise.all(uploadPromises)
-        
+
         aadhaarFrontCloudUrl = afUrl
         aadhaarBackCloudUrl = abUrl
         drivingLicenseCloudUrl = dlUrl
@@ -481,7 +481,7 @@ export default function OnboardingPage() {
           if (url && url.startsWith('blob:')) {
             try {
               URL.revokeObjectURL(url)
-            } catch (e) {}
+            } catch (e) { }
           }
         })
 
@@ -530,9 +530,9 @@ export default function OnboardingPage() {
             </div>
           ) : urlValue ? (
             <div className="relative w-full h-24 rounded-xl overflow-hidden border border-border/30 group">
-              <img 
-                src={urlValue} 
-                alt={label} 
+              <img
+                src={urlValue}
+                alt={label}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -596,7 +596,7 @@ export default function OnboardingPage() {
           <div className="w-32 mb-3 flex items-center justify-center">
             <Image src={logoSd} alt="ScanDriver Logo" width={140} className="object-contain" priority />
           </div>
-          
+
           {step < 6 ? (
             <>
               <h2 className="text-2xl font-bold tracking-tight text-foreground font-display">
@@ -605,7 +605,7 @@ export default function OnboardingPage() {
               <p className="text-sm text-text-muted mt-1 max-w-[320px]">
                 Delhi NCR's trusted driver platform. Sign up to start receiving ride requests near you.
               </p>
-              
+
               <div className="inline-flex items-center gap-1.5 bg-[#A3E635]/10 border border-[#A3E635]/25 text-[#A3E635] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full mt-3">
                 <Shield size={10} /> 100% Verified Profiles
               </div>
@@ -626,7 +626,7 @@ export default function OnboardingPage() {
       {/* 2. Progress Indicator Bar */}
       {step < 6 && (
         <div className="w-full h-[3px] bg-surface2 relative shrink-0">
-          <div 
+          <div
             className="h-full bg-[#A3E635] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
@@ -905,7 +905,7 @@ export default function OnboardingPage() {
                 {vehicleOptions.map((option) => {
                   const isChecked = vehicleSpecialties.includes(option)
                   return (
-                    <div 
+                    <div
                       key={option}
                       onClick={() => handleCheckboxToggle(vehicleSpecialties, setVehicleSpecialties, option)}
                       className={cn(
@@ -1105,7 +1105,7 @@ export default function OnboardingPage() {
               <p className="text-xs text-text-muted leading-relaxed">
                 Scan Driver partner registration verification ke liye aapko onboarding fees **₹300** pay karni hogi.
               </p>
-              
+
               <div className="flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-border/10 max-w-[200px] mx-auto font-sans">
                 <Image
                   src={qrCodeImg}
@@ -1117,7 +1117,7 @@ export default function OnboardingPage() {
                 />
                 <span className="text-xs font-bold text-slate-900 mt-2">Scan & Pay ₹ 300</span>
               </div>
-              
+
               <p className="text-[10px] text-text-muted">
                 Payment complete karne ke baad, screenshot niche upload karein verification ke liye.
               </p>
@@ -1144,8 +1144,8 @@ export default function OnboardingPage() {
                 Welcome to ScanDriver!
               </h3>
               <p className="text-sm text-text-muted mt-2 max-w-[300px] leading-relaxed mx-auto">
-                Thank you for applying, <span className="text-primary dark:text-[#A3E635] font-bold">{fullName}</span>. 
-                Your driver profile and documents have been successfully uploaded. 
+                Thank you for applying, <span className="text-primary dark:text-[#A3E635] font-bold">{fullName}</span>.
+                Your driver profile and documents have been successfully uploaded.
               </p>
             </div>
 
@@ -1218,81 +1218,81 @@ export default function OnboardingPage() {
             </button>
           </div>
         )}
-      {/* Modal: View QR Code */}
-      {viewingQr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
-              <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">Registration Payment QR</h3>
-              <button
-                onClick={() => setViewingQr(false)}
-                className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            {/* Body */}
-            <div className="p-6 flex flex-col items-center justify-center bg-white overflow-y-auto max-h-[70vh]">
-              <Image
-                src={qrCodeImg}
-                alt="Registration QR Code"
-                className="max-w-full h-auto object-contain rounded-lg"
-              />
-            </div>
-            {/* Footer */}
-            <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
-              <button
-                onClick={() => setViewingQr(false)}
-                className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
-              >
-                CLOSE
-              </button>
+        {/* Modal: View QR Code */}
+        {viewingQr && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
+            <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
+                <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">Registration Payment QR</h3>
+                <button
+                  onClick={() => setViewingQr(false)}
+                  className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              {/* Body */}
+              <div className="p-6 flex flex-col items-center justify-center bg-white overflow-y-auto max-h-[70vh]">
+                <Image
+                  src={qrCodeImg}
+                  alt="Registration QR Code"
+                  className="max-w-full h-auto object-contain rounded-lg"
+                />
+              </div>
+              {/* Footer */}
+              <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
+                <button
+                  onClick={() => setViewingQr(false)}
+                  className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+                >
+                  CLOSE
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modal: View Uploaded Document */}
-      {viewingImageUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
-              <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">{viewingImageLabel} Preview</h3>
-              <button
-                onClick={() => {
-                  setViewingImageUrl(null)
-                  setViewingImageLabel('')
-                }}
-                className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            {/* Body */}
-            <div className="p-4 flex flex-col items-center justify-center bg-slate-950 overflow-y-auto max-h-[70vh] w-full">
-              <img
-                src={viewingImageUrl}
-                alt={viewingImageLabel}
-                className="max-w-full h-auto max-h-[60vh] object-contain rounded-lg shadow-md"
-              />
-            </div>
-            {/* Footer */}
-            <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
-              <button
-                onClick={() => {
-                  setViewingImageUrl(null)
-                  setViewingImageLabel('')
-                }}
-                className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
-              >
-                CLOSE
-              </button>
+        {/* Modal: View Uploaded Document */}
+        {viewingImageUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
+            <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
+                <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">{viewingImageLabel} Preview</h3>
+                <button
+                  onClick={() => {
+                    setViewingImageUrl(null)
+                    setViewingImageLabel('')
+                  }}
+                  className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              {/* Body */}
+              <div className="p-4 flex flex-col items-center justify-center bg-slate-950 overflow-y-auto max-h-[70vh] w-full">
+                <img
+                  src={viewingImageUrl}
+                  alt={viewingImageLabel}
+                  className="max-w-full h-auto max-h-[60vh] object-contain rounded-lg shadow-md"
+                />
+              </div>
+              {/* Footer */}
+              <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
+                <button
+                  onClick={() => {
+                    setViewingImageUrl(null)
+                    setViewingImageLabel('')
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+                >
+                  CLOSE
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </main>
     </div>
   )
