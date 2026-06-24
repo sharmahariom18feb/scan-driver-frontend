@@ -11,6 +11,7 @@ import { AppDispatch, RootState } from '@/redux/store'
 import { signupDriver, normalizePhone } from '@/redux/slices/driverSlice'
 import { cn } from '@/lib/utils'
 import logoSd from '../../../../public/icons/logo-sd.png'
+import qrCodeImg from '../../../../public/QRCODE.jpeg'
 import { supabase } from '@/lib/supabaseClient'
 import { uploadToCloudinary } from '@/lib/cloudinary'
 
@@ -1106,12 +1107,13 @@ export default function OnboardingPage() {
               </p>
               
               <div className="flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-border/10 max-w-[200px] mx-auto font-sans">
-                <img
-                  src="/QRCODE.jpeg"
+                <Image
+                  src={qrCodeImg}
                   alt="Registration QR Code"
                   onClick={() => setViewingQr(true)}
                   className="w-full h-auto object-contain rounded-lg shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
                   title="Click to zoom in"
+                  priority
                 />
                 <span className="text-xs font-bold text-slate-900 mt-2">Scan & Pay ₹ 300</span>
               </div>
@@ -1232,8 +1234,8 @@ export default function OnboardingPage() {
             </div>
             {/* Body */}
             <div className="p-6 flex flex-col items-center justify-center bg-white overflow-y-auto max-h-[70vh]">
-              <img
-                src="/QRCODE.jpeg"
+              <Image
+                src={qrCodeImg}
                 alt="Registration QR Code"
                 className="max-w-full h-auto object-contain rounded-lg"
               />
