@@ -55,7 +55,7 @@ export default function HomePage() {
       <div className="pointer-events-none absolute inset-0 z-0 select-none">
         {/* Dark Theme Base & Gradients */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#080808] via-[#0d0e12] to-[#070908] dark:block hidden" />
-        
+
         {/* Dark Mode Glowing Orbs */}
         <div className="absolute top-[8%] left-[-5%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/10 to-transparent blur-[130px] animate-float dark:block hidden" />
         <div className="absolute top-[25%] right-[-10%] w-[550px] h-[550px] rounded-full bg-gradient-to-bl from-emerald-500/8 to-transparent blur-[120px] animate-float-delay-2 dark:block hidden" />
@@ -65,7 +65,7 @@ export default function HomePage() {
 
         {/* Light Theme Base & Gradients */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff] via-[#faf8f4] to-[#f4f8f6] dark:hidden block" />
-        
+
         {/* Light Mode Glowing Orbs */}
         <div className="absolute top-[8%] left-[-5%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/5 to-transparent blur-[130px] animate-float dark:hidden block" />
         <div className="absolute top-[25%] right-[-10%] w-[550px] h-[550px] rounded-full bg-gradient-to-bl from-emerald-500/4 to-transparent blur-[120px] animate-float-delay-2 dark:hidden block" />
@@ -109,6 +109,7 @@ export default function HomePage() {
         <Navbar />
         <main className="flex-grow">
           <HeroSection />
+          <CustomerEnquirySection />
           <AboutUsSection />
           <MarqueeStrip />
           <ServicesSection />
@@ -117,7 +118,6 @@ export default function HomePage() {
           <TestimonialsSection />
           <WhatsAppFirstSection />
           <DriverJoinSection />
-          <CustomerEnquirySection />
           <ContactStripSection />
           <TermsSection />
         </main>

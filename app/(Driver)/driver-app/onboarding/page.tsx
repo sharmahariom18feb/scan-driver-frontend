@@ -311,14 +311,15 @@ export default function OnboardingPage() {
           return
         }
       }
-      setStep(5)
-    } else if (step === 5) {
+      // setStep(5)
+      handleSubmit()
+    } /* else if (step === 5) {
       if (!paymentFile) {
         toast.error('Please select your ₹300 payment screenshot')
         return
       }
       handleSubmit()
-    }
+    } */
   }
 
   const handleBackStep = () => {
@@ -580,8 +581,8 @@ export default function OnboardingPage() {
     )
   }
 
-  // Calculate Progress Percentage
-  const progressPercent = step === 1 ? 20 : step === 2 ? 40 : step === 3 ? 60 : step === 4 ? 80 : step === 5 ? 95 : 100
+  // Calculate Progress Percentage (Temporarily removed payment step)
+  const progressPercent = step === 1 ? 25 : step === 2 ? 50 : step === 3 ? 75 : step === 4 ? 95 : 100
 
   return (
     <div className="flex-grow flex flex-col bg-background text-foreground overflow-y-auto driver-app-root">
@@ -1210,7 +1211,7 @@ export default function OnboardingPage() {
             >
               {submitting || loading ? (
                 <div className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-              ) : step === 5 ? (
+              ) : step === 4 ? (
                 'Submit Registration'
               ) : (
                 'Continue'
