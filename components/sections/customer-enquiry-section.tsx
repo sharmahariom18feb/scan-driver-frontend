@@ -68,7 +68,7 @@ export function CustomerEnquirySection() {
 
       <div className="max-w-[1160px] mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           {/* Info Side (Col Span 5) */}
           <div className="lg:col-span-5 space-y-6">
             <Reveal>
@@ -190,7 +190,7 @@ export function CustomerEnquirySection() {
                     </div>
 
                     {/* Email */}
-                    <div className="relative">
+                    {/* <div className="relative">
                       <label className="text-[10px] font-bold text-foreground/80 block mb-1 uppercase tracking-wider">
                         Email Address (Optional)
                       </label>
@@ -206,7 +206,7 @@ export function CustomerEnquirySection() {
                           placeholder="your.email@example.com"
                         />
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Message / Description */}
                     <div className="relative">
