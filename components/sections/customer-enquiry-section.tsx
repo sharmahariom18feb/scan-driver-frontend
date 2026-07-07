@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Mail, Phone, User, Send, CheckCircle2, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WHATSAPP_CUSTOMER, getWhatsAppLink } from '@/constants'
 
 export function CustomerEnquirySection() {
   const [name, setName] = useState('')
@@ -47,6 +48,15 @@ export function CustomerEnquirySection() {
 
       setSuccess(true)
       toast.success('Thank you! Your enquiry has been received.')
+
+      // Redirect to WhatsApp with pre-filled enquiry details
+      const waMsg = `Hello ScanDriver! I have submitted an enquiry:
+👤 *Name:* ${name.trim()}
+📞 *Phone:* ${cleanPhone}
+💬 *Message:* ${message.trim() || 'N/A'}`
+
+      window.open(getWhatsAppLink(WHATSAPP_CUSTOMER, waMsg), '_blank')
+
       setName('')
       setPhone('')
       setEmail('')

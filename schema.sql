@@ -13,7 +13,7 @@ create table if not exists public.users (
   verified boolean default false not null,
   is_online boolean default false not null,
   role text not null check (role in ('ADMIN', 'DRIVER', 'CUSTOMER')) default 'DRIVER',
-  referral_code text unique,
+  unique_id text unique,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -152,8 +152,23 @@ create policy "Admins can delete any FCM tokens." on public.driver_fcm_tokens
 -- 4. Create trigger to automatically insert a profile row on auth user signup
 create or replace function public.handle_new_user()
 returns trigger as $$
+declare
+  v_role text;
+  v_unique_id text;
+  v_rand text;
 begin
-  insert into public.users (id, username, email, full_name, phone, license_no, current_area, rating, verified, is_online, role, referral_code)
+  v_role := coalesce(new.raw_user_meta_data->>'role', 'DRIVER');
+  v_rand := (floor(random() * 900000 + 100000))::text;
+  
+  if v_role = 'DRIVER' then
+    v_unique_id := 'SD' || v_rand;
+  elsif v_role = 'ADMIN' then
+    v_unique_id := 'SA' || v_rand;
+  else
+    v_unique_id := 'SU' || v_rand;
+  end if;
+
+  insert into public.users (id, username, email, full_name, phone, license_no, current_area, rating, verified, is_online, role, unique_id)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
@@ -165,8 +180,8 @@ begin
     5.00,
     false,
     false,
-    coalesce(new.raw_user_meta_data->>'role', 'DRIVER'),
-    (floor(random() * 900000 + 100000))::text
+    v_role,
+    v_unique_id
   );
   return new;
 end;

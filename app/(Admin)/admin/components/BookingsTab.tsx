@@ -467,12 +467,12 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
           <h1 className="text-2xl font-bold text-white">Bookings</h1>
           <p className="text-slate-200 text-xs mt-1">Create, dispatch, and manage ride bookings.</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
+        <a
+          href="/booking"
           className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs py-3 px-5 rounded-xl transition-all shadow-md shadow-amber-500/10 cursor-pointer"
         >
           <Plus size={16} /> CREATE NEW BOOKING
-        </button>
+        </a>
       </div>
 
       {/* Filters bar */}

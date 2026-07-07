@@ -62,6 +62,7 @@ export interface DriverInfo {
   avatar: string
   role?: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   isOnline?: boolean
+  uniqueId?: string
   referralCode?: string
   referredBy?: string
 }
@@ -248,7 +249,8 @@ export const loginDriver = createAsyncThunk(
         avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
-        referralCode: profile.referral_code,
+        uniqueId: profile.unique_id,
+        referralCode: profile.unique_id,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -337,7 +339,8 @@ export const verifyDriverOtp = createAsyncThunk(
         avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
-        referralCode: profile.referral_code,
+        uniqueId: profile.unique_id,
+        referralCode: profile.unique_id,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -453,7 +456,8 @@ export const checkDriverSession = createAsyncThunk(
             avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
             role: profile.role,
             isOnline: profile.is_online,
-            referralCode: profile.referral_code,
+            uniqueId: profile.unique_id,
+            referralCode: profile.unique_id,
           } as DriverInfo
 
           localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -546,7 +550,8 @@ export const fetchDriverProfile = createAsyncThunk(
         avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
-        referralCode: profile.referral_code,
+        uniqueId: profile.unique_id,
+        referralCode: profile.unique_id,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -591,7 +596,8 @@ export const updateDriverProfile = createAsyncThunk(
         verified: data.verified,
         avatar: (data.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: data.role,
-        referralCode: data.referral_code,
+        uniqueId: data.unique_id,
+        referralCode: data.unique_id,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))

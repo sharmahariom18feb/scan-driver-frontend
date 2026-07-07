@@ -54,6 +54,7 @@ export function AboutUsSection() {
     'Hourly Driver Services',
     'Daily Driver Services',
     'Weekly & Monthly Driver Hiring',
+    'School Pickup & Drop Driver Services',
     'Corporate Driver Solutions',
     'Airport Pickup & Drop Drivers',
     'Outstation Drivers',
