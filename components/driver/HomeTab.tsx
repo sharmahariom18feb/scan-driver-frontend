@@ -184,7 +184,9 @@ export default function HomeTab({
                       {booking.id}
                     </span>
                     <h4 className="font-bold text-base text-foreground group-hover:text-gold-light transition-colors">
-                      {booking.customerName}
+                      {booking.status === 'accepted' || booking.status === 'completed'
+                        ? booking.customerName
+                        : 'Hidden (Accept to view)'}
                     </h4>
                   </div>
                   <div className="flex flex-col items-end gap-1">

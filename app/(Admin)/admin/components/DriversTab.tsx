@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X } from 'lucide-react'
+import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Driver } from '../types'
@@ -45,49 +45,155 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     return d.driver_documents
   }
 
-  const renderVerificationSection = (d: Driver) => {
+  const downloadAllDocuments = async (d: Driver) => {
     const docs = getDocuments(d)
     if (!docs) {
-      return (
-        <div className="mt-4 pt-4 border-t border-slate-800/80">
-          <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] mb-2">Verification Documents & References</h4>
-          <p className="text-xs text-slate-400 italic">No verification documents uploaded (Old registration profile).</p>
-        </div>
-      )
+      toast.error('No documents to download')
+      return
     }
+
+    const filesToDownload = [
+      { label: 'Aadhaar_Front', url: docs.aadhaar_front_url },
+      { label: 'Aadhaar_Back', url: docs.aadhaar_back_url },
+      { label: 'Driving_License', url: docs.driving_license_url },
+      { label: 'PAN_Card', url: docs.pan_card_url },
+      { label: 'Selfie', url: docs.selfie_url },
+      { label: 'Payment_Receipt', url: docs.payment },
+    ].filter((item): item is { label: string; url: string } => !!item.url)
+
+    if (filesToDownload.length === 0) {
+      toast.error('No uploaded documents found for this driver')
+      return
+    }
+
+    const toastId = toast.loading(`Downloading ${filesToDownload.length} files...`)
+
+    try {
+      for (let i = 0; i < filesToDownload.length; i++) {
+        const item = filesToDownload[i]
+        const response = await fetch(item.url)
+        const blob = await response.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        
+        const a = document.createElement('a')
+        a.href = blobUrl
+        
+        const extension = item.url.split('.').pop()?.split('?')[0] || 'jpg'
+        const driverNameClean = (d.full_name || 'Driver').replace(/\s+/g, '_')
+        a.download = `${driverNameClean}_${item.label}.${extension}`
+        
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(blobUrl)
+        
+        // Slight delay to avoid browser blocking multiple downloads
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+      toast.success('All documents downloaded successfully!', { id: toastId })
+    } catch (error) {
+      console.error('Error downloading files:', error)
+      toast.error('Failed to download some documents', { id: toastId })
+    }
+  }
+
+  const renderVerificationSection = (d: Driver) => {
+    const docs = getDocuments(d)
+    
+    const getDocsArray = (documentsObject: any) => {
+      return [
+        { label: 'Aadhaar Front', field: 'aadhaar_front_url', url: documentsObject?.aadhaar_front_url },
+        { label: 'Aadhaar Back', field: 'aadhaar_back_url', url: documentsObject?.aadhaar_back_url },
+        { label: 'Driving License', field: 'driving_license_url', url: documentsObject?.driving_license_url },
+        { label: 'PAN Card', field: 'pan_card_url', url: documentsObject?.pan_card_url },
+        { label: 'Selfie', field: 'selfie_url', url: documentsObject?.selfie_url },
+        { label: 'Payment Receipt', field: 'payment', url: documentsObject?.payment },
+      ]
+    }
+
+    const docsArray = getDocsArray(docs)
 
     return (
       <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-4">
         {/* Document images */}
         <div>
-          <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] mb-2">Uploaded Verification Documents</h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Uploaded Verification Documents</h4>
+            {docsArray.some(doc => !!doc.url) && (
+              <button
+                type="button"
+                onClick={() => downloadAllDocuments(d)}
+                className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[9px] py-1 px-2.5 rounded-lg border border-slate-700 transition-all cursor-pointer"
+              >
+                <Download size={10} /> DOWNLOAD ALL DOCUMENTS
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-            {[
-              { label: 'Aadhaar Front', url: docs.aadhaar_front_url },
-              { label: 'Aadhaar Back', url: docs.aadhaar_back_url },
-              { label: 'Driving License', url: docs.driving_license_url },
-              { label: 'PAN Card', url: docs.pan_card_url },
-              { label: 'Selfie', url: docs.selfie_url },
-              { label: 'Payment Receipt', url: docs.payment },
-            ].map((doc, idx) => (
-              <div key={idx} className="bg-slate-900 border border-slate-880 rounded-xl p-2.5 flex flex-col items-center space-y-1.5">
+            {docsArray.map((doc, idx) => (
+              <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-col items-center space-y-1.5 relative">
                 <span className="text-[9px] font-bold text-slate-400 text-center">{doc.label}</span>
                 {doc.url ? (
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setViewingImageUrl(doc.url || null)
-                      setViewingImageLabel(doc.label)
-                    }}
-                    className="relative block w-full h-20 rounded-lg overflow-hidden border border-slate-750 hover:border-amber-500 transition-all group cursor-zoom-in"
-                  >
-                    <img src={doc.url} alt={doc.label} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="text-[8px] font-extrabold text-white bg-slate-950/80 px-1.5 py-0.5 rounded">ZOOM</span>
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setViewingImageUrl(doc.url || null)
+                        setViewingImageLabel(doc.label)
+                      }}
+                      className="relative block w-full h-20 rounded-lg overflow-hidden border border-slate-750 hover:border-amber-500 transition-all group cursor-zoom-in"
+                    >
+                      <img src={doc.url} alt={doc.label} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="text-[8px] font-extrabold text-white bg-slate-950/80 px-1.5 py-0.5 rounded">ZOOM</span>
+                      </div>
+                    </button>
+                    <div className="flex w-full gap-1 mt-1">
+                      <label className="flex-grow text-center py-1 bg-slate-800 hover:bg-slate-700 text-slate-350 font-extrabold text-[8px] rounded border border-slate-700 cursor-pointer transition-all">
+                        REPLACE
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          className="hidden" 
+                          disabled={managingDocId === `${d.id}-${doc.field}`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleDocumentAction(d.id, doc.field, 'replace', file)
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={managingDocId === `${d.id}-${doc.field}`}
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete this ${doc.label} document?`)) {
+                            handleDocumentAction(d.id, doc.field, 'delete')
+                          }
+                        }}
+                        className="p-1 bg-rose-950/40 hover:bg-rose-900 border border-rose-900 text-rose-300 hover:text-rose-200 font-extrabold text-[8px] rounded transition-all cursor-pointer flex items-center justify-center shrink-0"
+                        title="Delete Document"
+                      >
+                        <Trash2 size={10} />
+                      </button>
                     </div>
-                  </button>
+                  </>
                 ) : (
-                  <span className="text-[9px] text-rose-450 italic py-5">Not Uploaded</span>
+                  <div className="flex flex-col items-center justify-center w-full">
+                    <span className="text-[9px] text-rose-450 italic py-2">Not Uploaded</span>
+                    <label className="w-full text-center py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[8px] rounded cursor-pointer transition-all flex items-center justify-center gap-1">
+                      <Upload size={8} /> UPLOAD
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        className="hidden" 
+                        disabled={managingDocId === `${d.id}-${doc.field}`}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleDocumentAction(d.id, doc.field, 'replace', file)
+                        }}
+                      />
+                    </label>
+                  </div>
                 )}
               </div>
             ))}
@@ -95,7 +201,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
         </div>
 
         {/* References */}
-        {docs.references && Array.isArray(docs.references) && (
+        {docs && docs.references && Array.isArray(docs.references) && (
           <div className="space-y-2">
             <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Verification References</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -112,6 +218,192 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
         )}
       </div>
     )
+  }
+
+
+  // Edit driver profile modal states
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
+  
+  // User fields
+  const [editFullName, setEditFullName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editLicenseNo, setEditLicenseNo] = useState('')
+  const [editCurrentArea, setEditCurrentArea] = useState('')
+  const [editRating, setEditRating] = useState(5.0)
+  const [editVerified, setEditVerified] = useState(false)
+  const [editIsOnline, setEditIsOnline] = useState(false)
+  const [editRole, setEditRole] = useState<'ADMIN' | 'DRIVER' | 'CUSTOMER'>('DRIVER')
+  const [editUniqueId, setEditUniqueId] = useState('')
+
+  // Driver profile fields
+  const [editExperience, setEditExperience] = useState('')
+  const [editLicenseStatus, setEditLicenseStatus] = useState('')
+  const [editAvailability, setEditAvailability] = useState('')
+  const [editPreviousPlatforms, setEditPreviousPlatforms] = useState('')
+  const [editAdditionalComments, setEditAdditionalComments] = useState('')
+  const [editServicePreference, setEditServicePreference] = useState<string[]>([])
+  const [editVehicleSpecialties, setEditVehicleSpecialties] = useState<string[]>([])
+
+  const [editReferences, setEditReferences] = useState<{ fullName: string; phone: string; relation: string }[]>([
+    { fullName: '', phone: '', relation: '' },
+    { fullName: '', phone: '', relation: '' },
+    { fullName: '', phone: '', relation: '' }
+  ])
+
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  const openEditModal = (d: Driver) => {
+    setEditingDriver(d)
+    
+    // User fields
+    setEditFullName(d.full_name || '')
+    setEditPhone(d.phone || '')
+    setEditEmail(d.email || '')
+    setEditLicenseNo(d.license_no || '')
+    setEditCurrentArea(d.current_area || '')
+    setEditRating(Number(d.rating) || 5.0)
+    setEditVerified(!!d.verified)
+    setEditIsOnline(!!d.is_online)
+    setEditRole((d.role as any) || 'DRIVER')
+    setEditUniqueId(d.unique_id || '')
+
+    // Profile fields
+    const profile = getProfile(d)
+    setEditExperience(profile?.experience || '')
+    setEditLicenseStatus(profile?.license_status || '')
+    setEditAvailability(profile?.availability || '')
+    setEditPreviousPlatforms(profile?.previous_platforms || '')
+    setEditAdditionalComments(profile?.additional_comments || '')
+    setEditServicePreference(profile?.service_preference || [])
+    setEditVehicleSpecialties(profile?.vehicle_specialties || [])
+
+    // References fields
+    const docs = getDocuments(d)
+    const initialRefs = docs?.references || []
+    const parsedRefs = [
+      { fullName: initialRefs[0]?.fullName || '', phone: initialRefs[0]?.phone || '', relation: initialRefs[0]?.relation || '' },
+      { fullName: initialRefs[1]?.fullName || '', phone: initialRefs[1]?.phone || '', relation: initialRefs[1]?.relation || '' },
+      { fullName: initialRefs[2]?.fullName || '', phone: initialRefs[2]?.phone || '', relation: initialRefs[2]?.relation || '' }
+    ]
+    setEditReferences(parsedRefs)
+
+    setEditModalOpen(true)
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingDriver) return
+
+    setSavingProfile(true)
+    const toastId = toast.loading('Saving changes...')
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error('Not authenticated')
+      }
+
+      const payload = {
+        driverId: editingDriver.id,
+        userData: {
+          full_name: editFullName,
+          phone: editPhone,
+          email: editEmail || null,
+          license_no: editLicenseNo,
+          current_area: editCurrentArea,
+          rating: Number(editRating),
+          verified: editVerified,
+          is_online: editIsOnline,
+          role: editRole,
+          unique_id: editUniqueId || null
+        },
+        profileData: editRole === 'DRIVER' ? {
+          experience: editExperience,
+          license_status: editLicenseStatus,
+          availability: editAvailability,
+          previous_platforms: editPreviousPlatforms || null,
+          additional_comments: editAdditionalComments || null,
+          service_preference: editServicePreference,
+          vehicle_specialties: editVehicleSpecialties
+        } : null,
+        documentData: editRole === 'DRIVER' ? {
+          references: editReferences
+        } : null
+      }
+
+      const response = await fetch('/api/admin/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      const res = await response.json()
+      if (!response.ok) {
+        throw new Error(res.error || 'Failed to update profile')
+      }
+
+      toast.success('Driver profile updated successfully!', { id: toastId })
+      setEditModalOpen(false)
+      fetchDriversLocal()
+      onRefresh()
+    } catch (err: any) {
+      console.error('Error saving profile:', err)
+      toast.error(err.message || 'An error occurred while saving profile', { id: toastId })
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  // Document management states & handlers
+  const [managingDocId, setManagingDocId] = useState<string | null>(null)
+
+  const handleDocumentAction = async (driverId: string, field: string, action: 'delete' | 'replace', file?: File) => {
+    const key = `${driverId}-${field}`
+    setManagingDocId(key)
+    const toastId = toast.loading(`${action === 'delete' ? 'Deleting' : 'Uploading'} document...`)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      let newUrl = ''
+      if (action === 'replace' && file) {
+        const { uploadToCloudinary } = await import('@/lib/cloudinary')
+        newUrl = await uploadToCloudinary(file)
+      }
+
+      const response = await fetch('/api/admin/manage-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          driverId,
+          action,
+          documentField: field,
+          newUrl: action === 'replace' ? newUrl : undefined
+        })
+      })
+
+      const res = await response.json()
+      if (!response.ok) {
+        throw new Error(res.error || `Failed to ${action} document`)
+      }
+
+      toast.success(`Document ${action === 'delete' ? 'deleted' : 'updated'} successfully!`, { id: toastId })
+      fetchDriversLocal()
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message || `An error occurred during document ${action}`, { id: toastId })
+    } finally {
+      setManagingDocId(null)
+    }
   }
 
 
@@ -442,6 +734,11 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                             {d.full_name}
                             {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
                           </p>
+                          {d.unique_id && (
+                            <p className="text-[9px] font-mono text-slate-400 mt-0.5 select-all">
+                              ID: {d.unique_id}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -515,6 +812,12 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                         </>
                       )}
                       <button
+                        onClick={() => openEditModal(d)}
+                        className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer"
+                      >
+                        <Edit size={12} /> EDIT PROFILE
+                      </button>
+                      <button
                         onClick={() => openResetModal(d.id, d.full_name)}
                         className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer border border-slate-700"
                       >
@@ -581,6 +884,11 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                         {d.full_name}
                         {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
                       </p>
+                      {d.unique_id && (
+                        <p className="text-[8px] font-mono text-slate-400 mt-0.5 select-all">
+                          ID: {d.unique_id}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -658,6 +966,12 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => openEditModal(d)}
+                    className="bg-amber-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer flex items-center gap-1"
+                  >
+                    <Edit size={10} /> Edit Profile
+                  </button>
                   <button
                     onClick={() => openResetModal(d.id, d.full_name)}
                     className="bg-slate-800 border border-slate-700 text-slate-200 hover:text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer flex items-center gap-1"
@@ -788,6 +1102,407 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                     </>
                   ) : (
                     'Reset Password'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {editModalOpen && editingDriver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-800/80 flex justify-between items-center bg-slate-950 rounded-t-2xl">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Edit size={16} className="text-amber-500" />
+                Edit Driver Profile: <span className="text-amber-400">{editingDriver.full_name}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="text-slate-400 hover:text-slate-200 p-1.5 rounded-full cursor-pointer hover:bg-slate-800 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+              {/* SECTION 1: Core User Details */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] border-b border-slate-800 pb-1">
+                  Core Account details (Users Table)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                      placeholder="driver@scandriver.in"
+                    />
+                  </div>
+
+                  {/* License No */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      License Number
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editLicenseNo}
+                      onChange={(e) => setEditLicenseNo(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                    />
+                  </div>
+
+                  {/* Current Area */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Current Area
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editCurrentArea}
+                      onChange={(e) => setEditCurrentArea(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                    />
+                  </div>
+
+                  {/* Rating */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Rating (1.00 - 5.00)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="1"
+                      max="5"
+                      required
+                      value={editRating}
+                      onChange={(e) => setEditRating(Number(e.target.value))}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                    />
+                  </div>
+
+                  {/* Role */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Account Role
+                    </label>
+                    <select
+                      value={editRole}
+                      onChange={(e: any) => setEditRole(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl transition-colors"
+                    >
+                      <option value="DRIVER">DRIVER</option>
+                      <option value="CUSTOMER">CUSTOMER</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                  </div>
+
+                  {/* Unique ID */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Unique ID / Referral Code
+                    </label>
+                    <input
+                      type="text"
+                      value={editUniqueId}
+                      onChange={(e) => setEditUniqueId(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                      placeholder="e.g. SD100234"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-2">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editVerified}
+                      onChange={(e) => setEditVerified(e.target.checked)}
+                      className="rounded border-slate-750 text-amber-500 bg-slate-950 focus:ring-amber-500 h-4 w-4"
+                    />
+                    Is Verified Account
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editIsOnline}
+                      onChange={(e) => setEditIsOnline(e.target.checked)}
+                      className="rounded border-slate-750 text-amber-500 bg-slate-950 focus:ring-amber-500 h-4 w-4"
+                    />
+                    Is Online (Duty)
+                  </label>
+                </div>
+              </div>
+
+              {/* SECTION 2: Driver Profile Details */}
+              {editRole === 'DRIVER' && (
+                <div className="space-y-4 pt-4 border-t border-slate-800">
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] border-b border-slate-800 pb-1">
+                    Advanced Driver Profile details (Driver_profiles Table)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Experience */}
+                    <div>
+                      <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                        Driving Experience
+                      </label>
+                      <input
+                        type="text"
+                        value={editExperience}
+                        onChange={(e) => setEditExperience(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                        placeholder="e.g. 5 Years"
+                      />
+                    </div>
+
+                    {/* License Status */}
+                    <div>
+                      <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                        Licence Validity Status
+                      </label>
+                      <input
+                        type="text"
+                        value={editLicenseStatus}
+                        onChange={(e) => setEditLicenseStatus(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                        placeholder="e.g. Valid, Active"
+                      />
+                    </div>
+
+                    {/* Availability */}
+                    <div>
+                      <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                        Availability Schedule
+                      </label>
+                      <input
+                        type="text"
+                        value={editAvailability}
+                        onChange={(e) => setEditAvailability(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                        placeholder="e.g. Full Time"
+                      />
+                    </div>
+
+                    {/* Previous Platforms */}
+                    <div>
+                      <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                        Previous Working Platforms
+                      </label>
+                      <input
+                        type="text"
+                        value={editPreviousPlatforms}
+                        onChange={(e) => setEditPreviousPlatforms(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                        placeholder="e.g. Uber, Ola"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Service Preference Multi-select/text */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-2">
+                      Service Preference (Select all applicable)
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                      {[
+                        'Hourly Driver', 'Monthly Driver', 'Weekly Driver',
+                        'Outstation Driver', 'Corporate Driver', 'Airport Transfer', 'Event & Wedding'
+                      ].map((pref) => {
+                        const checked = editServicePreference.includes(pref)
+                        return (
+                          <label key={pref} className="flex items-center gap-2 text-[10px] text-slate-300 font-bold cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                if (checked) {
+                                  setEditServicePreference(editServicePreference.filter(x => x !== pref))
+                                } else {
+                                  setEditServicePreference([...editServicePreference, pref])
+                                }
+                              }}
+                              className="rounded border-slate-750 text-amber-500 bg-slate-900 focus:ring-amber-500 h-3 w-3"
+                            />
+                            {pref}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Vehicle Specialties Multi-select/text */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-2">
+                      Vehicle Specialties (Select all applicable)
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                      {['Hatchback', 'Sedan', 'SUV', 'Luxury'].map((vSpec) => {
+                        const checked = editVehicleSpecialties.includes(vSpec)
+                        return (
+                          <label key={vSpec} className="flex items-center gap-2 text-[10px] text-slate-300 font-bold cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                if (checked) {
+                                  setEditVehicleSpecialties(editVehicleSpecialties.filter(x => x !== vSpec))
+                                } else {
+                                  setEditVehicleSpecialties([...editVehicleSpecialties, vSpec])
+                                }
+                              }}
+                              className="rounded border-slate-750 text-amber-500 bg-slate-900 focus:ring-amber-500 h-3 w-3"
+                            />
+                            {vSpec}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Additional Comments */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Additional Comments / Notes
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editAdditionalComments}
+                      onChange={(e) => setEditAdditionalComments(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors resize-none"
+                      placeholder="Enter any other administrative notes about the driver..."
+                    />
+                  </div>
+
+                  {/* Verification References Edit Section */}
+                  <div className="space-y-3 pt-2">
+                    <h5 className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
+                      Verification References (Up to 3)
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[0, 1, 2].map((idx) => (
+                        <div key={idx} className="bg-slate-950 border border-slate-800 p-3 rounded-xl space-y-2">
+                          <p className="text-[9px] font-extrabold text-amber-500 uppercase">
+                            Reference {idx + 1}
+                          </p>
+                          <div>
+                            <label className="block text-[8px] font-extrabold uppercase tracking-wider text-slate-500 mb-0.5">
+                              Name
+                            </label>
+                            <input
+                              type="text"
+                              value={editReferences[idx]?.fullName || ''}
+                              onChange={(e) => {
+                                const newRefs = [...editReferences]
+                                newRefs[idx] = { ...newRefs[idx], fullName: e.target.value }
+                                setEditReferences(newRefs)
+                              }}
+                              className="w-full px-2 py-1 text-xs bg-slate-900 border border-slate-750 focus:border-amber-500 focus:outline-none text-white rounded-lg placeholder:text-slate-600 transition-colors"
+                              placeholder="Full Name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] font-extrabold uppercase tracking-wider text-slate-500 mb-0.5">
+                              Phone
+                            </label>
+                            <input
+                              type="text"
+                              value={editReferences[idx]?.phone || ''}
+                              onChange={(e) => {
+                                const newRefs = [...editReferences]
+                                newRefs[idx] = { ...newRefs[idx], phone: e.target.value }
+                                setEditReferences(newRefs)
+                              }}
+                              className="w-full px-2 py-1 text-xs bg-slate-900 border border-slate-750 focus:border-amber-500 focus:outline-none text-white rounded-lg placeholder:text-slate-600 transition-colors"
+                              placeholder="Phone Number"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] font-extrabold uppercase tracking-wider text-slate-500 mb-0.5">
+                              Relation
+                            </label>
+                            <input
+                              type="text"
+                              value={editReferences[idx]?.relation || ''}
+                              onChange={(e) => {
+                                const newRefs = [...editReferences]
+                                newRefs[idx] = { ...newRefs[idx], relation: e.target.value }
+                                setEditReferences(newRefs)
+                              }}
+                              className="w-full px-2 py-1 text-xs bg-slate-900 border border-slate-750 focus:border-amber-500 focus:outline-none text-white rounded-lg placeholder:text-slate-600 transition-colors"
+                              placeholder="Relation"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800/80 bg-slate-900/50 -mx-6 -mb-6 p-4 rounded-b-2xl">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  disabled={savingProfile}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs rounded-xl cursor-pointer transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50 shadow-md shadow-amber-500/5"
+                >
+                  {savingProfile ? (
+                    <>
+                      <div className="h-3 w-3 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      Saving changes...
+                    </>
+                  ) : (
+                    'Save Changes'
                   )}
                 </button>
               </div>

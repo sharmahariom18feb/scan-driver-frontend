@@ -81,7 +81,7 @@ export function WhatsAppFirstSection() {
                 <div className="flex flex-col items-end">
                   <div className="max-w-[82%] px-3.5 py-2.5 rounded-lg rounded-tr-sm bg-[#005c4b] text-[13px] text-[#e9edef] leading-relaxed">
                     ✅ Confirmed! Your verified driver <strong>Ramesh K.</strong> will arrive at 9:00 AM sharp.<br /><br />
-                    📋 Driver ID shared. 8-hour rate: ₹1,200.<br />
+                    📋 Driver ID shared. 8-hour rate: ₹800.<br />
                     No app needed — we handle everything here.
                   </div>
                   <div className="text-[10px] text-[#8696a0] mt-1 px-1">10:33 AM ✓✓</div>

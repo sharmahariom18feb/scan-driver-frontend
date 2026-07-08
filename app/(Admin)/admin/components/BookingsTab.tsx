@@ -47,6 +47,7 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
   // Driver Assignment Modal State
   const [assigningBooking, setAssigningBooking] = useState<Booking | null>(null)
   const [assigning, setAssigning] = useState(false)
+  const [driverSearchTerm, setDriverSearchTerm] = useState('')
 
   // Viewing Invoice Modal State
   const [viewingInvoice, setViewingInvoice] = useState<string | null>(null)
@@ -124,6 +125,12 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
   useEffect(() => {
     fetchBookingsLocal()
   }, [page, pageSize, searchTerm, statusFilter, approvalFilter])
+
+  useEffect(() => {
+    if (!assigningBooking) {
+      setDriverSearchTerm('')
+    }
+  }, [assigningBooking])
 
   // Custom filters state updater to reset page to 1
   const handleSearchChange = (val: string) => {
@@ -1173,38 +1180,68 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                 </button>
               )}
 
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-1">Available & Verified Drivers</p>
+              {/* Driver Search Input */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={driverSearchTerm}
+                  onChange={(e) => setDriverSearchTerm(e.target.value)}
+                  placeholder="Search by name or unique ID..."
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-950 border border-slate-800 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                />
+              </div>
 
-              {drivers.filter((d) => d.verified).length === 0 ? (
-                <p className="text-xs text-slate-500 py-6 text-center italic">No verified drivers onboarded yet.</p>
-              ) : (
-                drivers
-                  .filter((d) => d.verified)
-                  .map((driver) => {
-                    const isSelected = assigningBooking.driver_id === driver.id
-                    return (
-                      <button
-                        key={driver.id}
-                        onClick={() => handleAssignDriver(driver.id)}
-                        disabled={assigning}
-                        className={`w-full p-3.5 rounded-xl border text-left flex justify-between items-center transition-all cursor-pointer disabled:opacity-50 ${isSelected
-                            ? 'bg-amber-500/10 border-amber-500 text-white'
-                            : 'bg-slate-950/60 border-slate-850 hover:border-slate-700 text-slate-300'
-                          }`}
-                      >
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                            {driver.full_name}
-                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${driver.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
-                          </p>
-                          <p className="text-[10px] text-slate-500 font-semibold">{driver.phone} • {driver.current_area}</p>
-                          <p className="text-[9px] text-slate-400">Rating: {driver.rating}★</p>
-                        </div>
-                        {isSelected && <Check size={16} className="text-amber-500" />}
-                      </button>
-                    )
-                  })
-              )}
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-1 pt-1">Available & Verified Drivers</p>
+
+              {(() => {
+                const verifiedDrivers = drivers.filter((d) => d.verified)
+                const filtered = verifiedDrivers.filter((driver) => {
+                  if (!driverSearchTerm.trim()) return true
+                  const term = driverSearchTerm.toLowerCase()
+                  const matchesName = (driver.full_name || '').toLowerCase().includes(term)
+                  const matchesUniqueId = (driver.unique_id || '').toLowerCase().includes(term)
+                  return matchesName || matchesUniqueId
+                })
+
+                if (verifiedDrivers.length === 0) {
+                  return <p className="text-xs text-slate-500 py-6 text-center italic">No verified drivers onboarded yet.</p>
+                }
+
+                if (filtered.length === 0) {
+                  return <p className="text-xs text-slate-500 py-6 text-center italic">No drivers match "{driverSearchTerm}".</p>
+                }
+
+                return filtered.map((driver) => {
+                  const isSelected = assigningBooking.driver_id === driver.id
+                  return (
+                    <button
+                      key={driver.id}
+                      onClick={() => handleAssignDriver(driver.id)}
+                      disabled={assigning}
+                      className={`w-full p-3.5 rounded-xl border text-left flex justify-between items-center transition-all cursor-pointer disabled:opacity-50 ${isSelected
+                          ? 'bg-amber-500/10 border-amber-500 text-white'
+                          : 'bg-slate-950/60 border-slate-850 hover:border-slate-700 text-slate-300'
+                        }`}
+                    >
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-bold text-white flex items-center gap-1.5 flex-wrap">
+                          {driver.full_name}
+                          {driver.unique_id && (
+                            <span className="text-[8px] font-mono text-slate-300 bg-slate-900 px-1 py-0.5 rounded border border-slate-800">
+                              {driver.unique_id}
+                            </span>
+                          )}
+                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${driver.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-semibold">{driver.phone} • {driver.current_area}</p>
+                        <p className="text-[9px] text-slate-400">Rating: {driver.rating}★</p>
+                      </div>
+                      {isSelected && <Check size={16} className="text-amber-500" />}
+                    </button>
+                  )
+                })
+              })()}
             </div>
           </div>
         </div>

@@ -155,23 +155,26 @@ create policy "Admins can view all FCM tokens." on public.driver_fcm_tokens
 create policy "Admins can delete any FCM tokens." on public.driver_fcm_tokens
   for delete using (public.is_admin());
 
+-- 3c. Create sequence for unique IDs
+create sequence if not exists public.unique_id_global_seq start with 2000;
+
 -- 4. Create trigger to automatically insert a profile row on auth user signup
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   v_role text;
   v_unique_id text;
-  v_rand text;
+  v_num bigint;
 begin
   v_role := coalesce(new.raw_user_meta_data->>'role', 'DRIVER');
-  v_rand := (floor(random() * 900000 + 100000))::text;
+  v_num := nextval('public.unique_id_global_seq');
   
   if v_role = 'DRIVER' then
-    v_unique_id := 'SD' || v_rand;
+    v_unique_id := 'SD' || v_num::text;
   elsif v_role = 'ADMIN' then
-    v_unique_id := 'SA' || v_rand;
+    v_unique_id := 'SA' || v_num::text;
   else
-    v_unique_id := 'SU' || v_rand;
+    v_unique_id := 'SU' || v_num::text;
   end if;
 
   insert into public.users (id, username, email, full_name, phone, license_no, current_area, rating, verified, is_online, role, unique_id)

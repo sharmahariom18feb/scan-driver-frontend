@@ -38,6 +38,7 @@ export interface Driver {
   verified: boolean
   is_online: boolean
   role: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
+  unique_id?: string | null
   created_at: string
   driver_profiles?: DriverProfile | DriverProfile[] | null
   driver_documents?: DriverDocument | DriverDocument[] | null

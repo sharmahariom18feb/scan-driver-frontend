@@ -97,7 +97,11 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Customer Name</p>
-                  <p className="text-sm font-semibold text-foreground">{booking.customerName}</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {booking.status === 'accepted' || booking.status === 'completed'
+                      ? booking.customerName
+                      : 'Hidden (Accept to view)'}
+                  </p>
                 </div>
               </div>
 
