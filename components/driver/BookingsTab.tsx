@@ -552,7 +552,14 @@ function ActiveBookingCard({
   }
 
   return (
-    <div className="bg-card border border-primary/25 rounded-xl p-5 shadow-lg relative overflow-hidden transition-all duration-300">
+    <div
+      className={cn(
+        'rounded-xl p-5 shadow-lg relative overflow-hidden transition-all duration-300 border',
+        booking.type === 'MONTHLY'
+          ? 'bg-emerald-500/[0.08] dark:bg-emerald-950/35 border-emerald-500/40 dark:border-emerald-500/30 shadow-[0_4px_16px_rgba(16,185,129,0.06)]'
+          : 'bg-card border-primary/25'
+      )}
+    >
       <div
         className={cn(
           "absolute top-0 left-0 w-1.5 h-full transition-colors duration-300",
@@ -590,7 +597,9 @@ function ActiveBookingCard({
               ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
               : booking.type === 'OUTSTATION'
                 ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                : booking.type === 'MONTHLY'
+                  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                  : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
           )}
         >
           {booking.type}
@@ -643,34 +652,7 @@ function ActiveBookingCard({
           <span className="absolute -left-4.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 ring-4 ring-amber-500/10" />
           <p className="text-[9px] text-text-muted uppercase tracking-wider font-semibold leading-none mb-1">Drop</p>
           <div className="text-xs text-foreground font-medium truncate">
-            {(() => {
-              const { text, gpsUrl } = parseAddress(booking.drop)
-              if (gpsUrl) {
-                return (
-                  <span className="flex items-center gap-1.5 max-w-full">
-                    <span className="truncate">{text}</span>
-                    <a
-                      href={gpsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all shrink-0 select-none"
-                    >
-                      📍 GPS Link
-                    </a>
-                  </span>
-                )
-              }
-              return (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.drop)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-400 hover:underline transition-colors"
-                >
-                  {booking.drop}
-                </a>
-              )
-            })()}
+            {booking.drop}
           </div>
         </div>
       </div>
@@ -863,7 +845,12 @@ export default function BookingsTab({
             {completedBookings.map((booking) => (
               <div
                 key={booking.id}
-                className="bg-card border border-border/10 rounded-xl p-4 shadow-sm relative overflow-hidden transition-all duration-300"
+                className={cn(
+                  'rounded-xl p-4 shadow-sm relative overflow-hidden transition-all duration-300 border',
+                  booking.type === 'MONTHLY'
+                    ? 'bg-emerald-500/[0.08] dark:bg-emerald-950/35 border-emerald-500/40 dark:border-emerald-500/30 shadow-[0_4px_16px_rgba(16,185,129,0.06)]'
+                    : 'bg-card border-border/10'
+                )}
               >
                 {/* Top Row: Booking ID and Trip Type */}
                 <div className="flex items-center justify-between mb-2">
@@ -889,12 +876,14 @@ export default function BookingsTab({
                   </div>
                   <span
                     className={cn(
-                      'text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider',
+                      'text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border',
                       booking.type === 'AIRPORT DROP'
                         ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
                         : booking.type === 'OUTSTATION'
                           ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                          : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                          : booking.type === 'MONTHLY'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                     )}
                   >
                     {booking.type}

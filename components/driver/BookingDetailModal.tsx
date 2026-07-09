@@ -9,6 +9,7 @@ import {
   Clock,
   Check,
   XCircle,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
@@ -50,6 +51,15 @@ export default function BookingDetailModal({
 
       {/* Modal Container */}
       <div className="relative w-full bg-card border-t border-border/20 rounded-t-2xl max-h-[85%] overflow-y-auto px-5 pt-6 pb-8 shadow-2xl flex flex-col z-10 animate-in slide-in-from-bottom duration-300">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 text-text-muted hover:text-foreground hover:bg-surface2 rounded-full transition-all duration-200 cursor-pointer z-20"
+          aria-label="Close modal"
+        >
+          <X size={20} />
+        </button>
+
         {/* Grab handle indicator */}
         <div className="w-12 h-1 bg-border/20 rounded-full mx-auto mb-5" />
 
@@ -69,7 +79,9 @@ export default function BookingDetailModal({
                 ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
                 : booking.type === 'OUTSTATION'
                   ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                  : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : booking.type === 'MONTHLY'
+                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
             )}
           >
             {booking.type}
@@ -81,6 +93,13 @@ export default function BookingDetailModal({
           <span className="text-sm text-text-muted font-medium">Estimated Earnings</span>
           <span className="font-bold text-2xl text-emerald-500">₹{booking.fare}</span>
         </div>
+
+        {booking.type === 'MONTHLY' && (
+          <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 rounded-lg p-3 text-xs text-emerald-600 dark:text-emerald-400 mb-5 flex items-center gap-2.5 font-semibold">
+            <span className="text-sm select-none">📅</span>
+            <span>Monthly Booking: Driver details and guidelines apply.</span>
+          </div>
+        )}
 
         <div className="space-y-5 flex-1">
           {/* Customer Info */}
@@ -168,40 +187,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Drop To</p>
-                  {booking.status === 'accepted' || booking.status === 'completed' ? (
-                    <div className="text-sm font-semibold leading-normal">
-                      {(() => {
-                        const { text, gpsUrl } = parseAddress(booking.drop)
-                        if (gpsUrl) {
-                          return (
-                            <span className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-foreground">{text}</span>
-                              <a
-                                href={gpsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all select-none"
-                              >
-                                📍 GPS Link
-                              </a>
-                            </span>
-                          )
-                        }
-                        return (
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.drop)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-400 hover:underline transition-colors"
-                          >
-                            {booking.drop}
-                          </a>
-                        )
-                      })()}
-                    </div>
-                  ) : (
-                    <p className="text-sm font-semibold text-foreground leading-normal">{booking.drop}</p>
-                  )}
+                  <p className="text-sm font-semibold text-foreground leading-normal">{booking.drop}</p>
                 </div>
               </div>
 

@@ -176,7 +176,12 @@ export default function HomeTab({
               <div
                 key={booking.id}
                 onClick={() => handleOpenDetails(booking)}
-                className="bg-card border border-border/15 rounded-xl p-4 shadow-sm hover:border-gold/30 cursor-pointer active:scale-[0.99] transition-all duration-300 group"
+                className={cn(
+                  'rounded-xl p-4 shadow-sm transition-all duration-300 group border cursor-pointer relative overflow-hidden',
+                  booking.type === 'MONTHLY'
+                    ? 'bg-emerald-500/[0.08] dark:bg-emerald-950/35 border-emerald-500/40 dark:border-emerald-500/30 hover:border-emerald-500/60 dark:hover:border-emerald-400/50 pl-5 before:content-[""] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1.5 before:bg-emerald-500 shadow-[0_4px_16px_rgba(16,185,129,0.06)] dark:shadow-[0_4px_20px_rgba(16,185,129,0.1)]'
+                    : 'bg-card border-border/15 hover:border-gold/30 active:scale-[0.99]'
+                )}
               >
                 <div className="flex items-center justify-between mb-3.5">
                   <div className="space-y-0.5">
@@ -205,7 +210,9 @@ export default function HomeTab({
                           ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
                           : booking.type === 'OUTSTATION'
                             ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                            : booking.type === 'MONTHLY'
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                       )}
                     >
                       {booking.type}

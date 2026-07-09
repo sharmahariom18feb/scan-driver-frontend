@@ -464,8 +464,23 @@ export default function DriverApp() {
 
   // Filter lists
   const currentDriverId = info?.id
-  const availableBookings = bookings.filter((b) => b.status === 'available')
-  const acceptedBookings = bookings.filter((b) => b.status === 'accepted' && (!currentDriverId || b.driverId === currentDriverId))
+
+  const parseBookingDateTime = (dateTimeStr: string): number => {
+    if (!dateTimeStr) return Infinity
+    const cleanStr = dateTimeStr.replace(/^Interview:\s*/i, '').trim()
+    const isoStr = cleanStr.replace(' ', 'T')
+    const timestamp = Date.parse(isoStr)
+    return isNaN(timestamp) ? Infinity : timestamp
+  }
+
+  const sortBookingsByClosestTime = (arr: Booking[]): Booking[] => {
+    return [...arr].sort((a, b) => parseBookingDateTime(a.dateTime) - parseBookingDateTime(b.dateTime))
+  }
+
+  const availableBookings = sortBookingsByClosestTime(bookings.filter((b) => b.status === 'available'))
+  const acceptedBookings = sortBookingsByClosestTime(
+    bookings.filter((b) => b.status === 'accepted' && (!currentDriverId || b.driverId === currentDriverId))
+  )
   const completedBookings = bookings.filter((b) => b.status === 'completed' && (!currentDriverId || b.driverId === currentDriverId))
   const myTrips = [...acceptedBookings, ...completedBookings]
 

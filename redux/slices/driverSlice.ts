@@ -32,7 +32,7 @@ export interface Booking {
   vehicle: string
   specialInstructions: string
   status: 'available' | 'accepted' | 'passed' | 'completed'
-  type: 'AIRPORT DROP' | 'HOURLY' | 'OUTSTATION'
+  type: 'AIRPORT DROP' | 'HOURLY' | 'OUTSTATION' | 'MONTHLY' | 'WEEKLY' | 'CORPORATE' | 'EVENT'
   driverId?: string | null
   adminApproved?: boolean
   tripStatus?: string
