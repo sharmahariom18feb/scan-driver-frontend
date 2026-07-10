@@ -37,6 +37,7 @@ export interface Driver {
   rating: number
   verified: boolean
   is_online: boolean
+  is_suspended: boolean
   role: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   unique_id?: string | null
   created_at: string

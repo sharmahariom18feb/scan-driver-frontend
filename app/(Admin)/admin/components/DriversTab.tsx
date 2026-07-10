@@ -552,15 +552,15 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
 
       if (error) throw error
 
-      toast.success(`Driver verification ${newStatus ? 'Approved' : 'Suspended'}!`)
+      toast.success(`Driver verification ${newStatus ? 'Approved' : 'Removed'}!`)
 
       // Add a system notification to the driver
       await supabase.from('notifications').insert({
         driver_id: driverId,
-        title: newStatus ? 'Account Approved!' : 'Account Suspended',
+        title: newStatus ? 'Account Approved!' : 'Verification Status Removed',
         description: newStatus 
           ? 'Your ScanDriver profile has been verified and approved by the administrator. You are now authorized to accept rides!' 
-          : 'Your account has been temporarily suspended by the administrator. Contact support for details.',
+          : 'Your account verification has been removed by the administrator.',
         time: 'Just now',
         type: 'system',
         read: false,
@@ -570,6 +570,47 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     } catch (err: any) {
       console.error('Error toggling driver verification:', err)
       toast.error(err.message || 'Failed to update verification status')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  // Suspend/Unsuspend Action
+  const toggleSuspension = async (driverId: string, currentSuspended: boolean) => {
+    setUpdatingId(driverId)
+    const newSuspended = !currentSuspended
+
+    try {
+      const updateData: any = { is_suspended: newSuspended }
+      if (newSuspended) {
+        updateData.is_online = false
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', driverId)
+
+      if (error) throw error
+
+      toast.success(`Driver account ${newSuspended ? 'Suspended' : 'Activated'}!`)
+
+      // Add a system notification to the driver
+      await supabase.from('notifications').insert({
+        driver_id: driverId,
+        title: newSuspended ? 'Account Suspended' : 'Account Activated',
+        description: newSuspended 
+          ? 'Your account has been temporarily suspended by the administrator. Contact support for details.'
+          : 'Your ScanDriver profile has been reactivated. You are now authorized to accept rides!',
+        time: 'Just now',
+        type: 'system',
+        read: false,
+      })
+
+      refreshAll()
+    } catch (err: any) {
+      console.error('Error toggling driver suspension:', err)
+      toast.error(err.message || 'Failed to update suspension status')
     } finally {
       setUpdatingId(null)
     }
@@ -783,17 +824,9 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                       </button>
                     </td>
 
-                    {/* Verification Toggle & Reset Password */}
+                     {/* Verification Toggle & Reset Password */}
                     <td className="py-4 px-5 text-right whitespace-nowrap space-x-2">
-                      {d.verified ? (
-                        <button
-                          onClick={() => toggleVerification(d.id, d.verified)}
-                          disabled={updatingId === d.id}
-                          className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
-                        >
-                          <Ban size={12} /> SUSPEND
-                        </button>
-                      ) : (
+                      {!d.verified ? (
                         <>
                           <button
                             onClick={() => toggleVerification(d.id, d.verified)}
@@ -810,6 +843,22 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                             <Ban size={12} /> REJECT
                           </button>
                         </>
+                      ) : d.is_suspended ? (
+                        <button
+                          onClick={() => toggleSuspension(d.id, d.is_suspended)}
+                          disabled={updatingId === d.id}
+                          className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <UserCheck size={12} /> UNSUSPEND
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => toggleSuspension(d.id, d.is_suspended)}
+                          disabled={updatingId === d.id}
+                          className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <Ban size={12} /> SUSPEND
+                        </button>
                       )}
                       <button
                         onClick={() => openEditModal(d)}
@@ -940,15 +989,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                 })()}
 
                 <div className="pt-2.5 border-t border-slate-850 flex justify-end gap-2">
-                  {d.verified ? (
-                    <button
-                      onClick={() => toggleVerification(d.id, d.verified)}
-                      disabled={updatingId === d.id}
-                      className="bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
-                    >
-                      Suspend Account
-                    </button>
-                  ) : (
+                  {!d.verified ? (
                     <>
                       <button
                         onClick={() => toggleVerification(d.id, d.verified)}
@@ -965,6 +1006,22 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                         Reject
                       </button>
                     </>
+                  ) : d.is_suspended ? (
+                    <button
+                      onClick={() => toggleSuspension(d.id, d.is_suspended)}
+                      disabled={updatingId === d.id}
+                      className="bg-emerald-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer shadow-md"
+                    >
+                      Unsuspend Account
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleSuspension(d.id, d.is_suspended)}
+                      disabled={updatingId === d.id}
+                      className="bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                    >
+                      Suspend Account
+                    </button>
                   )}
                   <button
                     onClick={() => openEditModal(d)}

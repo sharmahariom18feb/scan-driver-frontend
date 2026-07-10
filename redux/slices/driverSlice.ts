@@ -59,6 +59,7 @@ export interface DriverInfo {
   licenseNo: string
   rating: number
   verified: boolean
+  isSuspended: boolean
   avatar: string
   role?: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   isOnline?: boolean
@@ -246,6 +247,7 @@ export const loginDriver = createAsyncThunk(
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
+        isSuspended: profile.is_suspended || false,
         avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
@@ -336,6 +338,7 @@ export const verifyDriverOtp = createAsyncThunk(
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
+        isSuspended: profile.is_suspended || false,
         avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
@@ -393,6 +396,7 @@ export const signupDriver = createAsyncThunk(
         licenseNo: profileData.licenseNo || 'DL-XXXXXXXXXXXXX',
         rating: 5.0,
         verified: false,
+        isSuspended: false,
         avatar: (profileData.fullName || '').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || 'ND',
         role: 'DRIVER',
       }
@@ -453,6 +457,7 @@ export const checkDriverSession = createAsyncThunk(
             licenseNo: profile.license_no,
             rating: Number(profile.rating),
             verified: profile.verified,
+            isSuspended: profile.is_suspended || false,
             avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
             role: profile.role,
             isOnline: profile.is_online,
@@ -547,6 +552,7 @@ export const fetchDriverProfile = createAsyncThunk(
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
+        isSuspended: profile.is_suspended || false,
         avatar: (profile.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: profile.role,
         isOnline: profile.is_online,
@@ -594,6 +600,7 @@ export const updateDriverProfile = createAsyncThunk(
         licenseNo: data.license_no,
         rating: Number(data.rating),
         verified: data.verified,
+        isSuspended: data.is_suspended || false,
         avatar: (data.full_name || '').split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() || '',
         role: data.role,
         uniqueId: data.unique_id,
@@ -823,6 +830,14 @@ export const driverSlice = createSlice({
   name: 'driver',
   initialState,
   reducers: {
+    setDriverInfo: (state, action: PayloadAction<DriverInfo | null>) => {
+      state.info = action.payload
+      if (action.payload) {
+        localStorage.setItem('driver_session', JSON.stringify(action.payload))
+      } else {
+        localStorage.removeItem('driver_session')
+      }
+    },
     // Allows real-time channels to push bookings directly to store
     setBookings: (state, action: PayloadAction<Booking[]>) => {
       state.bookings = action.payload
@@ -1081,6 +1096,7 @@ export const driverSlice = createSlice({
 })
 
 export const {
+  setDriverInfo,
   setBookings,
   updateBookingState,
   setNotifications,

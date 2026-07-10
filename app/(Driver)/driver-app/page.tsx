@@ -35,6 +35,7 @@ import {
   Booking,
   fetchDriverProfile,
   updateTripStatus,
+  setDriverInfo,
 } from '@/redux/slices/driverSlice'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
@@ -382,10 +383,55 @@ export default function DriverApp() {
   }
 
   const handleToggleOnline = async () => {
-    if (!info?.verified) {
-      toast.error('Your account is not approved by the admin yet. Please wait for verification.')
-      return
+    // If trying to go online (currently offline), fetch latest driver info from DB
+    if (!isOnline) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) {
+          toast.error('Session expired. Please log in again.')
+          return
+        }
+
+        const { data: profile, error } = await supabase
+          .from('users')
+          .select('verified, is_suspended')
+          .eq('id', session.user.id)
+          .single()
+
+        if (error || !profile) {
+          toast.error('Failed to retrieve account status from server.')
+          return
+        }
+
+        // 1. If not verified, show error
+        if (!profile.verified) {
+          toast.error('Your account is not approved by the admin yet. Please wait for verification.')
+          if (info) {
+            dispatch(setDriverInfo({ ...info, verified: false, isSuspended: profile.is_suspended || false }))
+          }
+          return
+        }
+
+        // 2. If verified, check if suspended
+        if (profile.is_suspended) {
+          toast.error('Your account has been suspended by the administrator.')
+          if (info) {
+            dispatch(setDriverInfo({ ...info, verified: true, isSuspended: true }))
+          }
+          return
+        }
+
+        // Keep local state in sync
+        if (info) {
+          dispatch(setDriverInfo({ ...info, verified: true, isSuspended: false }))
+        }
+      } catch (err) {
+        console.error('Error verifying driver status:', err)
+        toast.error('Failed to verify status. Please try again.')
+        return
+      }
     }
+
     const result = await dispatch(toggleOnlineStatus())
     if (toggleOnlineStatus.fulfilled.match(result)) {
       const online = result.payload
@@ -419,6 +465,53 @@ export default function DriverApp() {
   }
 
   const handleAccept = async (bookingId: string) => {
+    // First check that the driver is verified and not suspended
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
+        toast.error('Session expired. Please log in again.')
+        return
+      }
+
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('verified, is_suspended')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !profile) {
+        toast.error('Failed to verify account status.')
+        return
+      }
+
+      // 1. Check verified
+      if (!profile.verified) {
+        toast.error('Your account is not approved by the admin yet. Please wait for verification.')
+        if (info) {
+          dispatch(setDriverInfo({ ...info, verified: false, isSuspended: profile.is_suspended || false }))
+        }
+        return
+      }
+
+      // 2. Check suspended
+      if (profile.is_suspended) {
+        toast.error('Your account has been suspended by the administrator.')
+        if (info) {
+          dispatch(setDriverInfo({ ...info, verified: true, isSuspended: true }))
+        }
+        return
+      }
+
+      // Keep local state in sync
+      if (info) {
+        dispatch(setDriverInfo({ ...info, verified: true, isSuspended: false }))
+      }
+    } catch (err) {
+      console.error('Error verifying status before acceptance:', err)
+      toast.error('Failed to verify status. Please try again.')
+      return
+    }
+
     setIsModalOpen(false)
     setSelectedBooking(null)
     const result = await dispatch(acceptBooking(bookingId))
