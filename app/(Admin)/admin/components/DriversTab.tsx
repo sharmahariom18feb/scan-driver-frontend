@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
+import JSZip from 'jszip'
 import { Driver } from '../types'
 
 interface DriversTabProps {
@@ -66,34 +67,45 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
       return
     }
 
-    const toastId = toast.loading(`Downloading ${filesToDownload.length} files...`)
+    const toastId = toast.loading(`Preparing ZIP with ${filesToDownload.length} documents...`)
 
     try {
+      const zip = new JSZip()
+      const driverFirstName = (d.full_name || 'Driver').trim().split(/\s+/)[0]
+      const driverId = d.unique_id || d.id || 'NoID'
+      const driverLocation = (d.current_area || 'NoLocation').trim().replace(/\s+/g, '_')
+      
+      const baseZipName = `${driverFirstName}_${driverId}_${driverLocation}`
+
       for (let i = 0; i < filesToDownload.length; i++) {
         const item = filesToDownload[i]
         const response = await fetch(item.url)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${item.label}`)
+        }
         const blob = await response.blob()
-        const blobUrl = URL.createObjectURL(blob)
-        
-        const a = document.createElement('a')
-        a.href = blobUrl
-        
         const extension = item.url.split('.').pop()?.split('?')[0] || 'jpg'
-        const driverNameClean = (d.full_name || 'Driver').replace(/\s+/g, '_')
-        a.download = `${driverNameClean}_${item.label}.${extension}`
         
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(blobUrl)
-        
-        // Slight delay to avoid browser blocking multiple downloads
-        await new Promise(resolve => setTimeout(resolve, 300))
+        const fileNameInsideZip = `${baseZipName}_${item.label}.${extension}`
+        zip.file(fileNameInsideZip, blob)
       }
-      toast.success('All documents downloaded successfully!', { id: toastId })
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const blobUrl = URL.createObjectURL(zipBlob)
+      
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = `${baseZipName}.zip`
+      
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+
+      toast.success('All documents zipped and downloaded successfully!', { id: toastId })
     } catch (error) {
-      console.error('Error downloading files:', error)
-      toast.error('Failed to download some documents', { id: toastId })
+      console.error('Error generating zip:', error)
+      toast.error('Failed to download documents as ZIP', { id: toastId })
     }
   }
 
