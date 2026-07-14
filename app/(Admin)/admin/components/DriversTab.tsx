@@ -988,7 +988,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                   )
                 })()}
 
-                <div className="pt-2.5 border-t border-slate-850 flex justify-end gap-2">
+                <div className="pt-2.5 border-t border-slate-850 flex justify-end gap-2 flex-wrap">
                   {!d.verified ? (
                     <>
                       <button

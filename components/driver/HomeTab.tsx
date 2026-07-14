@@ -25,7 +25,49 @@ interface HomeTabProps {
   availableBookings: Booking[]
   handleOpenDetails: (booking: Booking) => void
   onTotalTripsClick?: () => void
+  onAccept: (id: string) => Promise<void>
 }
+
+const formatTripType = (type: string) => {
+  if (!type) return '';
+  if (type === 'AIRPORT DROP') return 'Airport Drop';
+  return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+};
+
+const formatTimeAndDate = (dateTimeStr: string) => {
+  if (!dateTimeStr) return '';
+  try {
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    // YYYY-MM-DD HH:MM
+    const match = dateTimeStr.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/);
+    if (match) {
+      const [_, year, monthNum, dayNum, hours, minutes] = match;
+      const date = new Date(Number(year), Number(monthNum) - 1, Number(dayNum));
+      let hr = Number(hours);
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      hr = hr % 12;
+      hr = hr ? hr : 12;
+      const timeStr = `${hr}:${minutes} ${ampm}`;
+      return `${timeStr}, ${Number(dayNum)} ${months[date.getMonth()]}`;
+    }
+    
+    // Generic Date parser
+    const d = new Date(dateTimeStr);
+    if (!isNaN(d.getTime())) {
+      let hr = d.getHours();
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      hr = hr % 12;
+      hr = hr ? hr : 12;
+      const timeStr = `${hr}:${min} ${ampm}`;
+      return `${timeStr}, ${d.getDate()} ${months[d.getMonth()]}`;
+    }
+  } catch (e) {
+    console.error('Error parsing datetime:', e);
+  }
+  return dateTimeStr;
+};
 
 export default function HomeTab({
   info,
@@ -37,7 +79,10 @@ export default function HomeTab({
   availableBookings,
   handleOpenDetails,
   onTotalTripsClick,
+  onAccept,
 }: HomeTabProps) {
+  const [acceptingIds, setAcceptingIds] = React.useState<Record<string, boolean>>({})
+
   return (
     <div className="px-5 py-6 space-y-6">
       {/* Status card offline/online */}
@@ -103,12 +148,6 @@ export default function HomeTab({
           <span className="block font-bold text-xl text-gold-light">₹{stats.earnings}</span>
           <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Total Earnings</span>
         </div>
-        {/* <div className="bg-card border border-border/10 p-3 rounded-lg text-center shadow-xs">
-          <span className="block font-bold text-xl text-gold-light flex items-center justify-center gap-0.5">
-            {info?.rating} <Star size={12} className="fill-gold-light text-gold-light" />
-          </span>
-          <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Your Rating</span>
-        </div> */}
       </div>
 
       {/* AVAILABLE BOOKINGS */}
@@ -171,78 +210,85 @@ export default function HomeTab({
           </div>
         ) : (
           /* Bookings List when online */
-          <div className="space-y-3">
+          <div className="space-y-4">
             {availableBookings.map((booking) => (
               <div
                 key={booking.id}
-                onClick={() => handleOpenDetails(booking)}
                 className={cn(
-                  'rounded-xl p-4 shadow-sm transition-all duration-300 group border cursor-pointer relative overflow-hidden',
+                  'rounded-xl p-4.5 transition-all duration-300 border-2 flex flex-col gap-3.5 relative overflow-hidden',
                   booking.type === 'MONTHLY'
-                    ? 'bg-emerald-500/[0.08] dark:bg-emerald-950/35 border-emerald-500/40 dark:border-emerald-500/30 hover:border-emerald-500/60 dark:hover:border-emerald-400/50 pl-5 before:content-[""] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1.5 before:bg-emerald-500 shadow-[0_4px_16px_rgba(16,185,129,0.06)] dark:shadow-[0_4px_20px_rgba(16,185,129,0.1)]'
-                    : 'bg-card border-border/15 hover:border-gold/30 active:scale-[0.99]'
+                    ? 'bg-emerald-800/[0.08] dark:bg-emerald-950/20 border-emerald-600/50 dark:border-emerald-500/40 shadow-lg shadow-emerald-900/20 dark:shadow-emerald-950/50'
+                    : 'bg-card border-border shadow-md'
                 )}
               >
-                <div className="flex items-center justify-between mb-3.5">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-semibold text-text-muted tracking-wider block">
-                      {booking.id}
-                    </span>
-                    <h4 className="font-bold text-base text-foreground group-hover:text-gold-light transition-colors">
-                      {booking.status === 'accepted' || booking.status === 'completed'
-                        ? booking.customerName
-                        : 'Hidden (Accept to view)'}
-                    </h4>
+                {/* Header: Date/Time on left, Car info on right */}
+                <div className="flex items-center justify-between border-b border-border/10 pb-2.5">
+                  <div className="font-bold text-sm text-text tracking-wide">
+                    {formatTimeAndDate(booking.dateTime)}
                   </div>
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-1.5 font-bold text-sm text-text tracking-wide">
                     {booking.vehicle && (
-                      <span 
-                        title={`Vehicle Category: ${booking.vehicle}`} 
-                        className="text-base leading-none select-none filter drop-shadow-xs"
-                      >
+                      <span className="text-base select-none leading-none">
                         {getVehicleIcon(booking.vehicle)}
                       </span>
                     )}
-                    <span
+                    <span>{booking.vehicle}</span>
+                  </div>
+                </div>
+
+                {/* Body: 2 Column Layout matching image structure */}
+                <div className="grid grid-cols-12 gap-3 items-center">
+                  {/* Left Column Box: White background with pickup details */}
+                  <div className="col-span-7 bg-white dark:bg-zinc-900 border border-border/10 rounded-xl p-3.5 shadow-xs flex flex-col gap-2 min-h-[96px] justify-center">
+                    <h4 className={cn(
+                      'font-black text-sm tracking-wide',
+                      booking.type === 'MONTHLY' ? 'text-emerald-700 dark:text-emerald-400' : 'text-primary'
+                    )}>
+                      {formatTripType(booking.type)} - Incity
+                    </h4>
+                    <div className="flex items-start gap-2">
+                      <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-normal line-clamp-3">
+                        {booking.pickup}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Fare, Duration, Accept Button */}
+                  <div className="col-span-5 flex flex-col items-center justify-center text-center gap-1.5 pl-2">
+                    <div className="text-2.5xl font-black text-text tracking-tight">
+                      ₹{booking.fare}
+                    </div>
+                    <div className="text-xs text-text-muted font-bold leading-none mb-1">
+                      {booking.duration ? `Package - ${booking.duration}` : 'Package - N/A'}
+                    </div>
+                    <button
+                      disabled={acceptingIds[booking.id]}
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        setAcceptingIds(prev => ({ ...prev, [booking.id]: true }))
+                        try {
+                          await onAccept(booking.id)
+                        } catch (err) {
+                          console.error('Accept booking error:', err)
+                        } finally {
+                          setAcceptingIds(prev => ({ ...prev, [booking.id]: false }))
+                        }
+                      }}
                       className={cn(
-                        'text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border',
-                        booking.type === 'AIRPORT DROP'
-                          ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-                          : booking.type === 'OUTSTATION'
-                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                            : booking.type === 'MONTHLY'
-                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
-                              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                        'w-full py-2.5 px-3 font-black text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed',
+                        booking.type === 'MONTHLY'
+                          ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                          : 'bg-primary hover:bg-gold-light text-black'
                       )}
                     >
-                      {booking.type}
-                    </span>
+                      {acceptingIds[booking.id] ? (
+                        <span className="inline-block border-2 border-current border-t-transparent rounded-full h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        'Accept'
+                      )}
+                    </button>
                   </div>
-                </div>
-
-                {/* Route vertical line style */}
-                <div className="space-y-3.5 relative pl-4 before:content-[''] before:absolute before:left-1 before:top-2.5 before:bottom-2.5 before:w-0.5 before:bg-border/25">
-                  {/* Pickup */}
-                  <div className="relative">
-                    <span className="absolute -left-4.5 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/10" />
-                    <p className="text-sm text-foreground font-semibold leading-none mb-1">Pickup</p>
-                    <p className="text-[11px] text-text-muted truncate">{booking.pickup}</p>
-                  </div>
-                  {/* Drop */}
-                  <div className="relative">
-                    <span className="absolute -left-4.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 ring-4 ring-amber-500/10" />
-                    <p className="text-sm text-foreground font-semibold leading-none mb-1">Drop</p>
-                    <p className="text-[11px] text-text-muted truncate">{booking.drop}</p>
-                  </div>
-                </div>
-
-                <div className="border-t border-border/10 mt-4 pt-3 flex items-center justify-between text-[11px] text-text-muted">
-                  <span className="font-semibold text-sm text-foreground">
-                    {booking.dateTime}
-                  </span>
-                  <span className="font-extrabold text-2xl text-emerald-500">
-                    ₹{booking.fare}
-                  </span>
                 </div>
               </div>
             ))}

@@ -2266,11 +2266,11 @@ ${commentsStr}${gpsStr}
                 <>
                   <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>
-                    <div className="tnc-text"><strong>₹10 per km</strong> extra if actual distance exceeds your booked KM limit.</div>
+                    <div className="tnc-text"><strong>₹7 per km</strong> extra if actual distance exceeds your booked KM limit.</div>
                   </div>
                   <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>
-                    <div className="tnc-text">Waiting period: <strong>₹2 per minute</strong> (after a 15-minute start delay exception).</div>
+                    <div className="tnc-text">Waiting period: <strong>₹40 every half hour</strong> (after a 15-minute start delay exception).</div>
                   </div>
                   <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>
@@ -2306,7 +2306,7 @@ ${commentsStr}${gpsStr}
                       </div>
                       <div className="tnc-item">
                         <div className="tnc-bullet violet">✓</div>
-                        <div className="tnc-text"><strong>₹10 per km</strong> extra if actual distance exceeds your booked KM limit.</div>
+                        <div className="tnc-text"><strong>₹7 per km</strong> extra if actual distance exceeds your booked KM limit.</div>
                       </div>
                     </>
                   ) : (
@@ -2334,10 +2334,10 @@ ${commentsStr}${gpsStr}
                     <div className="tnc-bullet">✓</div>
                     <div className="tnc-text">Available packages: 22 / 24 / 26 days × 8 / 10 / 12 hours per day.</div>
                   </div>
-                  <div className="tnc-item">
+                  {/* <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>
                     <div className="tnc-text"><strong>₹200 Night Travel Allowance (NTA)</strong> applicable between 10:00 PM – 6:00 AM.</div>
-                  </div>
+                  </div> */}
                 </>
               )}
 
