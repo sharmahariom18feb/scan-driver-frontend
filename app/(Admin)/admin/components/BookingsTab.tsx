@@ -44,6 +44,12 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
   const [adminApproved, setAdminApproved] = useState(false)
   const [creating, setCreating] = useState(false)
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
+  const [distance, setDistance] = useState('N/A')
+  const [status, setStatus] = useState<Booking['status']>('available')
+  const [tripStatus, setTripStatus] = useState('not_started')
+  const [paymentType, setPaymentType] = useState<'CASH' | 'QR' | ''>('')
+  const [invoiceId, setInvoiceId] = useState('')
+  const [driverId, setDriverId] = useState<string | null>(null)
 
   // Driver Assignment Modal State
   const [assigningBooking, setAssigningBooking] = useState<Booking | null>(null)
@@ -280,6 +286,12 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
     setFare('')
     setSpecialInstructions('')
     setAdminApproved(false)
+    setDistance('N/A')
+    setStatus('available')
+    setTripStatus('not_started')
+    setPaymentType('')
+    setInvoiceId('')
+    setDriverId(null)
   }
 
   const handleEditBookingClick = (b: Booking) => {
@@ -292,6 +304,12 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
     setSpecialInstructions(b.special_instructions || '')
     setAdminApproved(b.admin_approved || false)
     setTripType(b.type || 'HOURLY')
+    setDistance(b.distance || 'N/A')
+    setStatus(b.status || 'available')
+    setTripStatus(b.trip_status || 'not_started')
+    setPaymentType(b.payment_type || '')
+    setInvoiceId(b.invoice_id || '')
+    setDriverId(b.driver_id || null)
 
     // Parse date and time from b.date_time
     if (b.date_time && b.date_time !== 'Immediate') {
@@ -345,6 +363,14 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
     const formattedDuration = tripType === 'HOURLY' ? `${durationValue} Hours` : `${durationValue} Days`
     const vehicleString = `${vehicleClass}${vehicleModel ? ` (${vehicleModel})` : ''}`
 
+    // Automatically set status to 'accepted' if a driver is assigned and status was 'available'
+    let finalStatus = status
+    if (driverId && status === 'available') {
+      finalStatus = 'accepted'
+    } else if (!driverId && status === 'accepted') {
+      finalStatus = 'available'
+    }
+
     const payload = {
       customer_name: customerName,
       phone: phone,
@@ -352,12 +378,17 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
       drop: drop || 'Local Trip',
       date_time: formattedDateTime,
       duration: formattedDuration,
-      distance: tripType === 'OUTSTATION' ? 'Estimated' : 'N/A',
+      distance: distance || (tripType === 'OUTSTATION' ? 'Estimated' : 'N/A'),
       fare: Number(fare),
       vehicle: vehicleString,
       special_instructions: specialInstructions || null,
       type: tripType,
       admin_approved: adminApproved,
+      status: finalStatus,
+      trip_status: tripStatus,
+      payment_type: paymentType || null,
+      invoice_id: invoiceId || null,
+      driver_id: driverId || null,
     }
 
     try {
@@ -1127,13 +1158,17 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trip Type</label>
                   <select
                     value={tripType}
+                    disabled={!!editingBooking}
                     onChange={(e) => setTripType(e.target.value as Booking['type'])}
-                    className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="HOURLY">Hourly</option>
                     <option value="WEEKLY">Weekly</option>
                     <option value="MONTHLY">Monthly</option>
                     <option value="OUTSTATION">Outstation</option>
+                    <option value="CORPORATE">Corporate</option>
+                    <option value="AIRPORT DROP">Airport Drop</option>
+                    <option value="EVENT">Event</option>
                   </select>
                 </div>
 
@@ -1264,6 +1299,108 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                   placeholder="Notes for driver, payment details, etc."
                 />
               </div>
+
+              {/* Additional fields shown ONLY when editing */}
+              {editingBooking && (
+                <div className="border-t border-slate-800 pt-4 mt-2 space-y-4">
+                  <h4 className="text-xs font-bold text-amber-500 uppercase tracking-wider">Admin Edit Fields</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Booking Status */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Booking Status</label>
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value as Booking['status'])}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="available">Available</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="passed">Passed</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+
+                    {/* Trip Status */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trip Status</label>
+                      <select
+                        value={tripStatus}
+                        onChange={(e) => setTripStatus(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="not_started">Accepted / Not Started</option>
+                        <option value="called_customer">Calling Customer</option>
+                        <option value="customer_unreachable">Unreachable</option>
+                        <option value="customer_confirmed">Confirmed</option>
+                        <option value="cancellation_request">Cancellation Req</option>
+                        <option value="cancelled_by_driver">Cancelled</option>
+                        <option value="on_the_way">On the Way</option>
+                        <option value="reached_pickup">At Pickup</option>
+                        <option value="started">Trip Started</option>
+                        <option value="ended">Trip Ended</option>
+                        <option value="invoice_generated">Invoice Generated</option>
+                        <option value="payment_received">Payment Received</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+
+                    {/* Assigned Driver */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Driver</label>
+                      <select
+                        value={driverId || ''}
+                        onChange={(e) => setDriverId(e.target.value || null)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="">No Driver Assigned</option>
+                        {drivers.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.full_name} ({d.phone})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Payment Type */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payment Type</label>
+                      <select
+                        value={paymentType}
+                        onChange={(e) => setPaymentType(e.target.value as 'CASH' | 'QR' | '')}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="">Pending / Not Specified</option>
+                        <option value="CASH">Cash</option>
+                        <option value="QR">QR / Online Payment</option>
+                      </select>
+                    </div>
+
+                    {/* Distance */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Distance</label>
+                      <input
+                        type="text"
+                        value={distance}
+                        onChange={(e) => setDistance(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                        placeholder="e.g. 45 km, N/A"
+                      />
+                    </div>
+
+                    {/* Invoice ID */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Invoice ID</label>
+                      <input
+                        type="text"
+                        value={invoiceId}
+                        onChange={(e) => setInvoiceId(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                        placeholder="e.g. INV-12345"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Modal Actions */}
               <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">

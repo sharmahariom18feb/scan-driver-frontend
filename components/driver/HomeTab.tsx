@@ -252,6 +252,14 @@ export default function HomeTab({
                         {booking.pickup}
                       </p>
                     </div>
+                    {booking.drop && booking.drop.trim() !== '' && (
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-normal line-clamp-3">
+                          {booking.drop}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column: Fare, Duration, Accept Button */}

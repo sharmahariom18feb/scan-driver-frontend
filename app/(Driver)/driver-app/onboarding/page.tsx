@@ -510,7 +510,7 @@ export default function OnboardingPage() {
     const progress = uploadProgress[key]
 
     return (
-      <div className="relative bg-surface2 border border-border/40 hover:border-[#A3E635]/50 transition-all duration-200 p-4 rounded-2xl flex flex-col justify-between items-stretch min-h-[145px]">
+      <div className="relative bg-surface2 border border-border/40 hover:border-[#E8B84B]/50 transition-all duration-200 p-4 rounded-2xl flex flex-col justify-between items-stretch min-h-[145px]">
         <div className="flex justify-between items-start">
           <div>
             <span className="text-xs font-bold text-foreground block mb-0.5">{label}</span>
@@ -526,8 +526,8 @@ export default function OnboardingPage() {
         <div className="mt-3 relative flex items-center justify-center flex-grow">
           {isUploading ? (
             <div className="flex flex-col items-center justify-center py-3 space-y-1.5 w-full">
-              <div className="h-5 w-5 border-2 border-[#A3E635] border-t-transparent rounded-full animate-spin" />
-              <span className="text-[9px] text-[#A3E635] font-extrabold">{progress}% uploading</span>
+              <div className="h-5 w-5 border-2 border-[#E8B84B] border-t-transparent rounded-full animate-spin" />
+              <span className="text-[9px] text-[#E8B84B] font-extrabold">{progress}% uploading</span>
             </div>
           ) : urlValue ? (
             <div className="relative w-full h-24 rounded-xl overflow-hidden border border-border/30 group">
@@ -543,7 +543,7 @@ export default function OnboardingPage() {
                     setViewingImageUrl(urlValue)
                     setViewingImageLabel(label)
                   }}
-                  className="cursor-pointer text-white font-extrabold text-[9px] uppercase tracking-wider bg-[#A3E635] text-slate-950 px-2 py-1.5 rounded-lg border border-[#A3E635]/30 hover:bg-[#A3E635]/90 transition-all"
+                  className="cursor-pointer text-white font-extrabold text-[9px] uppercase tracking-wider bg-[#E8B84B] text-slate-950 px-2 py-1.5 rounded-lg border border-[#E8B84B]/30 hover:bg-[#E8B84B]/90 transition-all"
                 >
                   View
                 </button>
@@ -564,7 +564,7 @@ export default function OnboardingPage() {
           ) : (
             <label className="w-full flex flex-col items-center justify-center py-5 border border-dashed border-border/40 rounded-xl cursor-pointer hover:bg-muted/10 transition-colors">
               <Upload className="h-5 w-5 text-text-muted mb-1" />
-              <span className="text-[9px] font-extrabold text-[#A3E635] uppercase tracking-wider">Upload File</span>
+              <span className="text-[9px] font-extrabold text-[#E8B84B] uppercase tracking-wider">Upload File</span>
               <input
                 type="file"
                 accept="image/*"
@@ -607,7 +607,7 @@ export default function OnboardingPage() {
                 Delhi NCR's trusted driver platform. Sign up to start receiving ride requests near you.
               </p>
 
-              <div className="inline-flex items-center gap-1.5 bg-[#A3E635]/10 border border-[#A3E635]/25 text-[#A3E635] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full mt-3">
+              <div className="inline-flex items-center gap-1.5 bg-[#E8B84B]/10 border border-[#E8B84B]/25 text-[#E8B84B] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full mt-3">
                 <Shield size={10} /> 100% Verified Profiles
               </div>
             </>
@@ -628,7 +628,7 @@ export default function OnboardingPage() {
       {step < 6 && (
         <div className="w-full h-[3px] bg-surface2 relative shrink-0">
           <div
-            className="h-full bg-[#A3E635] transition-all duration-300"
+            className="h-full bg-[#E8B84B] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -639,7 +639,7 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
+              <span className="text-[10px] font-extrabold tracking-wider text-[#E8B84B] uppercase whitespace-nowrap">
                 BASIC INFORMATION
               </span>
               <div className="h-[1px] bg-border/20 flex-grow" />
@@ -649,9 +649,9 @@ export default function OnboardingPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">1</span> Full Name
+                  <span className="text-black font-bold mr-1">1</span> Full Name
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
                 </span>
               </div>
@@ -669,9 +669,9 @@ export default function OnboardingPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">2</span> WhatsApp Number
+                  <span className="text-black font-bold mr-1">2</span> WhatsApp Number
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
                 </span>
               </div>
@@ -693,7 +693,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Create Account Password
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
                 </span>
               </div>
@@ -721,9 +721,9 @@ export default function OnboardingPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-[#A3E635] font-extrabold mr-1">3</span> Area / Zone (Delhi NCR)
+                  <span className="text-black font-bold mr-1">3</span> Area / Zone (Delhi NCR)
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
                 </span>
               </div>
@@ -746,7 +746,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Referral Code (Optional)
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-surface2 border border-border/10 text-text-muted">
                   Optional
                 </span>
               </div>
@@ -764,7 +764,7 @@ export default function OnboardingPage() {
         {step === 2 && (
           <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
+              <span className="text-[10px] font-extrabold tracking-wider text-[#E8B84B] uppercase whitespace-nowrap">
                 EXPERIENCE & PREFERENCES
               </span>
               <div className="h-[1px] bg-border/20 flex-grow" />
@@ -776,7 +776,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Driving Experience
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
                 </span>
               </div>
@@ -788,7 +788,7 @@ export default function OnboardingPage() {
                     className={cn(
                       "flex flex-col items-center justify-center p-3 bg-surface2 border rounded-2xl cursor-pointer transition-all text-center select-none",
                       experience === opt.value
-                        ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]"
+                        ? "border-[#E8B84B] bg-[#E8B84B]/5 text-[#E8B84B]"
                         : "border-border/40 text-foreground/80 hover:bg-muted/30"
                     )}
                   >
@@ -807,7 +807,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Valid Driving Licence
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
                 </span>
               </div>
@@ -819,7 +819,7 @@ export default function OnboardingPage() {
                     className={cn(
                       "flex flex-col items-center justify-center p-3 bg-surface2 border rounded-2xl cursor-pointer transition-all text-center select-none",
                       licenseStatus === opt.value
-                        ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]"
+                        ? "border-[#E8B84B] bg-[#E8B84B]/5 text-[#E8B84B]"
                         : "border-border/40 text-foreground/80 hover:bg-muted/30"
                     )}
                   >
@@ -838,7 +838,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Kab kaam kar sakte hain?
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#A3E635]/10 border border-[#A3E635]/20 text-[#A3E635]">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
                 </span>
               </div>
@@ -850,7 +850,7 @@ export default function OnboardingPage() {
                     className={cn(
                       "flex flex-col items-center justify-center p-2.5 bg-surface2 border rounded-2xl cursor-pointer transition-all text-center select-none",
                       availability === opt.value
-                        ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]"
+                        ? "border-[#E8B84B] bg-[#E8B84B]/5 text-[#E8B84B]"
                         : "border-border/40 text-foreground/80 hover:bg-muted/30"
                     )}
                   >
@@ -869,7 +869,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Kaunsa service prefer karoge?
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-surface2 border border-border/10 text-text-muted">
                   Optional
                 </span>
               </div>
@@ -882,7 +882,7 @@ export default function OnboardingPage() {
                       onClick={() => handleCheckboxToggle(servicePreference, setServicePreference, opt)}
                       className={cn(
                         "flex items-center justify-center py-2 bg-surface2 border rounded-2xl cursor-pointer text-[10px] font-bold text-center transition-all select-none",
-                        isChecked ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]" : "border-border/40 text-foreground/80"
+                        isChecked ? "border-[#E8B84B] bg-[#E8B84B]/5 text-[#E8B84B]" : "border-border/40 text-foreground/80"
                       )}
                     >
                       <span>{opt}</span>
@@ -898,7 +898,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Vehicle Specialties (Select all that apply)
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-surface2 border border-border/10 text-text-muted">
                   Optional
                 </span>
               </div>
@@ -911,12 +911,12 @@ export default function OnboardingPage() {
                       onClick={() => handleCheckboxToggle(vehicleSpecialties, setVehicleSpecialties, option)}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2.5 bg-surface2 border rounded-2xl cursor-pointer text-xs font-bold transition-all select-none",
-                        isChecked ? "border-[#A3E635] bg-[#A3E635]/5 text-[#A3E635]" : "border-border/40 text-foreground/80"
+                        isChecked ? "border-[#E8B84B] bg-[#E8B84B]/5 text-[#E8B84B]" : "border-border/40 text-foreground/80"
                       )}
                     >
                       <div className={cn(
                         "h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 transition-all",
-                        isChecked ? "border-[#A3E635] bg-[#A3E635]" : "border-text-muted"
+                        isChecked ? "border-[#E8B84B] bg-[#E8B84B]" : "border-text-muted"
                       )}>
                         {isChecked && (
                           <svg className="h-2.5 w-2.5 text-black fill-current" viewBox="0 0 20 20">
@@ -936,7 +936,7 @@ export default function OnboardingPage() {
         {step === 3 && (
           <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
+              <span className="text-[10px] font-extrabold tracking-wider text-[#E8B84B] uppercase whitespace-nowrap">
                 REQUIRED DOCUMENT UPLOADS
               </span>
               <div className="h-[1px] bg-border/20 flex-grow" />
@@ -959,7 +959,7 @@ export default function OnboardingPage() {
         {step === 4 && (
           <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
+              <span className="text-[10px] font-extrabold tracking-wider text-[#E8B84B] uppercase whitespace-nowrap">
                 REFERENCES & FINAL DETAILS
               </span>
               <div className="h-[1px] bg-border/20 flex-grow" />
@@ -979,10 +979,10 @@ export default function OnboardingPage() {
               {[0, 1, 2].map((idx) => (
                 <div key={idx} className="bg-surface2 border border-border/40 rounded-2xl p-4 space-y-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="h-4.5 w-4.5 rounded-full bg-[#A3E635] text-slate-950 font-extrabold text-[9px] flex items-center justify-center">
+                    <span className="h-4.5 w-4.5 rounded-full bg-[#E8B84B] text-slate-950 font-extrabold text-[9px] flex items-center justify-center">
                       {idx + 1}
                     </span>
-                    <span className="text-xs font-extrabold tracking-wider text-[#A3E635] uppercase">
+                    <span className="text-xs font-extrabold tracking-wider text-[#E8B84B] uppercase">
                       REFERENCE {idx + 1}
                     </span>
                   </div>
@@ -1051,7 +1051,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Pehle kisi platform pe kaam kiya?
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-surface2 border border-border/10 text-text-muted">
                   Optional
                 </span>
               </div>
@@ -1071,7 +1071,7 @@ export default function OnboardingPage() {
                 <label className="text-xs font-bold text-foreground">
                   Kuch aur bolna chahte hain?
                 </label>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-900 border border-border/25 text-text-muted">
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-surface2 border border-border/10 text-text-muted">
                   Optional
                 </span>
               </div>
@@ -1096,7 +1096,7 @@ export default function OnboardingPage() {
         {step === 5 && (
           <div className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-extrabold tracking-wider text-[#A3E635] uppercase whitespace-nowrap">
+              <span className="text-[10px] font-extrabold tracking-wider text-[#E8B84B] uppercase whitespace-nowrap">
                 REGISTRATION FEE PAYMENT
               </span>
               <div className="h-[1px] bg-border/20 flex-grow" />
@@ -1145,13 +1145,13 @@ export default function OnboardingPage() {
                 Welcome to ScanDriver!
               </h3>
               <p className="text-sm text-text-muted mt-2 max-w-[300px] leading-relaxed mx-auto">
-                Thank you for applying, <span className="text-primary dark:text-[#A3E635] font-bold">{fullName}</span>.
+                Thank you for applying, <span className="text-primary dark:text-[#E8B84B] font-bold">{fullName}</span>.
                 Your driver profile and documents have been successfully uploaded.
               </p>
             </div>
 
             <div className="bg-surface2 border border-border/30 p-4 rounded-2xl w-full max-w-[320px] text-left">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#A3E635] border-b border-border/20 pb-1.5 mb-2">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#E8B84B] border-b border-border/20 pb-1.5 mb-2">
                 What happens next?
               </h4>
               <ul className="space-y-1.5 text-[10px] text-text-muted">
@@ -1172,7 +1172,7 @@ export default function OnboardingPage() {
 
             <Link
               href="/driver-app"
-              className="inline-flex items-center justify-center w-full max-w-[200px] py-2.5 bg-primary hover:bg-[#A3E635] text-black font-semibold text-sm rounded-xl shadow-md transition-colors"
+              className="inline-flex items-center justify-center w-full max-w-[200px] py-2.5 bg-primary hover:bg-[#E8B84B] text-black font-semibold text-sm rounded-xl shadow-md transition-colors"
             >
               RETURN TO LOGIN
             </Link>
@@ -1207,7 +1207,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={handleNextStep}
               disabled={loading || submitting}
-              className="flex-grow py-2.5 px-4 bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 font-semibold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center cursor-pointer disabled:opacity-50"
+              className="flex-grow py-2.5 px-4 bg-[#E8B84B] hover:bg-[#E8B84B]/90 text-slate-950 font-semibold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center cursor-pointer disabled:opacity-50"
             >
               {submitting || loading ? (
                 <div className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -1225,7 +1225,7 @@ export default function OnboardingPage() {
             <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
               {/* Header */}
               <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
-                <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">Registration Payment QR</h3>
+                <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#E8B84B]">Registration Payment QR</h3>
                 <button
                   onClick={() => setViewingQr(false)}
                   className="text-text-muted hover:text-foreground p-1 rounded-full cursor-pointer hover:bg-surface2 transition-colors"
@@ -1245,7 +1245,7 @@ export default function OnboardingPage() {
               <div className="px-4 py-3 border-t border-border/10 flex justify-end bg-surface">
                 <button
                   onClick={() => setViewingQr(false)}
-                  className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-[#E8B84B] hover:bg-[#E8B84B]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
                 >
                   CLOSE
                 </button>
@@ -1260,7 +1260,7 @@ export default function OnboardingPage() {
             <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
               {/* Header */}
               <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
-                <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#A3E635]">{viewingImageLabel} Preview</h3>
+                <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#E8B84B]">{viewingImageLabel} Preview</h3>
                 <button
                   onClick={() => {
                     setViewingImageUrl(null)
@@ -1286,7 +1286,7 @@ export default function OnboardingPage() {
                     setViewingImageUrl(null)
                     setViewingImageLabel('')
                   }}
-                  className="px-4 py-2 rounded-lg bg-[#A3E635] hover:bg-[#A3E635]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-[#E8B84B] hover:bg-[#E8B84B]/90 text-slate-950 text-xs font-bold shadow-md transition-all cursor-pointer"
                 >
                   CLOSE
                 </button>

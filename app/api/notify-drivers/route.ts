@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const driverIds = onlineDrivers.map((d) => d.id)
 
     // 3. Insert real-time database notifications for all online drivers
-    const description = `${booking.type}: ${booking.pickup} to ${booking.drop} • ₹${booking.fare}`
+    const description = `${booking.type}: ${booking.pickup} to ${booking.drop}`
     const title = 'New Booking Available!'
 
     const notificationsToInsert = driverIds.map((driverId) => ({

@@ -252,8 +252,8 @@ export default function BookingPage() {
         } else {
           amount = getOneWayPrice(estKms)
           note = estKms > 70
-            ? '₹10/km extra beyond 70 km'
-            : '₹10/km extra if KM exceeded'
+            ? '₹7/km extra beyond 70 km'
+            : '₹7/km extra if KM exceeded'
         }
       }
     } else if (tripType === 'outstation') {
@@ -263,7 +263,7 @@ export default function BookingPage() {
             note = '⚠️ Outstation minimum distance is 50 km'
           } else {
             amount = getOutstationOWPrice(outKms)
-            note = 'Outstation one-way · ₹10/km if distance exceeded'
+            note = 'Outstation one-way · ₹7/km if distance exceeded'
           }
         }
       } else {
@@ -2254,6 +2254,33 @@ ${commentsStr}${gpsStr}
                 Your details will be sent to our team via WhatsApp instantly.
               </div>
 
+            </div>
+
+            <div 
+              className="animate-pulse" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '8px', 
+                marginTop: '20px', 
+                marginBottom: '10px', 
+                color: '#fbbf24', 
+                fontSize: '13.5px', 
+                fontWeight: '900', 
+                textTransform: 'uppercase', 
+                letterSpacing: '1px',
+                background: '#0f172a',
+                border: '2px solid #fbbf24',
+                padding: '10px 28px',
+                borderRadius: '30px',
+                width: 'fit-content',
+                marginRight: 'auto',
+                marginLeft: 'auto',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5), 0 0 8px rgba(217, 119, 6, 0.6)'
+              }}
+            >
+              <span>↓↓</span> Read the Terms & Conditions Below <span>↓↓</span>
             </div>
 
             {/* ═══════════ TERMS & CONDITIONS CARD ═══════════ */}
