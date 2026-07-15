@@ -43,6 +43,7 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [adminApproved, setAdminApproved] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
 
   // Driver Assignment Modal State
   const [assigningBooking, setAssigningBooking] = useState<Booking | null>(null)
@@ -261,6 +262,129 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
       toast.error(err.message || 'Failed to create booking')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false)
+    setEditingBooking(null)
+    setCustomerName('')
+    setPhone('')
+    setPickup('')
+    setDrop('')
+    setStartDate('')
+    setStartTime('')
+    setVehicleClass('Sedan')
+    setVehicleModel('')
+    setDurationValue('8')
+    setFare('')
+    setSpecialInstructions('')
+    setAdminApproved(false)
+  }
+
+  const handleEditBookingClick = (b: Booking) => {
+    setEditingBooking(b)
+    setCustomerName(b.customer_name || '')
+    setPhone(b.phone || '')
+    setPickup(b.pickup || '')
+    setDrop(b.drop || '')
+    setFare(b.fare ? b.fare.toString() : '')
+    setSpecialInstructions(b.special_instructions || '')
+    setAdminApproved(b.admin_approved || false)
+    setTripType(b.type || 'HOURLY')
+
+    // Parse date and time from b.date_time
+    if (b.date_time && b.date_time !== 'Immediate') {
+      const parts = b.date_time.split(' ')
+      if (parts[0]) setStartDate(parts[0])
+      if (parts[1]) setStartTime(parts[1])
+    } else {
+      setStartDate('')
+      setStartTime('')
+    }
+
+    // Parse duration (e.g., "8 Hours" or "2 Days")
+    if (b.duration) {
+      const match = b.duration.match(/^(\d+)/)
+      if (match) {
+        setDurationValue(match[1])
+      } else {
+        setDurationValue('8')
+      }
+    } else {
+      setDurationValue('8')
+    }
+
+    // Parse vehicle category and model (e.g. "Sedan (Ciaz)" or "Hatchback")
+    if (b.vehicle) {
+      const match = b.vehicle.match(/^([^(]+)(?:\s*\(([^)]+)\))?$/)
+      if (match) {
+        setVehicleClass(match[1].trim())
+        setVehicleModel(match[2] ? match[2].trim() : '')
+      } else {
+        setVehicleClass('Sedan')
+        setVehicleModel('')
+      }
+    } else {
+      setVehicleClass('Sedan')
+      setVehicleModel('')
+    }
+
+    setShowCreateModal(true)
+  }
+
+  const handleUpdateBooking = async () => {
+    if (!editingBooking) return
+    if (!customerName || !phone || !pickup || !fare) {
+      toast.error('Please fill out all required fields')
+      return
+    }
+
+    setCreating(true)
+    const formattedDateTime = startDate && startTime ? `${startDate} ${startTime}` : 'Immediate'
+    const formattedDuration = tripType === 'HOURLY' ? `${durationValue} Hours` : `${durationValue} Days`
+    const vehicleString = `${vehicleClass}${vehicleModel ? ` (${vehicleModel})` : ''}`
+
+    const payload = {
+      customer_name: customerName,
+      phone: phone,
+      pickup: pickup,
+      drop: drop || 'Local Trip',
+      date_time: formattedDateTime,
+      duration: formattedDuration,
+      distance: tripType === 'OUTSTATION' ? 'Estimated' : 'N/A',
+      fare: Number(fare),
+      vehicle: vehicleString,
+      special_instructions: specialInstructions || null,
+      type: tripType,
+      admin_approved: adminApproved,
+    }
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update(payload)
+        .eq('id', editingBooking.id)
+
+      if (error) throw error
+
+      toast.success(`Booking ${editingBooking.id} updated successfully!`)
+      handleCloseModal()
+      refreshAll()
+    } catch (err: any) {
+      console.error('Error updating booking:', err)
+      toast.error(err.message || 'Failed to update booking')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleSubmitBooking = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (editingBooking) {
+      await handleUpdateBooking()
+    } else {
+      await handleCreateBooking(e)
     }
   }
 
@@ -663,6 +787,12 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                       {/* Actions */}
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleEditBookingClick(b)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
+                          >
+                            Edit
+                          </button>
                           {b.admin_approved ? (
                             b.status !== 'completed' && (
                               <button
@@ -807,6 +937,12 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                     </div>
 
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditBookingClick(b)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                      >
+                        Edit
+                      </button>
                       {b.admin_approved ? (
                         b.status !== 'completed' && (
                           <button
@@ -940,15 +1076,17 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
         </div>
       </div>
 
-      {/* Modal: Create Booking */}
+      {/* Modal: Create or Edit Booking */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center">
-              <h3 className="font-bold text-white text-sm">Create New Booking</h3>
+              <h3 className="font-bold text-white text-sm">
+                {editingBooking ? `Edit Booking Details (${editingBooking.id})` : 'Create New Booking'}
+              </h3>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={handleCloseModal}
                 className="text-slate-400 hover:text-white p-1 rounded-full cursor-pointer hover:bg-slate-800"
               >
                 <X size={16} />
@@ -956,7 +1094,7 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
             </div>
 
             {/* Modal Body (Scrollable) */}
-            <form onSubmit={handleCreateBooking} className="flex-1 overflow-y-auto p-5 space-y-4">
+            <form onSubmit={handleSubmitBooking} className="flex-1 overflow-y-auto p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Customer Name */}
                 <div className="space-y-1">
@@ -1131,7 +1269,7 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
               <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 rounded-xl border border-slate-850 hover:bg-slate-850 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer transition-all"
                 >
                   CANCEL
@@ -1141,7 +1279,7 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                   disabled={creating}
                   className="px-6 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-lg transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {creating ? 'CREATING…' : 'CREATE BOOKING'}
+                  {editingBooking ? (creating ? 'SAVING...' : 'SAVE CHANGES') : (creating ? 'CREATING...' : 'CREATE BOOKING')}
                 </button>
               </div>
             </form>
