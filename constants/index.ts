@@ -220,6 +220,14 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
     ],
   },
   {
+    title: 'Legal',
+    links: [
+      { label: 'Terms & Conditions', href: '/terms-and-conditions' },
+      { label: 'Privacy Policy', href: '/privacy-policy' },
+      { label: 'Cancellation & Refund', href: '/cancellation-and-refund-policy' },
+    ],
+  },
+  {
     title: 'Contact',
     links: [
       { label: 'Customer: 97174 98198', href: 'tel:+919717498198', icon: 'Phone' },

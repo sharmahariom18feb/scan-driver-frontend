@@ -16,7 +16,7 @@ export function Footer() {
     <footer className="bg-surface border-t border-border py-16 pb-8">
       <div className="max-w-[1160px] mx-auto px-6">
         {/* Top Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link href="#" className="flex items-center gap-2.5 no-underline mb-3.5">
