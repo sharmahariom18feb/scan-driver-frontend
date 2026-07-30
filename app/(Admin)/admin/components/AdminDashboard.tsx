@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -213,18 +213,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               isCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-6'
             } transition-all duration-300`}
           >
-            {!isCollapsed ? (
-              <span className="font-bold text-sm tracking-wider text-amber-455">
-                SCAN<span className="text-white">DRIVER</span> <span className="text-amber-400">ADMIN</span>
-              </span>
-            ) : (
+            <span className={`font-bold text-sm tracking-wider text-amber-455 ${isCollapsed ? 'lg:hidden' : 'block'}`}>
+              SCAN<span className="text-white">DRIVER</span> <span className="text-amber-400">ADMIN</span>
+            </span>
+            {isCollapsed && (
               <span className="font-extrabold text-sm tracking-wider text-amber-455 lg:block hidden">
                 SD
-              </span>
-            )}
-            {!isCollapsed && (
-              <span className="font-bold text-sm tracking-wider text-amber-455 lg:hidden">
-                SCAN<span className="text-white">DRIVER</span> <span className="text-amber-400">ADMIN</span>
               </span>
             )}
 
@@ -253,25 +247,22 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
+              { id: 'create-booking' as const, label: 'Create Booking', icon: PlusCircle, href: '/booking' },
+              { id: 'onboard-driver' as const, label: 'Onboard Driver', icon: UserPlus, href: '/driver-app/onboarding' },
             ].map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id)
-                    setSidebarOpen(false)
-                  }}
-                  className={`w-full flex items-center ${
-                    isCollapsed ? 'lg:justify-center' : 'lg:justify-start'
-                  } gap-3.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer relative ${
-                    isActive
-                      ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10'
-                      : 'text-slate-330 hover:text-white hover:bg-slate-800/60'
-                  }`}
-                  title={isCollapsed ? item.label : undefined}
-                >
+              
+              const className = `w-full flex items-center ${
+                isCollapsed ? 'lg:justify-center' : 'lg:justify-start'
+              } gap-3.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer relative ${
+                isActive
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10'
+                  : 'text-slate-330 hover:text-white hover:bg-slate-800/60'
+              }`
+
+              const content = (
+                <>
                   <Icon size={18} className="shrink-0" />
                   <span className={`${isCollapsed ? 'lg:hidden' : 'inline'} transition-all duration-300`}>
                     {item.label}
@@ -287,6 +278,35 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                       {stats.pendingEnquiriesCount}
                     </span>
                   ) : null}
+                </>
+              )
+
+              if ('href' in item) {
+                return (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={className}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    {content}
+                  </a>
+                )
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id)
+                    setSidebarOpen(false)
+                  }}
+                  className={className}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  {content}
                 </button>
               )
             })}
@@ -354,7 +374,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         </header>
 
         {/* WORKSPACE */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
           {loading ? (
             <div className="h-full flex items-center justify-center flex-col gap-3 py-20">
               <div className="h-8 w-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />

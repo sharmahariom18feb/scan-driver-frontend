@@ -956,64 +956,71 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
                     <p className="text-[10px] truncate"><span className="text-rose-455 font-bold">Drop:</span> {b.drop}</p>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-800">
-                    <div className="text-xs">
-                      {assignedDriver ? (
-                        <p className="text-slate-200 text-[10px] font-semibold">
-                          Driver: <span className="font-extrabold text-white">{assignedDriver.full_name}</span>
-                        </p>
-                      ) : (
-                        <span className="text-[10px] text-slate-400 italic">No driver assigned</span>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditBookingClick(b)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
-                      >
-                        Edit
-                      </button>
-                      {b.admin_approved ? (
-                        b.status !== 'completed' && (
-                          <button
-                            onClick={() => handleUnapproveBooking(b.id)}
-                            className="bg-slate-855 hover:bg-slate-800 text-slate-300 border border-slate-700 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
-                          >
-                            Unapprove
-                          </button>
-                        )
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => handleApproveBooking(b.id)}
-                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBooking(b.id)}
-                            className="bg-rose-500 hover:bg-rose-600 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
+                  <div className="pt-2.5 border-t border-slate-800 space-y-3">
+                    {/* Driver Assignment Row */}
+                    <div className="flex items-center justify-between text-xs gap-2">
+                      <div>
+                        {assignedDriver ? (
+                          <p className="text-slate-200 text-[10px] font-semibold">
+                            Driver: <span className="font-extrabold text-white">{assignedDriver.full_name}</span>
+                          </p>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic">No driver assigned</span>
+                        )}
+                      </div>
                       <button
                         onClick={() => setAssigningBooking(b)}
                         className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
                       >
                         {assignedDriver ? 'Change' : 'Assign'}
                       </button>
-                      {b.invoice_image && (
+                    </div>
+
+                    {/* Actions and Status Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-800/40">
+                      <div className="flex flex-wrap gap-1.5">
                         <button
-                          onClick={() => setViewingInvoice(b.invoice_image || null)}
+                          onClick={() => handleEditBookingClick(b)}
                           className="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
                         >
-                          View Invoice
+                          Edit
                         </button>
-                      )}
-                      <div className="flex items-center gap-1.5">
+                        {b.admin_approved ? (
+                          b.status !== 'completed' && (
+                            <button
+                              onClick={() => handleUnapproveBooking(b.id)}
+                              className="bg-slate-855 hover:bg-slate-800 text-slate-300 border border-slate-700 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                            >
+                              Unapprove
+                            </button>
+                          )
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleApproveBooking(b.id)}
+                              className="bg-amber-500 hover:bg-amber-600 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBooking(b.id)}
+                              className="bg-rose-500 hover:bg-rose-600 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                        {b.invoice_image && (
+                          <button
+                            onClick={() => setViewingInvoice(b.invoice_image || null)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                          >
+                            View Invoice
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
                         <span className="text-[9px] font-extrabold text-slate-400 uppercase">Status:</span>
                         <select
                           value={b.trip_status || 'not_started'}
@@ -1427,7 +1434,7 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
       {/* Modal: Driver Assignment */}
       {assigningBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col relative animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center">
               <div>

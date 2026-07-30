@@ -708,12 +708,12 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
         </div>
 
         {/* Verification Filters */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700">
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
           {(['all', 'verified', 'pending'] as const).map((status) => (
             <button
               key={status}
               onClick={() => handleVerificationFilterChange(status)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
                 verificationFilter === status
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-355 hover:text-white'
@@ -725,12 +725,12 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
         </div>
 
         {/* Online Filters */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700">
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
           {(['all', 'online', 'offline'] as const).map((status) => (
             <button
               key={status}
               onClick={() => handleOnlineFilterChange(status)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
                 onlineFilter === status
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-350 hover:text-white'
@@ -1181,10 +1181,10 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
 
       {/* Edit Profile Modal */}
       {editModalOpen && editingDriver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-800/80 flex justify-between items-center bg-slate-950 rounded-t-2xl">
+            <div className="px-6 py-4 border-b border-slate-800/80 flex justify-between items-center bg-slate-950 rounded-t-2xl shrink-0">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Edit size={16} className="text-amber-500" />
                 Edit Driver Profile: <span className="text-amber-400">{editingDriver.full_name}</span>
@@ -1198,7 +1198,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSaveProfile} className="flex-1 p-6 space-y-6 overflow-y-auto">
               {/* SECTION 1: Core User Details */}
               <div className="space-y-4">
                 <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] border-b border-slate-800 pb-1">

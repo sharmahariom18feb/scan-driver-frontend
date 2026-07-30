@@ -180,12 +180,12 @@ export default function EnquiriesTab({ onRefresh }: EnquiriesTabProps) {
         </div>
 
         {/* Status Filters */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700">
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
           {(['all', 'pending', 'in_progress', 'completed'] as const).map((status) => (
             <button
               key={status}
               onClick={() => handleStatusFilterChange(status)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
                 statusFilter === status
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-350 hover:text-white'
@@ -347,7 +347,7 @@ export default function EnquiriesTab({ onRefresh }: EnquiriesTabProps) {
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-t border-slate-850 flex justify-end gap-2">
+                <div className="pt-2.5 border-t border-slate-850 flex justify-end gap-2 flex-wrap">
                   {enq.status === 'pending' && (
                     <button
                       onClick={() => updateStatus(enq.id, 'in_progress')}
