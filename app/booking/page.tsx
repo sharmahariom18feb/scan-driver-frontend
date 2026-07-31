@@ -451,6 +451,15 @@ export default function BookingPage() {
       const { error } = await supabase.from('bookings').insert(dbPayload)
       if (error) throw error
       toast.success('Booking recorded! Opening WhatsApp…')
+
+      // Trigger Twilio SMS / WhatsApp Notification to Admin
+      fetch('/api/notify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking: dbPayload, booking_id: bookingId }),
+      }).catch((notifyErr) => {
+        console.error('Failed to trigger admin notification:', notifyErr)
+      })
     } catch (err: any) {
       console.error('Supabase save error:', err)
       toast.info('Saved locally. Redirecting to WhatsApp…')

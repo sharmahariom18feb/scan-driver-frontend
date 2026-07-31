@@ -219,6 +219,15 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
       toast.success(`Booking ${bookingId} created successfully!`)
       setShowCreateModal(false)
 
+      // Trigger Twilio SMS / WhatsApp Notification to Admin
+      fetch('/api/notify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking: payload, booking_id: bookingId }),
+      }).catch((notifyErr) => {
+        console.error('Failed to trigger admin notification:', notifyErr)
+      })
+
       // If approved immediately, send push notifications to drivers
       if (adminApproved) {
         const getSessionAndNotify = async () => {
