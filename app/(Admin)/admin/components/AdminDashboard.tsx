@@ -312,8 +312,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
-              { id: 'create-booking' as const, label: 'Create Booking', icon: PlusCircle, href: '/booking' },
-              { id: 'onboard-driver' as const, label: 'Onboard Driver', icon: UserPlus, href: '/driver-app/onboarding' },
+              { id: 'create-booking' as const, label: 'Create Booking', icon: PlusCircle, href: 'https://scandriver.in/booking' },
+              { id: 'onboard-driver' as const, label: 'Onboard Driver', icon: UserPlus, href: 'https://partner.scandriver.in/driver-app/onboarding' },
             ].map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id
