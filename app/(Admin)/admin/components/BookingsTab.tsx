@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check } from 'lucide-react'
+import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Booking, Driver } from '../types'
@@ -9,9 +9,17 @@ import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 
 interface BookingsTabProps {
   onRefresh: () => void
+  autoApprovalEnabled?: boolean
+  onToggleAutoApproval?: () => void
+  updatingAutoApproval?: boolean
 }
 
-export default function BookingsTab({ onRefresh }: BookingsTabProps) {
+export default function BookingsTab({
+  onRefresh,
+  autoApprovalEnabled = false,
+  onToggleAutoApproval,
+  updatingAutoApproval = false,
+}: BookingsTabProps) {
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'accepted' | 'completed' | 'cancelled'>('all')
@@ -23,6 +31,7 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+
 
   // Local drivers list for ID-to-name lookup and assignment modal
   const [drivers, setDrivers] = useState<Driver[]>([])
@@ -646,7 +655,36 @@ export default function BookingsTab({ onRefresh }: BookingsTabProps) {
         </a>
       </div>
 
+      {/* Auto Approval Status Bar */}
+      <div className={`px-4 py-3 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-medium transition-all ${
+        autoApprovalEnabled
+          ? 'bg-emerald-950/30 border-emerald-800/60 text-emerald-300'
+          : 'bg-amber-950/30 border-amber-800/60 text-amber-300'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <Zap size={16} className={autoApprovalEnabled ? 'fill-emerald-400 text-emerald-400 animate-pulse shrink-0' : 'text-amber-400 shrink-0'} />
+          <span>
+            <strong className="text-white">Auto-Approval Status:</strong> {autoApprovalEnabled ? 'ENABLED — New bookings are auto-accepted and published to drivers immediately.' : 'DISABLED — Admin must manually review and approve each booking.'}
+          </span>
+        </div>
+
+        {onToggleAutoApproval && (
+          <button
+            onClick={onToggleAutoApproval}
+            disabled={updatingAutoApproval}
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              autoApprovalEnabled
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
+                : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-extrabold shadow-sm'
+            }`}
+          >
+            {autoApprovalEnabled ? 'Disable Auto Approval' : 'Enable Auto Approval'}
+          </button>
+        )}
+      </div>
+
       {/* Filters bar */}
+
       <div className="flex flex-col md:flex-row gap-4 bg-slate-900 border border-slate-700/80 p-4 rounded-2xl">
         {/* Search */}
         <div className="relative flex-1">

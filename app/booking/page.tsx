@@ -430,6 +430,22 @@ export default function BookingPage() {
         ? 'MONTHLY'
         : 'OUTSTATION'
 
+    // Check if auto approval is enabled in system settings
+    let isAutoApproved = false
+    try {
+      const { data: settingData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'auto_approval_enabled')
+        .maybeSingle()
+
+      if (settingData && settingData.value === 'true') {
+        isAutoApproved = true
+      }
+    } catch (settingErr) {
+      console.warn('Could not fetch auto_approval setting:', settingErr)
+    }
+
     const dbPayload = {
       id: bookingId,
       customer_name: customerName,
@@ -444,7 +460,7 @@ export default function BookingPage() {
       special_instructions: comments + (emailVal ? ` | Email: ${emailVal}` : ''),
       status: 'available' as const,
       type: mappedType,
-      admin_approved: false,
+      admin_approved: isAutoApproved,
     }
 
     try {
@@ -460,9 +476,21 @@ export default function BookingPage() {
       }).catch((notifyErr) => {
         console.error('Failed to trigger admin notification:', notifyErr)
       })
+
+      // If auto-approved, immediately notify online drivers so ride appears in driver app
+      if (isAutoApproved) {
+        fetch('/api/notify-drivers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ booking_id: bookingId }),
+        }).catch((notifyErr) => {
+          console.error('Failed to trigger driver notification for auto-approved booking:', notifyErr)
+        })
+      }
     } catch (err: any) {
       console.error('Supabase save error:', err)
       toast.info('Saved locally. Redirecting to WhatsApp…')
+
     }
 
     // ── Build WhatsApp Message ──

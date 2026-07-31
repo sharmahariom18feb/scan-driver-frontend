@@ -421,4 +421,27 @@ create trigger on_auth_user_created_auto_confirm
   before insert on auth.users
   for each row execute function public.auto_confirm_user();
 
+-- 14. Create system_settings table for admin configurations
+create table if not exists public.system_settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
 
+-- Enable RLS
+alter table public.system_settings enable row level security;
+
+-- Policies for system_settings
+create policy "Anyone can view system settings." on public.system_settings
+  for select using (true);
+
+create policy "Admins can insert system settings." on public.system_settings
+  for insert with check (public.is_admin());
+
+create policy "Admins can update system settings." on public.system_settings
+  for update using (public.is_admin());
+
+-- Seed initial auto approval setting if not present
+insert into public.system_settings (key, value)
+values ('auto_approval_enabled', 'false')
+on conflict (key) do nothing;

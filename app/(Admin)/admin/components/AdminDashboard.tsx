@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus, Zap } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -23,6 +23,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
+  // Auto Approval State
+  const [autoApprovalEnabled, setAutoApprovalEnabled] = useState<boolean>(false)
+  const [updatingAutoApproval, setUpdatingAutoApproval] = useState<boolean>(false)
+
   // System Data State
   const [bookings, setBookings] = useState<Booking[]>([]) // Holds 5 most recent bookings for DashboardTab
   const [drivers, setDrivers] = useState<Driver[]>([])   // Holds 5 most recent drivers for DashboardTab
@@ -40,6 +44,51 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     pendingBookingsCount: 0,
     pendingEnquiriesCount: 0,
   })
+
+  // Fetch Auto Approval Setting
+  const fetchAutoApprovalSetting = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'auto_approval_enabled')
+        .maybeSingle()
+
+      if (data) {
+        setAutoApprovalEnabled(data.value === 'true')
+      }
+    } catch (err) {
+      console.error('Error fetching auto approval setting:', err)
+    }
+  }
+
+  // Handle Toggle Auto Approval
+  const handleToggleAutoApproval = async () => {
+    const nextState = !autoApprovalEnabled
+    setUpdatingAutoApproval(true)
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert(
+          { key: 'auto_approval_enabled', value: nextState ? 'true' : 'false', updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        )
+
+      if (error) throw error
+
+      setAutoApprovalEnabled(nextState)
+      toast.success(
+        nextState
+          ? '⚡ Auto Approval Enabled! New bookings will be automatically approved and published to drivers.'
+          : '🛡️ Manual Approval Enabled. New bookings will require admin approval.'
+      )
+    } catch (err: any) {
+      console.error('Error updating auto approval setting:', err)
+      toast.error('Failed to update Auto Approval setting: ' + (err.message || 'Unknown error'))
+    } finally {
+      setUpdatingAutoApproval(false)
+    }
+  }
 
   // Fetch stats and recent previews from backend
   const fetchData = async () => {
@@ -115,6 +164,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   // Fetch data on active tab changes (also covers initial mount)
   useEffect(() => {
     fetchData()
+    fetchAutoApprovalSetting()
   }, [activeTab])
 
   // Real-time Subscriptions on Mount
@@ -167,10 +217,25 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       )
       .subscribe()
 
+    // Subscribe to system settings changes
+    const settingsChannel = supabase
+      .channel('admin-settings-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'system_settings' },
+        (payload) => {
+          if (payload.new && (payload.new as any).key === 'auto_approval_enabled') {
+            setAutoApprovalEnabled((payload.new as any).value === 'true')
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(bookingsChannel)
       supabase.removeChannel(driversChannel)
       supabase.removeChannel(enquiriesChannel)
+      supabase.removeChannel(settingsChannel)
     }
   }, [])
 
@@ -341,7 +406,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       {/* MAIN CONTAINER */}
       <div className={`flex-1 transition-all duration-300 ${isCollapsed ? 'lg:pl-20' : 'lg:pl-64'} flex flex-col min-w-0 min-h-screen`}>
         {/* HEADER */}
-        <header className="h-16 px-6 border-b border-slate-700/80 bg-slate-900/30 backdrop-blur-md flex items-center justify-between sticky top-0 z-30">
+        <header className="h-16 px-4 sm:px-6 border-b border-slate-700/80 bg-slate-900/30 backdrop-blur-md flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -354,14 +419,32 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Theme toggle */}
-            {/* <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-xl border border-slate-750 text-slate-300 hover:text-amber-400 hover:bg-slate-800/40 transition-colors"
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Auto Approval Toggle Control */}
+            <button
+              onClick={handleToggleAutoApproval}
+              disabled={updatingAutoApproval}
+              title={
+                autoApprovalEnabled
+                  ? 'Auto-Approval is ENABLED. New bookings are auto-accepted and published to drivers immediately.'
+                  : 'Auto-Approval is DISABLED. Admin must manually approve each booking.'
+              }
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                updatingAutoApproval ? 'opacity-50 cursor-not-allowed' : ''
+              } ${
+                autoApprovalEnabled
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 shadow-sm shadow-emerald-500/10'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+              }`}
             >
-              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-            </button> */}
+              <Zap size={14} className={autoApprovalEnabled ? 'fill-emerald-400 text-emerald-400 animate-pulse' : 'text-amber-400'} />
+              <span className="hidden sm:inline">Auto Approve:</span>
+              <span className={`px-1.5 py-0.5 rounded-md text-[10px] uppercase font-extrabold ${
+                autoApprovalEnabled ? 'bg-emerald-500 text-slate-950' : 'bg-amber-500 text-slate-950'
+              }`}>
+                {autoApprovalEnabled ? 'ON' : 'OFF'}
+              </span>
+            </button>
 
             {/* Notification alert */}
             <div className="relative p-2 rounded-xl border border-slate-750 text-slate-300 hover:text-white hover:bg-slate-800/40 transition-all">
@@ -388,12 +471,18 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   recentBookings={bookings}
                   recentDrivers={drivers}
                   onTabChange={(tab) => setActiveTab(tab)}
+                  autoApprovalEnabled={autoApprovalEnabled}
+                  onToggleAutoApproval={handleToggleAutoApproval}
+                  updatingAutoApproval={updatingAutoApproval}
                 />
               )}
 
               {activeTab === 'bookings' && (
                 <BookingsTab
                   onRefresh={fetchData}
+                  autoApprovalEnabled={autoApprovalEnabled}
+                  onToggleAutoApproval={handleToggleAutoApproval}
+                  updatingAutoApproval={updatingAutoApproval}
                 />
               )}
 

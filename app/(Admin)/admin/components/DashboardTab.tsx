@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Briefcase, Users, CheckCircle, Clock, ShieldAlert, Activity, ArrowRight } from 'lucide-react'
+import { Briefcase, Users, CheckCircle, Clock, ShieldAlert, Activity, ArrowRight, Zap } from 'lucide-react'
 import { DashboardStats, Booking, Driver } from '../types'
 
 interface DashboardTabProps {
@@ -9,6 +9,9 @@ interface DashboardTabProps {
   recentBookings: Booking[]
   recentDrivers: Driver[]
   onTabChange: (tab: 'bookings' | 'drivers') => void
+  autoApprovalEnabled?: boolean
+  onToggleAutoApproval?: () => void
+  updatingAutoApproval?: boolean
 }
 
 export default function DashboardTab({
@@ -16,6 +19,9 @@ export default function DashboardTab({
   recentBookings,
   recentDrivers,
   onTabChange,
+  autoApprovalEnabled = false,
+  onToggleAutoApproval,
+  updatingAutoApproval = false,
 }: DashboardTabProps) {
   // Helpers
   const formatTime = (timeStr: string) => {
@@ -36,9 +42,55 @@ export default function DashboardTab({
   return (
     <div className="space-y-8 animate-in fade-in-50 duration-300">
       {/* Welcome header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">System Overview</h1>
-        <p className="text-slate-300 text-xs mt-1">Real-time operation metrics for ScanDriver.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">System Overview</h1>
+          <p className="text-slate-300 text-xs mt-1">Real-time operation metrics for ScanDriver.</p>
+        </div>
+      </div>
+
+      {/* Auto Approval Status Banner */}
+      <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
+        autoApprovalEnabled
+          ? 'bg-emerald-950/40 border-emerald-800/80'
+          : 'bg-amber-950/40 border-amber-800/80'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+            autoApprovalEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+          }`}>
+            <Zap size={20} className={autoApprovalEnabled ? 'fill-emerald-400' : ''} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-bold text-white">Auto Approval Workflow</p>
+              <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-extrabold ${
+                autoApprovalEnabled ? 'bg-emerald-500 text-slate-950' : 'bg-amber-500 text-slate-950'
+              }`}>
+                {autoApprovalEnabled ? 'Active (Auto Approve)' : 'Inactive (Manual Approve)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-0.5">
+              {autoApprovalEnabled
+                ? 'All new incoming customer bookings are automatically approved and instantly visible to online drivers.'
+                : 'New bookings enter pending state until an admin manually approves them in Bookings Tab.'}
+            </p>
+          </div>
+        </div>
+
+        {onToggleAutoApproval && (
+          <button
+            onClick={onToggleAutoApproval}
+            disabled={updatingAutoApproval}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              autoApprovalEnabled
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
+                : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-extrabold shadow-md shadow-emerald-500/20'
+            }`}
+          >
+            {autoApprovalEnabled ? 'Switch to Manual Approval' : 'Enable Auto Approval'}
+          </button>
+        )}
       </div>
 
       {/* Metrics grid */}
