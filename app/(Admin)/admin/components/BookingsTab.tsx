@@ -656,7 +656,7 @@ export default function BookingsTab({
       </div>
 
       {/* Auto Approval Status Bar */}
-      <div className={`px-4 py-3 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-medium transition-all ${
+      {/* <div className={`px-4 py-3 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-medium transition-all ${
         autoApprovalEnabled
           ? 'bg-emerald-950/30 border-emerald-800/60 text-emerald-300'
           : 'bg-amber-950/30 border-amber-800/60 text-amber-300'
@@ -681,7 +681,7 @@ export default function BookingsTab({
             {autoApprovalEnabled ? 'Disable Auto Approval' : 'Enable Auto Approval'}
           </button>
         )}
-      </div>
+      </div> */}
 
       {/* Filters bar */}
 
