@@ -102,7 +102,6 @@ function ActiveBookingCard({
   const [otpError, setOtpError] = useState(false)
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
-  const [qrConfirmed, setQrConfirmed] = useState(false)
   const [viewingInvoice, setViewingInvoice] = useState<string | null>(null)
   const [viewingQr, setViewingQr] = useState(false)
 
@@ -465,32 +464,13 @@ function ActiveBookingCard({
                 <p className="text-[9px] text-text-muted text-center leading-normal">
                   Customer scans and pays directly.
                 </p>
-
-                <button
-                  type="button"
-                  onClick={() => setQrConfirmed(prev => !prev)}
-                  className={cn(
-                    "w-full py-1.5 px-3 text-[10px] font-bold uppercase rounded-lg border transition-all cursor-pointer",
-                    qrConfirmed
-                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                      : "border-border/10 text-foreground hover:bg-surface2"
-                  )}
-                >
-                  {qrConfirmed ? "✓ QR Payment Detected" : "Simulate QR Payment Received"}
-                </button>
               </div>
 
               <button
                 onClick={() => {
                   handleUpdateTripStatus(booking.id, 'payment_received', 'QR', booking.invoiceId);
                 }}
-                disabled={!qrConfirmed}
-                className={cn(
-                  "w-full py-3.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer",
-                  qrConfirmed
-                    ? "bg-emerald-500 hover:bg-emerald-600 text-slate-950"
-                    : "bg-surface text-text-muted border border-border/10 cursor-not-allowed opacity-50"
-                )}
+                className="w-full py-3.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl shadow-md bg-emerald-500 hover:bg-emerald-600 text-slate-950 flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
               >
                 <DollarSign size={14} /> Confirm Payment Received
               </button>

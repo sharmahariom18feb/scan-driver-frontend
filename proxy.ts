@@ -36,9 +36,9 @@ export const config = {
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - Static asset files with extensions (.jpeg, .jpg, .png, .svg, .webp, .ico, .json, etc.)
      * - PWA icons/assets (e.g., logo-sd.png, icons, screenshots, driver-manifest.json, sw.js)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|logo-sd.png|icons|screenshots|driver-manifest.json|sw.js).*)',
+    '/((?!api|_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|js|css|woff2?|ttf|eot)$|driver-manifest.json|sw.js).*)',
   ],
 }
