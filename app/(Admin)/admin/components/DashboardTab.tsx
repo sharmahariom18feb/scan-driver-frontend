@@ -50,7 +50,7 @@ export default function DashboardTab({
       </div>
 
       {/* Auto Approval Status Banner */}
-      <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
+      {/* <div className={`p-4 rounded-2xl border  flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
         autoApprovalEnabled
           ? 'bg-emerald-950/40 border-emerald-800/80'
           : 'bg-amber-950/40 border-amber-800/80'
@@ -91,7 +91,7 @@ export default function DashboardTab({
             {autoApprovalEnabled ? 'Switch to Manual Approval' : 'Enable Auto Approval'}
           </button>
         )}
-      </div>
+      </div> */}
 
       {/* Metrics grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

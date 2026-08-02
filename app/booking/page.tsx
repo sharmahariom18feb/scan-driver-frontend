@@ -177,8 +177,8 @@ export default function BookingPage() {
     40: 559, 45: 599, 50: 639, 55: 679, 60: 719, 65: 759, 70: 799
   }
   const roundTripPrices: Record<number, number> = {
-    2: 199, 3: 299, 4: 399, 5: 499, 6: 599, 7: 699,
-    8: 799, 9: 899, 10: 999, 11: 1099, 12: 1199
+    2: 299, 3: 399, 4: 499, 5: 599, 6: 689, 7: 779,
+    8: 869, 9: 959, 10: 1049, 11: 1139, 12: 1229
   }
 
   const getOneWayPrice = (km: number) => {
@@ -241,8 +241,8 @@ export default function BookingPage() {
         } else {
           amount = getRoundTripPrice(roundHours)
           note = roundHours > 12
-            ? '₹1,199 + ₹100 per extra hour · ₹2.5/min if time exceeded'
-            : '₹2.5/min if time exceeded'
+            ? '₹1,199 + ₹100 per extra hour · ₹25/fifteen minutes if time exceeded'
+            : '₹25/fifteen minutes if time exceeded'
         }
       }
     } else if (tripType === 'oneway') {
@@ -252,8 +252,8 @@ export default function BookingPage() {
         } else {
           amount = getOneWayPrice(estKms)
           note = estKms > 70
-            ? '₹7/km extra beyond 70 km'
-            : '₹7/km extra if KM exceeded'
+            ? '₹8/km extra beyond 70 km'
+            : '₹8/km extra if KM exceeded'
         }
       }
     } else if (tripType === 'outstation') {
@@ -263,7 +263,7 @@ export default function BookingPage() {
             note = '⚠️ Outstation minimum distance is 50 km'
           } else {
             amount = getOutstationOWPrice(outKms)
-            note = 'Outstation one-way · ₹7/km if distance exceeded'
+            note = 'Outstation one-way · ₹8/km if distance exceeded'
           }
         }
       } else {
@@ -2330,7 +2330,7 @@ ${commentsStr}${gpsStr}
                 <>
                   <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>
-                    <div className="tnc-text"><strong>₹7 per km</strong> extra if actual distance exceeds your booked KM limit.</div>
+                    <div className="tnc-text"><strong>₹8 per km</strong> extra if actual distance exceeds your booked KM limit.</div>
                   </div>
                   <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>
@@ -2351,7 +2351,7 @@ ${commentsStr}${gpsStr}
                 <>
                   <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>
-                    <div className="tnc-text"><strong>₹2.5 per minute</strong> to be charged if travel time exceeds booked hours.</div>
+                    <div className="tnc-text"><strong>₹25 per fifteen minutes</strong> to be charged if travel time exceeds booked hours.</div>
                   </div>
                   <div className="tnc-item">
                     <div className="tnc-bullet">✓</div>

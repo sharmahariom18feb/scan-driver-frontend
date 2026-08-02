@@ -312,8 +312,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
-              { id: 'create-booking' as const, label: 'Create Booking', icon: PlusCircle, href: 'https://scandriver.in/booking' },
-              { id: 'onboard-driver' as const, label: 'Onboard Driver', icon: UserPlus, href: 'https://partner.scandriver.in/driver-app/onboarding' },
             ].map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id
@@ -326,8 +324,16 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   : 'text-slate-330 hover:text-white hover:bg-slate-800/60'
               }`
 
-              const content = (
-                <>
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id)
+                    setSidebarOpen(false)
+                  }}
+                  className={className}
+                  title={isCollapsed ? item.label : undefined}
+                >
                   <Icon size={18} className="shrink-0" />
                   <span className={`${isCollapsed ? 'lg:hidden' : 'inline'} transition-all duration-300`}>
                     {item.label}
@@ -343,35 +349,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                       {stats.pendingEnquiriesCount}
                     </span>
                   ) : null}
-                </>
-              )
-
-              if ('href' in item) {
-                return (
-                  <a
-                    key={item.id}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={className}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    {content}
-                  </a>
-                )
-              }
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id)
-                    setSidebarOpen(false)
-                  }}
-                  className={className}
-                  title={isCollapsed ? item.label : undefined}
-                >
-                  {content}
                 </button>
               )
             })}
@@ -419,7 +396,31 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             </span>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {/* Create Booking Button */}
+            <a
+              href="https://scandriver.in/booking"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs font-bold transition-all cursor-pointer shadow-sm shadow-amber-500/5"
+              title="Create New Booking"
+            >
+              <PlusCircle size={14} className="shrink-0" />
+              <span className="hidden sm:inline">Create Booking</span>
+            </a>
+
+            {/* Onboard Driver Button */}
+            <a
+              href="https://partner.scandriver.in/driver-app/onboarding"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 hover:border-slate-600 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer"
+              title="Onboard New Driver"
+            >
+              <UserPlus size={14} className="shrink-0 text-amber-400" />
+              <span className="hidden sm:inline">Onboard Driver</span>
+            </a>
+
             {/* Auto Approval Toggle Control */}
             <button
               onClick={handleToggleAutoApproval}
@@ -445,14 +446,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                 {autoApprovalEnabled ? 'ON' : 'OFF'}
               </span>
             </button>
-
-            {/* Notification alert */}
-            <div className="relative p-2 rounded-xl border border-slate-750 text-slate-300 hover:text-white hover:bg-slate-800/40 transition-all">
-              <Bell size={15} />
-              {(stats.pendingDriversCount > 0 || (stats.pendingEnquiriesCount && stats.pendingEnquiriesCount > 0)) && (
-                <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-              )}
-            </div>
           </div>
         </header>
 
