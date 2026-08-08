@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ReduxProvider } from "@/redux/provider";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -113,6 +114,7 @@ export default function RootLayout({
             {children}
           </ThemeProvider>
         </ReduxProvider>
+        <GoogleAnalytics />
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
