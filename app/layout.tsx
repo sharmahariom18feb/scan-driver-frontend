@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ReduxProvider } from "@/redux/provider";
 import { GoogleAnalytics } from "@/components/google-analytics";
+import { MicrosoftClarity } from "@/components/microsoft-clarity";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -115,6 +116,7 @@ export default function RootLayout({
           </ThemeProvider>
         </ReduxProvider>
         <GoogleAnalytics />
+        <MicrosoftClarity />
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
