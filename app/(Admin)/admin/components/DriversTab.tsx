@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX } from 'lucide-react'
+import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX, FileSpreadsheet } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import JSZip from 'jszip'
@@ -30,6 +30,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
   const getProfile = (d: Driver) => {
     if (!d.driver_profiles) return null
@@ -712,24 +713,119 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     }
   }
 
+  // Minimal Driver Data Excel Export
+  const handleExportExcel = async () => {
+    setExportingExcel(true)
+    const toastId = toast.loading('Generating Excel export...')
+    try {
+      let query = supabase
+        .from('users')
+        .select('*, driver_profiles(*)')
+        .eq('role', 'DRIVER')
+
+      if (mode === 'suspended') {
+        query = query.eq('is_suspended', true)
+      } else {
+        query = query.eq('is_suspended', false)
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        toast.info('No driver data found to export.', { id: toastId })
+        return
+      }
+
+      const minimalData = data.map((d: any) => {
+        const profile = Array.isArray(d.driver_profiles) ? d.driver_profiles[0] : d.driver_profiles
+        return {
+          'Driver ID': d.unique_id || 'N/A',
+          'Full Name': d.full_name || 'N/A',
+          'Mobile': d.phone || 'N/A',
+          'License No': d.license_no || 'N/A',
+          'Area': d.current_area || 'N/A',
+          'Current Address': d.current_address || profile?.current_address || 'Not provided',
+          'Rating': Number(d.rating || 5.0).toFixed(2),
+          'Verification': d.verified ? 'Verified' : 'Pending',
+          'Status': d.is_suspended ? 'Suspended' : 'Active',
+          'Online': d.is_online ? 'Online' : 'Offline',
+          'Joined Date': d.created_at ? new Date(d.created_at).toLocaleDateString('en-IN') : 'N/A'
+        }
+      })
+
+      const XLSX = await import('xlsx')
+      const worksheet = XLSX.utils.json_to_sheet(minimalData)
+
+      // Set clean column widths
+      worksheet['!cols'] = [
+        { wch: 14 }, // Driver ID
+        { wch: 24 }, // Full Name
+        { wch: 18 }, // Mobile
+        { wch: 24 }, // License No
+        { wch: 24 }, // Area
+        { wch: 36 }, // Current Address
+        { wch: 10 }, // Rating
+        { wch: 15 }, // Verification
+        { wch: 14 }, // Status
+        { wch: 12 }, // Online
+        { wch: 14 }, // Joined Date
+      ]
+
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, mode === 'suspended' ? 'Suspended Drivers' : 'Drivers')
+
+      const dateStr = new Date().toISOString().split('T')[0]
+      const filename = `ScanDriver_${mode === 'suspended' ? 'Suspended_Drivers' : 'Drivers'}_${dateStr}.xlsx`
+
+      XLSX.writeFile(workbook, filename)
+      toast.success(`Exported ${minimalData.length} drivers to Excel!`, { id: toastId })
+    } catch (err: any) {
+      console.error('Error exporting Excel:', err)
+      toast.error(err.message || 'Failed to export Excel file', { id: toastId })
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-300">
       {/* Header section */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-          {mode === 'suspended' ? (
-            <>
-              <UserX className="text-rose-400" size={24} /> Suspended Drivers
-            </>
-          ) : (
-            'Drivers'
-          )}
-        </h1>
-        <p className="text-slate-200 text-xs mt-1">
-          {mode === 'suspended'
-            ? 'Review temporarily suspended driver accounts and reactivate access when needed.'
-            : 'Verify licenses, manage account status, and track online drivers.'}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
+            {mode === 'suspended' ? (
+              <>
+                <UserX className="text-rose-400" size={24} /> Suspended Drivers
+              </>
+            ) : (
+              'Drivers'
+            )}
+          </h1>
+          <p className="text-slate-200 text-xs mt-1">
+            {mode === 'suspended'
+              ? 'Review temporarily suspended driver accounts and reactivate access when needed.'
+              : 'Verify licenses, manage account status, and track online drivers.'}
+          </p>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50 border border-emerald-500/30"
+            title="Export Driver Data to Excel (.xlsx)"
+          >
+            {exportingExcel ? (
+              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <FileSpreadsheet size={15} />
+            )}
+            <span>{exportingExcel ? 'Exporting...' : 'Export Excel'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters bar */}
