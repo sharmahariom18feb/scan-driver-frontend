@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Star, Search, RefreshCw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getMonthlyDutyHours, getMonthlyDays } from '@/lib/utils'
 import { Booking, DriverInfo } from '@/redux/slices/driverSlice'
 
 const getVehicleIcon = (vehicle: string) => {
@@ -32,6 +32,35 @@ const formatTripType = (type: string) => {
   if (!type) return '';
   if (type === 'AIRPORT DROP') return 'Airport Drop';
   return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+};
+
+const getTripTitle = (booking: Booking) => {
+  const isOneWay = booking.duration?.toLowerCase().includes('one way');
+  if (isOneWay) {
+    return booking.type === 'OUTSTATION' ? 'One Way - Outstation' : 'One Way - Incity';
+  }
+  return `${formatTripType(booking.type)} - Incity`;
+};
+
+const getPackageText = (booking: Booking) => {
+  if (!booking.duration) {
+    if (booking.distance && booking.distance !== 'N/A') {
+      return `Package - ${booking.distance}`;
+    }
+    return 'Package - N/A';
+  }
+  if (booking.type === 'MONTHLY') {
+    const hours = getMonthlyDutyHours(booking.duration);
+    const days = getMonthlyDays(booking.duration);
+    if (days && hours) {
+      return `Package - ${days} • ${hours}`;
+    }
+    return `Package - ${booking.duration}`;
+  }
+  if (booking.distance && booking.distance !== 'N/A' && !booking.duration.toLowerCase().includes(booking.distance.toLowerCase())) {
+    return `Package - ${booking.duration} (${booking.distance})`;
+  }
+  return `Package - ${booking.duration}`;
 };
 
 const formatTimeAndDate = (dateTimeStr: string) => {
@@ -214,8 +243,9 @@ export default function HomeTab({
             {availableBookings.map((booking) => (
               <div
                 key={booking.id}
+                onClick={() => handleOpenDetails(booking)}
                 className={cn(
-                  'rounded-xl p-4.5 transition-all duration-300 border-2 flex flex-col gap-3.5 relative overflow-hidden',
+                  'rounded-xl p-4.5 transition-all duration-300 border-2 flex flex-col gap-3.5 relative overflow-hidden cursor-pointer hover:border-gold/30',
                   booking.type === 'MONTHLY'
                     ? 'bg-emerald-800/[0.08] dark:bg-emerald-950/20 border-emerald-600/50 dark:border-emerald-500/40 shadow-lg shadow-emerald-900/20 dark:shadow-emerald-950/50'
                     : 'bg-card border-border shadow-md'
@@ -240,12 +270,33 @@ export default function HomeTab({
                 <div className="grid grid-cols-12 gap-3 items-center">
                   {/* Left Column Box: White background with pickup details */}
                   <div className="col-span-7 bg-white dark:bg-zinc-900 border border-border/10 rounded-xl p-3.5 shadow-xs flex flex-col gap-2 min-h-[96px] justify-center">
-                    <h4 className={cn(
-                      'font-black text-sm tracking-wide',
-                      booking.type === 'MONTHLY' ? 'text-emerald-700 dark:text-emerald-400' : 'text-primary'
-                    )}>
-                      {formatTripType(booking.type)} - Incity
-                    </h4>
+                    <div className="flex items-center justify-between gap-1">
+                      <h4 className={cn(
+                        'font-black text-sm tracking-wide',
+                        booking.type === 'MONTHLY' ? 'text-emerald-700 dark:text-emerald-400' : 'text-primary'
+                      )}>
+                        {getTripTitle(booking)}
+                      </h4>
+                      {booking.type === 'MONTHLY' && getMonthlyDutyHours(booking.duration) ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shrink-0 whitespace-nowrap">
+                          ⏰ {getMonthlyDutyHours(booking.duration)}
+                        </span>
+                      ) : (
+                        booking.distance && booking.distance !== 'N/A' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25 shrink-0 whitespace-nowrap">
+                            {booking.distance}
+                          </span>
+                        )
+                      )}
+                    </div>
+                    {/* {booking.type === 'MONTHLY' && getMonthlyDutyHours(booking.duration) && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-350 bg-emerald-500/10 dark:bg-emerald-950/40 px-2 py-1 rounded-md border border-emerald-500/20">
+                        <span>⏰ Working Duty: {getMonthlyDutyHours(booking.duration)}</span>
+                        {getMonthlyDays(booking.duration) && (
+                          <span className="text-text-muted font-medium">• {getMonthlyDays(booking.duration)}</span>
+                        )}
+                      </div>
+                    )} */}
                     <div className="flex items-start gap-2">
                       <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
                       <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-normal line-clamp-3">
@@ -268,7 +319,7 @@ export default function HomeTab({
                       ₹{booking.fare}
                     </div>
                     <div className="text-xs text-text-muted font-bold leading-none mb-1">
-                      {booking.duration ? `Package - ${booking.duration}` : 'Package - N/A'}
+                      {getPackageText(booking)}
                     </div>
                     <button
                       disabled={acceptingIds[booking.id]}

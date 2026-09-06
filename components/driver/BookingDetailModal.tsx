@@ -11,7 +11,7 @@ import {
   XCircle,
   X,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getMonthlyDutyHours, getMonthlyDays } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
 
 const parseAddress = (address: string) => {
@@ -75,16 +75,20 @@ export default function BookingDetailModal({
           <span
             className={cn(
               'text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border',
-              booking.type === 'AIRPORT DROP'
-                ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-                : booking.type === 'OUTSTATION'
-                  ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                  : booking.type === 'MONTHLY'
-                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
-                    : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+              booking.duration?.toLowerCase().includes('one way')
+                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                : booking.type === 'AIRPORT DROP'
+                  ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                  : booking.type === 'OUTSTATION'
+                    ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                    : booking.type === 'MONTHLY'
+                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                      : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
             )}
           >
-            {booking.type}
+            {booking.duration?.toLowerCase().includes('one way')
+              ? (booking.type === 'OUTSTATION' ? 'OUTSTATION ONE WAY' : 'ONE WAY')
+              : booking.type}
           </span>
         </div>
 
@@ -95,9 +99,23 @@ export default function BookingDetailModal({
         </div>
 
         {booking.type === 'MONTHLY' && (
-          <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 rounded-lg p-3 text-xs text-emerald-600 dark:text-emerald-400 mb-5 flex items-center gap-2.5 font-semibold">
-            <span className="text-sm select-none">📅</span>
-            <span>Monthly Booking: Driver details and guidelines apply.</span>
+          <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 rounded-lg p-3 text-xs text-emerald-600 dark:text-emerald-400 mb-5 flex flex-col gap-1.5 font-semibold">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 font-bold text-sm">
+                <span>📅</span> Monthly Driver Booking
+              </span>
+              {getMonthlyDutyHours(booking.duration) && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold tracking-wider uppercase">
+                  ⏰ {getMonthlyDutyHours(booking.duration)}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-text-muted font-normal">
+              Package: <strong className="text-foreground">{booking.duration || 'Monthly'}</strong>
+              {getMonthlyDutyHours(booking.duration) && (
+                <> • Daily Duty: <strong className="text-emerald-600 dark:text-emerald-400">{getMonthlyDutyHours(booking.duration)}</strong></>
+              )}
+            </p>
           </div>
         )}
 
@@ -208,9 +226,25 @@ export default function BookingDetailModal({
                   <Clock size={14} />
                 </div>
                 <div className="space-y-0.5">
-                  <p className="text-[10px] text-text-muted leading-none">Duration / Distance</p>
+                  <p className="text-[10px] text-text-muted leading-none">
+                    {booking.type === 'MONTHLY' ? 'Duty Hours & Package' : 'Duration / Distance'}
+                  </p>
                   <p className="text-sm font-semibold text-foreground">
-                    ~{booking.duration} • {booking.distance}
+                    {booking.type === 'MONTHLY' && getMonthlyDutyHours(booking.duration) ? (
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span>{booking.duration}</span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                          ⏰ {getMonthlyDutyHours(booking.duration)}
+                        </span>
+                      </span>
+                    ) : (
+                      <>
+                        {booking.duration || 'N/A'}
+                        {booking.distance && booking.distance !== 'N/A' && !booking.duration?.toLowerCase().includes(booking.distance.toLowerCase())
+                          ? ` • ${booking.distance}`
+                          : ''}
+                      </>
+                    )}
                   </p>
                 </div>
               </div>

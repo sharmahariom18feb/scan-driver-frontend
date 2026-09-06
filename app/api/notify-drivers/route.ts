@@ -86,7 +86,28 @@ export async function POST(request: Request) {
     const driverIds = onlineDrivers.map((d) => d.id)
 
     // 3. Insert real-time database notifications for all online drivers
-    const description = `${booking.type}: ${booking.pickup} to ${booking.drop}`
+    const isOneWay = booking.duration?.toLowerCase().includes('one way')
+    const isMonthly = booking.type === 'MONTHLY'
+    let tripTypeLabel = booking.type || 'Booking'
+    if (isOneWay) {
+      tripTypeLabel = booking.type === 'OUTSTATION' ? 'Outstation One Way' : 'One Way'
+    } else if (isMonthly) {
+      tripTypeLabel = 'Monthly Driver'
+    }
+
+    let extraSpec = ''
+    if (isMonthly && booking.duration) {
+      const match = booking.duration.match(/(?:x\s*|×\s*)?(\d+(?:\.\d+)?\s*(?:hrs?|hours)(?:\/day)?)/i)
+      if (match) {
+        extraSpec = ` (${match[1]})`
+      } else {
+        extraSpec = ` (${booking.duration})`
+      }
+    } else if (booking.distance && booking.distance !== 'N/A' && !booking.duration?.toLowerCase().includes(booking.distance.toLowerCase())) {
+      extraSpec = ` (${booking.distance})`
+    }
+
+    const description = `${tripTypeLabel}${extraSpec}: ${booking.pickup} to ${booking.drop}`
     const title = 'New Booking Available!'
 
     const notificationsToInsert = driverIds.map((driverId) => ({

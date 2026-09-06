@@ -48,6 +48,7 @@ export default function BookingsTab({
   const [vehicleClass, setVehicleClass] = useState('Sedan')
   const [vehicleModel, setVehicleModel] = useState('')
   const [durationValue, setDurationValue] = useState('8')
+  const [monthlyDailyHours, setMonthlyDailyHours] = useState('8')
   const [fare, setFare] = useState('')
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [adminApproved, setAdminApproved] = useState(false)
@@ -200,7 +201,11 @@ export default function BookingsTab({
     setCreating(true)
     const bookingId = 'SD-' + Math.floor(1000 + Math.random() * 9000)
     const formattedDateTime = startDate && startTime ? `${startDate} ${startTime}` : 'Immediate'
-    const formattedDuration = tripType === 'HOURLY' ? `${durationValue} Hours` : `${durationValue} Days`
+    const formattedDuration = tripType === 'HOURLY'
+      ? `${durationValue} Hours`
+      : tripType === 'MONTHLY'
+        ? `${durationValue} Days x ${monthlyDailyHours || '8'} hrs/day`
+        : `${durationValue} Days`
     const vehicleString = `${vehicleClass}${vehicleModel ? ` (${vehicleModel})` : ''}`
 
     const payload = {
@@ -301,6 +306,7 @@ export default function BookingsTab({
     setVehicleClass('Sedan')
     setVehicleModel('')
     setDurationValue('8')
+    setMonthlyDailyHours('8')
     setFare('')
     setSpecialInstructions('')
     setAdminApproved(false)
@@ -339,7 +345,7 @@ export default function BookingsTab({
       setStartTime('')
     }
 
-    // Parse duration (e.g., "8 Hours" or "2 Days")
+    // Parse duration (e.g., "8 Hours" or "2 Days" or "30 Days x 8 hrs/day")
     if (b.duration) {
       const match = b.duration.match(/^(\d+)/)
       if (match) {
@@ -347,8 +353,15 @@ export default function BookingsTab({
       } else {
         setDurationValue('8')
       }
+      const hrsMatch = b.duration.match(/(?:x\s*|×\s*)?(\d+)\s*(?:hrs?|hours)(?:\/day)?/i)
+      if (hrsMatch) {
+        setMonthlyDailyHours(hrsMatch[1])
+      } else {
+        setMonthlyDailyHours('8')
+      }
     } else {
       setDurationValue('8')
+      setMonthlyDailyHours('8')
     }
 
     // Parse vehicle category and model (e.g. "Sedan (Ciaz)" or "Hatchback")
@@ -378,7 +391,11 @@ export default function BookingsTab({
 
     setCreating(true)
     const formattedDateTime = startDate && startTime ? `${startDate} ${startTime}` : 'Immediate'
-    const formattedDuration = tripType === 'HOURLY' ? `${durationValue} Hours` : `${durationValue} Days`
+    const formattedDuration = tripType === 'HOURLY'
+      ? `${durationValue} Hours`
+      : tripType === 'MONTHLY'
+        ? `${durationValue} Days x ${monthlyDailyHours || '8'} hrs/day`
+        : `${durationValue} Days`
     const vehicleString = `${vehicleClass}${vehicleModel ? ` (${vehicleModel})` : ''}`
 
     // Automatically set status to 'accepted' if a driver is assigned and status was 'available'
@@ -1288,6 +1305,24 @@ export default function BookingsTab({
                     className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none"
                   />
                 </div>
+
+                {/* Daily Duty Hours for Monthly */}
+                {tripType === 'MONTHLY' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                      Daily Duty Hours (hrs/day)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={monthlyDailyHours}
+                      onChange={(e) => setMonthlyDailyHours(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-emerald-500/30 rounded-lg text-emerald-400 focus:outline-none focus:border-emerald-500"
+                      placeholder="e.g. 8, 10, 12"
+                    />
+                  </div>
+                )}
 
                 {/* Fare */}
                 <div className="space-y-1 sm:col-span-2">

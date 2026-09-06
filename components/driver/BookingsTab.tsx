@@ -16,9 +16,10 @@ import {
   Play,
   Square,
   DollarSign,
-  Info
+  Info,
+  Clock
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getMonthlyDutyHours } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 
@@ -573,16 +574,20 @@ function ActiveBookingCard({
         <span
           className={cn(
             'text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border',
-            booking.type === 'AIRPORT DROP'
-              ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-              : booking.type === 'OUTSTATION'
-                ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                : booking.type === 'MONTHLY'
-                  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
-                  : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+            booking.duration?.toLowerCase().includes('one way')
+              ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+              : booking.type === 'AIRPORT DROP'
+                ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                : booking.type === 'OUTSTATION'
+                  ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                  : booking.type === 'MONTHLY'
+                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
           )}
         >
-          {booking.type}
+          {booking.duration?.toLowerCase().includes('one way')
+            ? (booking.type === 'OUTSTATION' ? 'OUTSTATION ONE WAY' : 'ONE WAY')
+            : booking.type}
         </span>
       </div>
 
@@ -651,11 +656,30 @@ function ActiveBookingCard({
           <span className="flex items-center gap-1.5"><Car size={12} /> Vehicle Spec:</span>
           <span className="text-foreground font-semibold">{booking.vehicle}</span>
         </div>
-        {booking.duration && booking.distance && (
+        {booking.type === 'MONTHLY' && getMonthlyDutyHours(booking.duration) && (
+          <div className="flex justify-between items-center bg-emerald-500/10 dark:bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-500/25">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+              <Clock size={13} /> Daily Duty Hours:
+            </span>
+            <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
+              ⏰ {getMonthlyDutyHours(booking.duration)}
+            </span>
+          </div>
+        )}
+        {booking.duration && (
           <div className="flex justify-between items-center">
-            <span>Est. Duration & Distance:</span>
+            <span>
+              {booking.type === 'MONTHLY'
+                ? 'Package Duration:'
+                : booking.distance && booking.distance !== 'N/A'
+                  ? 'Est. Duration & Distance:'
+                  : 'Est. Duration:'}
+            </span>
             <span className="text-foreground font-medium">
-              {booking.duration} ({booking.distance})
+              {booking.duration}
+              {booking.distance && booking.distance !== 'N/A' && !booking.duration?.toLowerCase().includes(booking.distance.toLowerCase())
+                ? ` (${booking.distance})`
+                : ''}
             </span>
           </div>
         )}
@@ -857,16 +881,20 @@ export default function BookingsTab({
                   <span
                     className={cn(
                       'text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border',
-                      booking.type === 'AIRPORT DROP'
-                        ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-                        : booking.type === 'OUTSTATION'
-                          ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                          : booking.type === 'MONTHLY'
-                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
-                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                      booking.duration?.toLowerCase().includes('one way')
+                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                        : booking.type === 'AIRPORT DROP'
+                          ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                          : booking.type === 'OUTSTATION'
+                            ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                            : booking.type === 'MONTHLY'
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                     )}
                   >
-                    {booking.type}
+                    {booking.duration?.toLowerCase().includes('one way')
+                      ? (booking.type === 'OUTSTATION' ? 'OUTSTATION ONE WAY' : 'ONE WAY')
+                      : booking.type}
                   </span>
                 </div>
 
@@ -879,6 +907,19 @@ export default function BookingsTab({
                     <span className="text-xs font-semibold text-foreground">
                       {booking.dateTime}
                     </span>
+                    {booking.duration && (
+                      <span className="text-[10px] text-text-muted block font-medium">
+                        {booking.duration}
+                        {booking.type === 'MONTHLY' && getMonthlyDutyHours(booking.duration) && (
+                          <span className="ml-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
+                            ⏰ {getMonthlyDutyHours(booking.duration)}
+                          </span>
+                        )}
+                        {booking.distance && booking.distance !== 'N/A' && !booking.duration?.toLowerCase().includes(booking.distance.toLowerCase())
+                          ? ` • ${booking.distance}`
+                          : ''}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-[9px] font-mono text-text-muted tracking-wider block leading-none mb-1">
