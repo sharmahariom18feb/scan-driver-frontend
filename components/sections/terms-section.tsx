@@ -29,7 +29,7 @@ export function TermsSection() {
               Terms & <em className="italic text-gold-light">Conditions</em>
             </h2>
             <p className="text-muted-foreground text-sm mt-2.5">
-              Last updated: May 2025 &nbsp;|&nbsp; Applicable to all users of ScanDriver services in Delhi NCR.
+              Last updated: May 2026 &nbsp;|&nbsp; Applicable to all users of ScanDriver services in Delhi NCR.
             </p>
           </Reveal>
         </div>

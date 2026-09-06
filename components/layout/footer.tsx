@@ -108,7 +108,7 @@ export function Footer() {
         {/* Bottom Section */}
         <div className="border-t border-border pt-7 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            © 2025 ScanDriver Private Limited. All rights reserved. | Delhi NCR, India
+            © 2026 Scan Driver Private Limited. All rights reserved. | Delhi NCR, India
           </p>
           <div className="flex gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">

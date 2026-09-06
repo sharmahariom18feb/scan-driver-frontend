@@ -4,7 +4,7 @@ import { CTAButton } from '@/components/common/cta-button'
 import { WhatsAppIcon } from '@/components/common/icons'
 import { DRIVER_BENEFITS, WHATSAPP_DRIVER, getWhatsAppLink } from '@/constants'
 import Image from 'next/image'
-import driverPicImg from '../../public/driver_pic.png'
+import driverPicImg from '../../public/driver_pic.jpeg'
 
 export function DriverJoinSection() {
   return (
