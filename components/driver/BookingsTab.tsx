@@ -239,13 +239,6 @@ function ActiveBookingCard({
                   <X size={14} /> No
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleUpdateTripStatus(booking.id, 'cancellation_request')}
-                className="w-full py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl border border-rose-500/20 text-rose-500 hover:border-rose-500 hover:bg-rose-500/10 flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
-              >
-                <X size={14} /> Cancel Booking
-              </button>
             </div>
           </div>
         )
@@ -259,7 +252,7 @@ function ActiveBookingCard({
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-bold text-foreground">Customer Not Picking Up</p>
-                <p className="text-xs text-text-muted">Notify operations to request guidance or booking cancellation.</p>
+                <p className="text-xs text-text-muted">Notify operations to request guidance or support.</p>
               </div>
               <div className="space-y-2">
                 <button
@@ -294,26 +287,30 @@ function ActiveBookingCard({
       case 'cancellation_request':
         return (
           <div className="space-y-3">
-            <div className="bg-rose-500/10 border border-rose-500/25 p-4 rounded-xl text-center space-y-4">
-              <div className="flex justify-center text-rose-500">
-                <AlertCircle size={28} />
+            <div className="bg-amber-500/10 border border-amber-500/25 p-4 rounded-xl text-center space-y-3">
+              <div className="flex justify-center text-amber-500">
+                <AlertCircle size={26} />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-bold text-foreground">Cancellation Workflow</p>
-                <p className="text-xs text-text-muted">Confirming this will close this booking and flag it as cancelled.</p>
+                <p className="text-sm font-bold text-foreground">Cancellation Under Review</p>
+                <p className="text-xs text-text-muted leading-relaxed">
+                  Driver cancellation is disabled. Please contact operations support to manage or reassign this booking.
+                </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1">
                 <button
-                  onClick={() => handleUpdateTripStatus(booking.id, 'cancelled_by_driver')}
-                  className="w-full py-3 px-4 font-bold text-xs uppercase tracking-wider rounded-xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+                  type="button"
+                  onClick={handleNotifyUnreachable}
+                  className="w-full py-3 px-4 font-bold text-xs uppercase tracking-wider rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-1.5 transition-all duration-300 active:scale-[0.98] cursor-pointer"
                 >
-                  Confirm Cancellation
+                  <MessageSquare size={14} /> Contact Operations
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleUpdateTripStatus(booking.id, 'called_customer')}
                   className="w-full py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-xl border border-border/10 text-foreground hover:bg-surface transition-all duration-300 active:scale-[0.98] cursor-pointer"
                 >
-                  Keep Booking
+                  Back to Booking
                 </button>
               </div>
             </div>

@@ -1,17 +1,19 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap } from 'lucide-react'
+import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Booking, Driver } from '../types'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
+import DriverDetailModal from './DriverDetailModal'
 
 interface BookingsTabProps {
   onRefresh: () => void
   autoApprovalEnabled?: boolean
   onToggleAutoApproval?: () => void
   updatingAutoApproval?: boolean
+  mode?: 'active' | 'history'
 }
 
 export default function BookingsTab({
@@ -19,6 +21,7 @@ export default function BookingsTab({
   autoApprovalEnabled = false,
   onToggleAutoApproval,
   updatingAutoApproval = false,
+  mode = 'active',
 }: BookingsTabProps) {
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('')
@@ -69,17 +72,39 @@ export default function BookingsTab({
   // Viewing Invoice Modal State
   const [viewingInvoice, setViewingInvoice] = useState<string | null>(null)
 
-  // Fetch Drivers for assignment & lookup once
+  // Viewing Driver Details Modal State
+  const [viewingDriverDetail, setViewingDriverDetail] = useState<Driver | null>(null)
+  const [viewingDriverBooking, setViewingDriverBooking] = useState<Booking | null>(null)
+
+  // Fetch Drivers for assignment & lookup once (with complete profiles and documents)
   const fetchAllDrivers = async () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*, driver_profiles(*)')
+        .select('*, driver_profiles(*), driver_documents(*)')
         .eq('role', 'DRIVER')
       if (error) throw error
       setDrivers((data || []) as Driver[])
     } catch (err) {
       console.error('Error fetching drivers for bookings:', err)
+    }
+  }
+
+  // Open Driver Details Modal and fetch latest updates
+  const handleViewDriver = async (driver: Driver, booking?: Booking) => {
+    setViewingDriverBooking(booking || null)
+    setViewingDriverDetail(driver)
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*, driver_profiles(*), driver_documents(*)')
+        .eq('id', driver.id)
+        .single()
+      if (data && !error) {
+        setViewingDriverDetail(data as Driver)
+      }
+    } catch (err) {
+      console.error('Error fetching latest driver details:', err)
     }
   }
 
@@ -98,15 +123,30 @@ export default function BookingsTab({
       }
 
       // 2. Apply Status Filter
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'cancelled') {
-          query = query.in('trip_status', ['cancelled_by_driver', 'cancelled'])
+      if (mode === 'history') {
+        if (statusFilter === 'all') {
+          // Both completed and cancelled
+          query = query.or('status.eq.completed,trip_status.eq.cancelled,trip_status.eq.cancelled_by_driver')
         } else if (statusFilter === 'completed') {
           query = query.eq('status', 'completed')
             .not('trip_status', 'eq', 'cancelled')
             .not('trip_status', 'eq', 'cancelled_by_driver')
-        } else {
-          query = query.eq('status', statusFilter)
+        } else if (statusFilter === 'cancelled') {
+          query = query.in('trip_status', ['cancelled_by_driver', 'cancelled'])
+        }
+      } else {
+        // Active mode: strictly active rides only (never completed or cancelled)
+        if (statusFilter === 'all') {
+          query = query
+            .not('status', 'eq', 'completed')
+            .not('trip_status', 'eq', 'cancelled')
+            .not('trip_status', 'eq', 'cancelled_by_driver')
+        } else if (statusFilter === 'available') {
+          query = query.eq('status', 'available')
+        } else if (statusFilter === 'accepted') {
+          query = query.eq('status', 'accepted')
+            .not('trip_status', 'eq', 'cancelled')
+            .not('trip_status', 'eq', 'cancelled_by_driver')
         }
       }
 
@@ -141,7 +181,12 @@ export default function BookingsTab({
 
   useEffect(() => {
     fetchBookingsLocal()
-  }, [page, pageSize, searchTerm, statusFilter, approvalFilter])
+  }, [page, pageSize, searchTerm, statusFilter, approvalFilter, mode])
+
+  useEffect(() => {
+    setStatusFilter('all')
+    setPage(1)
+  }, [mode])
 
   useEffect(() => {
     if (!assigningBooking) {
@@ -658,18 +703,25 @@ export default function BookingsTab({
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-300">
-      {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Bookings</h1>
-          <p className="text-slate-200 text-xs mt-1">Create, dispatch, and manage ride bookings.</p>
+          <h1 className="text-2xl font-bold text-white">
+            {mode === 'history' ? 'Completed & Cancelled Bookings' : 'Bookings'}
+          </h1>
+          <p className="text-slate-200 text-xs mt-1">
+            {mode === 'history'
+              ? 'Archive of past completed rides, invoices, and cancelled trips.'
+              : 'Create, dispatch, and manage active ride bookings.'}
+          </p>
         </div>
-        <a
-          href="/booking"
-          className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs py-3 px-5 rounded-xl transition-all shadow-md shadow-amber-500/10 cursor-pointer"
-        >
-          <Plus size={16} /> CREATE NEW BOOKING
-        </a>
+        {mode === 'active' && (
+          <a
+            href="/booking"
+            className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs py-3 px-5 rounded-xl transition-all shadow-md shadow-amber-500/10 cursor-pointer"
+          >
+            <Plus size={16} /> CREATE NEW BOOKING
+          </a>
+        )}
       </div>
 
       {/* Auto Approval Status Bar */}
@@ -719,16 +771,27 @@ export default function BookingsTab({
 
         {/* Status filters */}
         <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
-          {(['all', 'available', 'accepted', 'completed', 'cancelled'] as const).map((status) => (
+          {(mode === 'history'
+            ? ([
+                { id: 'all', label: 'All History' },
+                { id: 'completed', label: 'Completed' },
+                { id: 'cancelled', label: 'Cancelled' },
+              ] as const)
+            : ([
+                { id: 'all', label: 'All Active' },
+                { id: 'available', label: 'Available' },
+                { id: 'accepted', label: 'Accepted' },
+              ] as const)
+          ).map((item) => (
             <button
-              key={status}
-              onClick={() => handleStatusFilterChange(status)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${statusFilter === status
+              key={item.id}
+              onClick={() => handleStatusFilterChange(item.id)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${statusFilter === item.id
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-350 hover:text-white'
                 }`}
             >
-              {status}
+              {item.label}
             </button>
           ))}
         </div>
@@ -860,10 +923,20 @@ export default function BookingsTab({
                       <td className="py-4 px-5">
                         {assignedDriver ? (
                           <div className="space-y-1">
-                            <p className="font-bold text-white">{assignedDriver.full_name}</p>
+                            <button
+                              type="button"
+                              onClick={() => handleViewDriver(assignedDriver, b)}
+                              className="group inline-flex items-center gap-1.5 font-bold text-white hover:text-amber-400 transition-colors cursor-pointer text-left"
+                              title="Click to view full driver details & documents"
+                            >
+                              <span className="underline decoration-dotted underline-offset-4 decoration-amber-500/60 group-hover:decoration-amber-400">
+                                {assignedDriver.full_name}
+                              </span>
+                              <ExternalLink size={12} className="text-amber-500/70 group-hover:text-amber-400 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            </button>
                             <button
                               onClick={() => setAssigningBooking(b)}
-                              className="text-[9px] font-extrabold text-amber-500 hover:text-amber-400 uppercase hover:underline cursor-pointer"
+                              className="text-[9px] font-extrabold text-amber-500 hover:text-amber-400 uppercase hover:underline cursor-pointer block"
                             >
                               Change Driver
                             </button>
@@ -1025,8 +1098,17 @@ export default function BookingsTab({
                     <div className="flex items-center justify-between text-xs gap-2">
                       <div>
                         {assignedDriver ? (
-                          <p className="text-slate-200 text-[10px] font-semibold">
-                            Driver: <span className="font-extrabold text-white">{assignedDriver.full_name}</span>
+                          <p className="text-slate-200 text-[10px] font-semibold flex items-center gap-1.5 flex-wrap">
+                            <span>Driver:</span>
+                            <button
+                              type="button"
+                              onClick={() => handleViewDriver(assignedDriver, b)}
+                              className="font-extrabold text-white hover:text-amber-400 underline decoration-dotted underline-offset-2 decoration-amber-500/60 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                              title="Click to view full driver details & documents"
+                            >
+                              <span>{assignedDriver.full_name}</span>
+                              <ExternalLink size={10} className="text-amber-500 shrink-0" />
+                            </button>
                           </p>
                         ) : (
                           <span className="text-[10px] text-slate-400 italic">No driver assigned</span>
@@ -1651,6 +1733,18 @@ export default function BookingsTab({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: Comprehensive Driver Details */}
+      {viewingDriverDetail && (
+        <DriverDetailModal
+          driver={viewingDriverDetail}
+          booking={viewingDriverBooking}
+          onClose={() => {
+            setViewingDriverDetail(null)
+            setViewingDriverBooking(null)
+          }}
+        />
       )}
     </div>
   )

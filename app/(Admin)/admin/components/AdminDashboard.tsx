@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus, Zap } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus, Zap, CheckCircle2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -19,7 +19,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'drivers' | 'enquiries'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'history' | 'drivers' | 'enquiries'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -266,7 +266,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       {/* SIDEBAR */}
       <aside
         className={`fixed inset-y-0 left-0 ${
-          isCollapsed ? 'lg:w-20 w-64' : 'w-64'
+          isCollapsed ? 'lg:w-20 w-72' : 'w-72'
         } bg-slate-900 border-r border-slate-700/80 z-50 transform lg:translate-x-0 transition-all duration-300 ease-in-out flex flex-col justify-between ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -306,10 +306,11 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
           </div>
 
           {/* Nav Items */}
-          <nav className="p-4 space-y-1.5">
+          <nav className="p-3.5 space-y-1.5">
             {[
               { id: 'dashboard' as const, label: 'Overview', icon: LayoutDashboard },
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
+              { id: 'history' as const, label: 'Completed & Cancelled Booking', icon: CheckCircle2 },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
             ].map((item) => {
@@ -318,7 +319,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               
               const className = `w-full flex items-center ${
                 isCollapsed ? 'lg:justify-center' : 'lg:justify-start'
-              } gap-3.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer relative ${
+              } gap-3 px-3.5 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wide transition-all cursor-pointer relative ${
                 isActive
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/10'
                   : 'text-slate-330 hover:text-white hover:bg-slate-800/60'
@@ -334,8 +335,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   className={className}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon size={18} className="shrink-0" />
-                  <span className={`${isCollapsed ? 'lg:hidden' : 'inline'} transition-all duration-300`}>
+                  <Icon size={17} className="shrink-0" />
+                  <span className={`${isCollapsed ? 'lg:hidden' : 'inline'} whitespace-nowrap transition-all duration-300`}>
                     {item.label}
                   </span>
                   {item.id === 'enquiries' && stats.pendingEnquiriesCount && stats.pendingEnquiriesCount > 0 ? (
@@ -381,7 +382,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       </aside>
 
       {/* MAIN CONTAINER */}
-      <div className={`flex-1 transition-all duration-300 ${isCollapsed ? 'lg:pl-20' : 'lg:pl-64'} flex flex-col min-w-0 min-h-screen`}>
+      <div className={`flex-1 transition-all duration-300 ${isCollapsed ? 'lg:pl-20' : 'lg:pl-72'} flex flex-col min-w-0 min-h-screen`}>
         {/* HEADER */}
         <header className="h-16 px-4 sm:px-6 border-b border-slate-700/80 bg-slate-900/30 backdrop-blur-md flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
@@ -392,7 +393,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               <Menu size={20} />
             </button>
             <span className="text-xs font-bold text-slate-200 capitalize hidden sm:inline-block">
-              Root Console / {activeTab}
+              Root Console / {activeTab === 'history' ? 'Completed & Cancelled Booking' : activeTab}
             </span>
           </div>
 
@@ -472,10 +473,18 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
               {activeTab === 'bookings' && (
                 <BookingsTab
+                  mode="active"
                   onRefresh={fetchData}
                   autoApprovalEnabled={autoApprovalEnabled}
                   onToggleAutoApproval={handleToggleAutoApproval}
                   updatingAutoApproval={updatingAutoApproval}
+                />
+              )}
+
+              {activeTab === 'history' && (
+                <BookingsTab
+                  mode="history"
+                  onRefresh={fetchData}
                 />
               )}
 

@@ -46,28 +46,32 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     return d.driver_documents
   }
 
-  const downloadAllDocuments = async (d: Driver) => {
+  const downloadAllDocuments = async (d: Driver, excludePayment = false) => {
     const docs = getDocuments(d)
     if (!docs) {
       toast.error('No documents to download')
       return
     }
 
-    const filesToDownload = [
+    const allFiles = [
       { label: 'Aadhaar_Front', url: docs.aadhaar_front_url },
       { label: 'Aadhaar_Back', url: docs.aadhaar_back_url },
       { label: 'Driving_License', url: docs.driving_license_url },
       { label: 'PAN_Card', url: docs.pan_card_url },
       { label: 'Selfie', url: docs.selfie_url },
-      { label: 'Payment_Receipt', url: docs.payment },
-    ].filter((item): item is { label: string; url: string } => !!item.url)
+      { label: 'Payment_Receipt', url: docs.payment, isPayment: true },
+    ]
+
+    const filesToDownload = allFiles
+      .filter((item) => !excludePayment || !item.isPayment)
+      .filter((item): item is { label: string; url: string; isPayment?: boolean } => !!item.url)
 
     if (filesToDownload.length === 0) {
-      toast.error('No uploaded documents found for this driver')
+      toast.error(`No uploaded documents found for this driver${excludePayment ? ' (excluding payment slip)' : ''}`)
       return
     }
 
-    const toastId = toast.loading(`Preparing ZIP with ${filesToDownload.length} documents...`)
+    const toastId = toast.loading(`Preparing ZIP with ${filesToDownload.length} documents${excludePayment ? ' (without payment slip)' : ''}...`)
 
     try {
       const zip = new JSZip()
@@ -75,7 +79,9 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
       const driverId = d.unique_id || d.id || 'NoID'
       const driverLocation = (d.current_area || 'NoLocation').trim().replace(/\s+/g, '_')
       
-      const baseZipName = `${driverFirstName}_${driverId}_${driverLocation}`
+      const baseZipName = excludePayment
+        ? `${driverFirstName}_${driverId}_${driverLocation}_without_payment`
+        : `${driverFirstName}_${driverId}_${driverLocation}`
 
       for (let i = 0; i < filesToDownload.length; i++) {
         const item = filesToDownload[i]
@@ -102,7 +108,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
       document.body.removeChild(a)
       URL.revokeObjectURL(blobUrl)
 
-      toast.success('All documents zipped and downloaded successfully!', { id: toastId })
+      toast.success(`Documents ${excludePayment ? '(without payment slip) ' : ''}zipped and downloaded successfully!`, { id: toastId })
     } catch (error) {
       console.error('Error generating zip:', error)
       toast.error('Failed to download documents as ZIP', { id: toastId })
@@ -129,16 +135,27 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
       <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-4">
         {/* Document images */}
         <div>
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
             <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Uploaded Verification Documents</h4>
             {docsArray.some(doc => !!doc.url) && (
-              <button
-                type="button"
-                onClick={() => downloadAllDocuments(d)}
-                className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[9px] py-1 px-2.5 rounded-lg border border-slate-700 transition-all cursor-pointer"
-              >
-                <Download size={10} /> DOWNLOAD ALL DOCUMENTS
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => downloadAllDocuments(d, false)}
+                  className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[9px] py-1 px-2.5 rounded-lg border border-slate-700 transition-all cursor-pointer"
+                  title="Download all documents including payment slip"
+                >
+                  <Download size={10} /> DOWNLOAD ALL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadAllDocuments(d, true)}
+                  className="inline-flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 font-extrabold text-[9px] py-1 px-2.5 rounded-lg border border-amber-500/30 transition-all cursor-pointer"
+                  title="Download verification documents without payment slip"
+                >
+                  <Download size={10} /> WITHOUT PAYMENT SLIP
+                </button>
+              </div>
             )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">

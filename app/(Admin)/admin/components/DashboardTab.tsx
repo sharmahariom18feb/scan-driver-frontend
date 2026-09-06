@@ -8,7 +8,7 @@ interface DashboardTabProps {
   stats: DashboardStats
   recentBookings: Booking[]
   recentDrivers: Driver[]
-  onTabChange: (tab: 'bookings' | 'drivers') => void
+  onTabChange: (tab: 'bookings' | 'history' | 'drivers') => void
   autoApprovalEnabled?: boolean
   onToggleAutoApproval?: () => void
   updatingAutoApproval?: boolean
