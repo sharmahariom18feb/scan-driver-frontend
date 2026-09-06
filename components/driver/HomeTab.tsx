@@ -50,10 +50,9 @@ const getPackageText = (booking: Booking) => {
     return 'Package - N/A';
   }
   if (booking.type === 'MONTHLY') {
-    const hours = getMonthlyDutyHours(booking.duration);
     const days = getMonthlyDays(booking.duration);
-    if (days && hours) {
-      return `Package - ${days} • ${hours}`;
+    if (days) {
+      return `Package - ${days}`;
     }
     return `Package - ${booking.duration}`;
   }
@@ -245,20 +244,20 @@ export default function HomeTab({
                 key={booking.id}
                 onClick={() => handleOpenDetails(booking)}
                 className={cn(
-                  'rounded-xl p-4.5 transition-all duration-300 border-2 flex flex-col gap-3.5 relative overflow-hidden cursor-pointer hover:border-gold/30',
+                  'rounded-xl p-4 transition-all duration-300 border-2 flex flex-col gap-3 relative overflow-hidden cursor-pointer hover:border-gold/30',
                   booking.type === 'MONTHLY'
                     ? 'bg-emerald-800/[0.08] dark:bg-emerald-950/20 border-emerald-600/50 dark:border-emerald-500/40 shadow-lg shadow-emerald-900/20 dark:shadow-emerald-950/50'
                     : 'bg-card border-border shadow-md'
                 )}
               >
                 {/* Header: Date/Time on left, Car info on right */}
-                <div className="flex items-center justify-between border-b border-border/10 pb-2.5">
-                  <div className="font-bold text-sm text-text tracking-wide">
+                <div className="flex items-center justify-between border-b border-border/10 pb-2">
+                  <div className="font-bold text-xs text-text">
                     {formatTimeAndDate(booking.dateTime)}
                   </div>
-                  <div className="flex items-center gap-1.5 font-bold text-sm text-text tracking-wide">
+                  <div className="flex items-center gap-1 font-bold text-xs text-text">
                     {booking.vehicle && (
-                      <span className="text-base select-none leading-none">
+                      <span className="text-sm select-none leading-none">
                         {getVehicleIcon(booking.vehicle)}
                       </span>
                     )}
@@ -267,46 +266,38 @@ export default function HomeTab({
                 </div>
 
                 {/* Body: 2 Column Layout matching image structure */}
-                <div className="grid grid-cols-12 gap-3 items-center">
+                <div className="grid grid-cols-12 gap-2.5 items-center">
                   {/* Left Column Box: White background with pickup details */}
-                  <div className="col-span-7 bg-white dark:bg-zinc-900 border border-border/10 rounded-xl p-3.5 shadow-xs flex flex-col gap-2 min-h-[96px] justify-center">
+                  <div className="col-span-7 bg-white dark:bg-zinc-900 border border-border/10 rounded-xl p-3 shadow-xs flex flex-col gap-1.5 min-h-[88px] justify-center">
                     <div className="flex items-center justify-between gap-1">
                       <h4 className={cn(
-                        'font-black text-sm tracking-wide',
+                        'font-bold text-xs tracking-tight truncate',
                         booking.type === 'MONTHLY' ? 'text-emerald-700 dark:text-emerald-400' : 'text-primary'
                       )}>
                         {getTripTitle(booking)}
                       </h4>
                       {booking.type === 'MONTHLY' && getMonthlyDutyHours(booking.duration) ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shrink-0 whitespace-nowrap">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shrink-0 whitespace-nowrap">
                           ⏰ {getMonthlyDutyHours(booking.duration)}
                         </span>
                       ) : (
                         booking.distance && booking.distance !== 'N/A' && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25 shrink-0 whitespace-nowrap">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25 shrink-0 whitespace-nowrap">
                             {booking.distance}
                           </span>
                         )
                       )}
                     </div>
-                    {/* {booking.type === 'MONTHLY' && getMonthlyDutyHours(booking.duration) && (
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-350 bg-emerald-500/10 dark:bg-emerald-950/40 px-2 py-1 rounded-md border border-emerald-500/20">
-                        <span>⏰ Working Duty: {getMonthlyDutyHours(booking.duration)}</span>
-                        {getMonthlyDays(booking.duration) && (
-                          <span className="text-text-muted font-medium">• {getMonthlyDays(booking.duration)}</span>
-                        )}
-                      </div>
-                    )} */}
-                    <div className="flex items-start gap-2">
-                      <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-normal line-clamp-3">
+                    <div className="flex items-start gap-1.5">
+                      <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                      <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 leading-snug line-clamp-2">
                         {booking.pickup}
                       </p>
                     </div>
                     {booking.drop && booking.drop.trim() !== '' && (
-                      <div className="flex items-start gap-2">
-                        <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
-                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-normal line-clamp-3">
+                      <div className="flex items-start gap-1.5">
+                        <span className="mt-1 h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                        <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 leading-snug line-clamp-2">
                           {booking.drop}
                         </p>
                       </div>
@@ -314,11 +305,11 @@ export default function HomeTab({
                   </div>
 
                   {/* Right Column: Fare, Duration, Accept Button */}
-                  <div className="col-span-5 flex flex-col items-center justify-center text-center gap-1.5 pl-2">
-                    <div className="text-2.5xl font-black text-text tracking-tight">
+                  <div className="col-span-5 flex flex-col items-center justify-center text-center gap-1 pl-1">
+                    <div className="text-xl font-extrabold text-text tracking-tight">
                       ₹{booking.fare}
                     </div>
-                    <div className="text-xs text-text-muted font-bold leading-none mb-1">
+                    <div className="text-[10px] text-text-muted font-semibold leading-tight mb-1">
                       {getPackageText(booking)}
                     </div>
                     <button
@@ -335,7 +326,7 @@ export default function HomeTab({
                         }
                       }}
                       className={cn(
-                        'w-full py-2.5 px-3 font-black text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed',
+                        'w-full py-2 px-3 font-bold text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed',
                         booking.type === 'MONTHLY'
                           ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                           : 'bg-primary hover:bg-gold-light text-black'
