@@ -34,6 +34,7 @@ export default function OnboardingPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [zone, setZone] = useState('')
+  const [currentAddress, setCurrentAddress] = useState('')
   const [referredBy, setReferredBy] = useState('')
 
   // Step 2: Experience & Preferences
@@ -220,6 +221,7 @@ export default function OnboardingPage() {
     setPanCardUrl('')
     setSelfieUrl('')
     setPaymentUrl('')
+    setCurrentAddress('')
 
     toast.info('Registration cancelled.')
     router.push('/driver-app')
@@ -250,6 +252,10 @@ export default function OnboardingPage() {
       }
       if (!zone) {
         toast.error('Please select your Area / Zone')
+        return
+      }
+      if (!currentAddress.trim()) {
+        toast.error('Please enter your Current Address')
         return
       }
       setStep(2)
@@ -428,6 +434,7 @@ export default function OnboardingPage() {
           fullName,
           phone: normalizedPhone,
           currentArea: zone,
+          currentAddress: currentAddress.trim(),
           licenseNo: 'PENDING_VERIFICATION',
           password,
           referredBy: referredBy || undefined,
@@ -441,22 +448,42 @@ export default function OnboardingPage() {
         }
 
         // Step 3: Write additional attributes into driver_profiles table
-        const { error: profileError } = await supabase
+        const profileInsertData: any = {
+          id: user.id,
+          experience,
+          license_status: licenseStatus,
+          documents_available: ['Aadhaar Card', 'Driving Licence', 'PAN Card', 'Selfie', 'Registration Payment'],
+          availability,
+          service_preference: servicePreference,
+          vehicle_specialties: vehicleSpecialties,
+          previous_platforms: previousPlatforms || null,
+          additional_comments: additionalComments || null,
+          current_address: currentAddress.trim() || null
+        }
+
+        let { error: profileError } = await supabase
           .from('driver_profiles')
-          .insert({
-            id: user.id,
-            experience,
-            license_status: licenseStatus,
-            documents_available: ['Aadhaar Card', 'Driving Licence', 'PAN Card', 'Selfie', 'Registration Payment'],
-            availability,
-            service_preference: servicePreference,
-            vehicle_specialties: vehicleSpecialties,
-            previous_platforms: previousPlatforms || null,
-            additional_comments: additionalComments || null
-          })
+          .insert(profileInsertData)
+
+        // Fallback if current_address column is pending migration on driver_profiles
+        if (profileError && profileError.message?.includes('current_address')) {
+          delete profileInsertData.current_address
+          const retry = await supabase.from('driver_profiles').insert(profileInsertData)
+          profileError = retry.error
+        }
 
         if (profileError) {
           throw new Error(profileError.message || 'Failed to register additional profile details')
+        }
+
+        // Ensure users table also has current_address updated
+        try {
+          await supabase
+            .from('users')
+            .update({ current_address: currentAddress.trim() })
+            .eq('id', user.id)
+        } catch (ignored) {
+          // Handled gracefully if column is pending migration
         }
 
         // Step 4: Write documents and references into driver_documents table
@@ -738,6 +765,27 @@ export default function OnboardingPage() {
                   <option key={z} value={z}>{z}</option>
                 ))}
               </select>
+            </div>
+
+            {/* 4. Current Address */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-foreground">
+                  <span className="text-black font-bold mr-1">4</span> Current Address
+                </label>
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
+                  Required
+                </span>
+              </div>
+              <p className="text-[10px] text-text-muted mb-1.5">Aapka abhi ka pura pata (House No., Gali/Colony, Landmark)</p>
+              <textarea
+                rows={2}
+                required
+                value={currentAddress}
+                onChange={(e) => setCurrentAddress(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-surface2 border border-border/40 rounded-xl focus:border-primary focus:outline-none text-foreground transition-colors placeholder:text-text-muted/50 resize-none"
+                placeholder="Jaise: House No., Ward/Gali No., Colony, Landmark, Delhi NCR"
+              />
             </div>
 
             {/* Referral Code */}

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download } from 'lucide-react'
+import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import JSZip from 'jszip'
@@ -9,9 +9,10 @@ import { Driver } from '../types'
 
 interface DriversTabProps {
   onRefresh: () => void
+  mode?: 'active' | 'suspended'
 }
 
-export default function DriversTab({ onRefresh }: DriversTabProps) {
+export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'pending'>('all')
   const [onlineFilter, setOnlineFilter] = useState<'all' | 'online' | 'offline'>('all')
@@ -260,6 +261,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
   const [editEmail, setEditEmail] = useState('')
   const [editLicenseNo, setEditLicenseNo] = useState('')
   const [editCurrentArea, setEditCurrentArea] = useState('')
+  const [editCurrentAddress, setEditCurrentAddress] = useState('')
   const [editRating, setEditRating] = useState(5.0)
   const [editVerified, setEditVerified] = useState(false)
   const [editIsOnline, setEditIsOnline] = useState(false)
@@ -285,6 +287,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
 
   const openEditModal = (d: Driver) => {
     setEditingDriver(d)
+    const profile = getProfile(d)
     
     // User fields
     setEditFullName(d.full_name || '')
@@ -292,6 +295,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     setEditEmail(d.email || '')
     setEditLicenseNo(d.license_no || '')
     setEditCurrentArea(d.current_area || '')
+    setEditCurrentAddress(d.current_address || profile?.current_address || '')
     setEditRating(Number(d.rating) || 5.0)
     setEditVerified(!!d.verified)
     setEditIsOnline(!!d.is_online)
@@ -299,7 +303,6 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     setEditUniqueId(d.unique_id || '')
 
     // Profile fields
-    const profile = getProfile(d)
     setEditExperience(profile?.experience || '')
     setEditLicenseStatus(profile?.license_status || '')
     setEditAvailability(profile?.availability || '')
@@ -342,6 +345,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
           email: editEmail || null,
           license_no: editLicenseNo,
           current_area: editCurrentArea,
+          current_address: editCurrentAddress || null,
           rating: Number(editRating),
           verified: editVerified,
           is_online: editIsOnline,
@@ -354,6 +358,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
           availability: editAvailability,
           previous_platforms: editPreviousPlatforms || null,
           additional_comments: editAdditionalComments || null,
+          current_address: editCurrentAddress || null,
           service_preference: editServicePreference,
           vehicle_specialties: editVehicleSpecialties
         } : null,
@@ -504,6 +509,13 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
         .select('*, driver_profiles(*), driver_documents(*)', { count: 'exact' })
         .eq('role', 'DRIVER')
 
+      // Filter by mode: active vs suspended
+      if (mode === 'suspended') {
+        query = query.eq('is_suspended', true)
+      } else {
+        query = query.eq('is_suspended', false)
+      }
+
       // 1. Apply Search Filter
       if (searchTerm.trim()) {
         const term = `%${searchTerm.trim()}%`
@@ -542,7 +554,7 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
 
   useEffect(() => {
     fetchDriversLocal()
-  }, [page, pageSize, searchTerm, verificationFilter, onlineFilter])
+  }, [mode, page, pageSize, searchTerm, verificationFilter, onlineFilter])
 
   // Custom filters state updater to reset page to 1
   const handleSearchChange = (val: string) => {
@@ -704,8 +716,20 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
     <div className="space-y-6 animate-in fade-in-50 duration-300">
       {/* Header section */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Drivers</h1>
-        <p className="text-slate-200 text-xs mt-1">Verify licenses, manage account status, and track online drivers.</p>
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
+          {mode === 'suspended' ? (
+            <>
+              <UserX className="text-rose-400" size={24} /> Suspended Drivers
+            </>
+          ) : (
+            'Drivers'
+          )}
+        </h1>
+        <p className="text-slate-200 text-xs mt-1">
+          {mode === 'suspended'
+            ? 'Review temporarily suspended driver accounts and reactivate access when needed.'
+            : 'Verify licenses, manage account status, and track online drivers.'}
+        </p>
       </div>
 
       {/* Filters bar */}
@@ -786,7 +810,9 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
               {filteredDrivers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-xs text-slate-400 italic">
-                    No drivers registered matching current filters.
+                    {mode === 'suspended'
+                      ? 'No suspended drivers found.'
+                      : 'No drivers registered matching current filters.'}
                   </td>
                 </tr>
               ) : (
@@ -831,12 +857,21 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                     </td>
 
                     {/* Rating & Area */}
-                    <td className="py-4 px-5">
+                    <td className="py-4 px-5 max-w-[240px]">
                       <div className="space-y-0.5">
                         <p className="text-slate-100 font-bold flex items-center gap-1">
                           <MapPin size={11} className="text-slate-450 shrink-0" /> {d.current_area}
                         </p>
-                        <p className="text-[10px] text-amber-400 font-bold flex items-center gap-0.5">
+                        <p
+                          className="text-[10px] text-slate-350 line-clamp-2 break-words leading-tight"
+                          title={d.current_address || getProfile(d)?.current_address || 'Not provided'}
+                        >
+                          <span className="text-slate-500 font-semibold">Address:</span>{' '}
+                          {d.current_address || getProfile(d)?.current_address || (
+                            <span className="text-slate-500 italic">Not provided</span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-amber-400 font-bold flex items-center gap-0.5 pt-0.5">
                           <Star size={10} className="fill-amber-450" /> {Number(d.rating).toFixed(2)} / 5.0
                         </p>
                       </div>
@@ -985,6 +1020,12 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                   <p>License: <span className="font-mono text-white font-bold">{d.license_no}</span></p>
                   <p>Mobile: {d.phone}</p>
                   <p>Area: {d.current_area} • Rating: {Number(d.rating).toFixed(2)}★</p>
+                  <p className="text-[10px] text-slate-350 break-words">
+                    <span className="text-slate-500 font-semibold">Address:</span>{' '}
+                    {d.current_address || getProfile(d)?.current_address || (
+                      <span className="text-slate-500 italic">Not provided</span>
+                    )}
+                  </p>
                   <p className="flex items-center gap-1 mt-1 font-semibold">
                     Status: <span className={`h-1.5 w-1.5 rounded-full ${d.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
                     <span className="font-bold text-slate-200">{d.is_online ? 'Online' : 'Offline'}</span>
@@ -1289,6 +1330,20 @@ export default function DriversTab({ onRefresh }: DriversTabProps) {
                       value={editCurrentArea}
                       onChange={(e) => setEditCurrentArea(e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                    />
+                  </div>
+
+                  {/* Current Address */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Current Address
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editCurrentAddress}
+                      onChange={(e) => setEditCurrentAddress(e.target.value)}
+                      placeholder="Enter driver current address"
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors resize-none"
                     />
                   </div>
 

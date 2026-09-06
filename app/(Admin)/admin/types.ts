@@ -7,6 +7,7 @@ export interface DriverProfile {
   vehicle_specialties: string[]
   previous_platforms?: string | null
   additional_comments?: string | null
+  current_address?: string | null
 }
 
 export interface DriverReference {
@@ -34,6 +35,7 @@ export interface Driver {
   phone: string
   license_no: string
   current_area: string
+  current_address?: string | null
   rating: number
   verified: boolean
   is_online: boolean
@@ -79,6 +81,7 @@ export interface DashboardStats {
   pendingDriversCount: number
   pendingBookingsCount: number
   pendingEnquiriesCount?: number
+  suspendedDriversCount?: number
 }
 
 export interface Enquiry {

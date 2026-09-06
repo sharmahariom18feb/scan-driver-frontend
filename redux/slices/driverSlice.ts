@@ -56,6 +56,7 @@ export interface DriverInfo {
   phone: string
   email: string
   currentArea: string
+  currentAddress?: string
   licenseNo: string
   rating: number
   verified: boolean
@@ -244,6 +245,7 @@ export const loginDriver = createAsyncThunk(
         phone: profile.phone,
         email: user.email || profile.email || '',
         currentArea: profile.current_area,
+        currentAddress: profile.current_address || '',
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
@@ -335,6 +337,7 @@ export const verifyDriverOtp = createAsyncThunk(
         phone: profile.phone,
         email: user.email || profile.email || '',
         currentArea: profile.current_area,
+        currentAddress: profile.current_address || '',
         licenseNo: profile.license_no,
         rating: Number(profile.rating),
         verified: profile.verified,
@@ -377,6 +380,7 @@ export const signupDriver = createAsyncThunk(
             phone: normalizedPhone,
             license_no: profileData.licenseNo,
             current_area: profileData.currentArea,
+            current_address: profileData.currentAddress || '',
             role: 'DRIVER',
             referred_by: profileData.referredBy || null,
           }
@@ -393,6 +397,7 @@ export const signupDriver = createAsyncThunk(
         phone: normalizedPhone || '+91-0000000000',
         email: profileData.email || '',
         currentArea: profileData.currentArea || 'Delhi NCR',
+        currentAddress: profileData.currentAddress || '',
         licenseNo: profileData.licenseNo || 'DL-XXXXXXXXXXXXX',
         rating: 5.0,
         verified: false,
@@ -454,6 +459,7 @@ export const checkDriverSession = createAsyncThunk(
             phone: profile.phone,
             email: user.email || '',
             currentArea: profile.current_area,
+            currentAddress: profile.current_address || '',
             licenseNo: profile.license_no,
             rating: Number(profile.rating),
             verified: profile.verified,
@@ -584,6 +590,7 @@ export const updateDriverProfile = createAsyncThunk(
           phone: updatedData.phone,
           license_no: updatedData.licenseNo,
           current_area: updatedData.currentArea,
+          ...(updatedData.currentAddress !== undefined ? { current_address: updatedData.currentAddress } : {}),
         })
         .eq('id', session.user.id)
         .select()
@@ -597,6 +604,7 @@ export const updateDriverProfile = createAsyncThunk(
         phone: data.phone,
         email: session.user.email || '',
         currentArea: data.current_area,
+        currentAddress: data.current_address || '',
         licenseNo: data.license_no,
         rating: Number(data.rating),
         verified: data.verified,

@@ -47,10 +47,21 @@ export async function POST(request: Request) {
 
     // 4. Update users table
     if (userData && Object.keys(userData).length > 0) {
-      const { error: userUpdateError } = await supabaseAdminClient
+      const finalUserData = { ...userData }
+      let { error: userUpdateError } = await supabaseAdminClient
         .from('users')
-        .update(userData)
+        .update(finalUserData)
         .eq('id', driverId)
+
+      // Fallback if current_address column has not been migrated yet in Supabase schema
+      if (userUpdateError && userUpdateError.message?.includes('current_address')) {
+        delete finalUserData.current_address
+        const retry = await supabaseAdminClient
+          .from('users')
+          .update(finalUserData)
+          .eq('id', driverId)
+        userUpdateError = retry.error
+      }
 
       if (userUpdateError) {
         throw new Error(`Failed to update users table: ${userUpdateError.message}`)
@@ -59,9 +70,19 @@ export async function POST(request: Request) {
 
     // 5. Update/Upsert driver_profiles table
     if (profileData && Object.keys(profileData).length > 0) {
-      const { error: profileUpdateError } = await supabaseAdminClient
+      const finalProfileData = { ...profileData }
+      let { error: profileUpdateError } = await supabaseAdminClient
         .from('driver_profiles')
-        .upsert({ id: driverId, ...profileData }, { onConflict: 'id' })
+        .upsert({ id: driverId, ...finalProfileData }, { onConflict: 'id' })
+
+      // Fallback if current_address column has not been migrated yet in Supabase schema
+      if (profileUpdateError && profileUpdateError.message?.includes('current_address')) {
+        delete finalProfileData.current_address
+        const retry = await supabaseAdminClient
+          .from('driver_profiles')
+          .upsert({ id: driverId, ...finalProfileData }, { onConflict: 'id' })
+        profileUpdateError = retry.error
+      }
 
       if (profileUpdateError) {
         throw new Error(`Failed to update driver_profiles table: ${profileUpdateError.message}`)

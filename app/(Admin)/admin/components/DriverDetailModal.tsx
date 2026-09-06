@@ -354,6 +354,31 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
             </div>
           </div>
 
+          {/* Current Address */}
+          <div className="bg-slate-950/80 border border-slate-800/80 p-3 rounded-xl flex items-start gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-lime-500/10 text-[#A3E635] flex items-center justify-center shrink-0 mt-0.5">
+              <MapPin size={15} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <p className="text-[9px] font-extrabold uppercase text-slate-500">Current Address</p>
+                {(driver.current_address || profile?.current_address) && (
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(driver.current_address || profile?.current_address || '', 'Address')}
+                    className="text-slate-500 hover:text-white cursor-pointer"
+                    title="Copy Address"
+                  >
+                    {copiedField === 'Address' ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs font-semibold text-white break-words mt-0.5">
+                {driver.current_address || profile?.current_address || 'Not Provided'}
+              </p>
+            </div>
+          </div>
+
           {/* 2. Professional Credentials & Driving Info */}
           <div className="space-y-3">
             <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635] flex items-center gap-1.5">

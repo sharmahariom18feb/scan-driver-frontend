@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { LayoutDashboard, Briefcase, Users, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus, Zap, CheckCircle2 } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, UserX, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus, Zap, CheckCircle2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -19,7 +19,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'history' | 'drivers' | 'enquiries'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'history' | 'drivers' | 'suspended-drivers' | 'enquiries'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -118,19 +118,21 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         pendingBookingsRes,
         recentBookingsRes,
         recentDriversRes,
-        pendingEnquiriesRes
+        pendingEnquiriesRes,
+        suspendedDriversRes
       ] = await Promise.all([
         supabase.from('bookings').select('*', { count: 'exact', head: true }),
         supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
         supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'accepted'),
         supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_online', true),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('verified', false),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', false),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', false).eq('is_online', true),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', false).eq('verified', false),
         supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('admin_approved', false),
         supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
-        supabase.from('users').select('*, driver_profiles(*)').eq('role', 'DRIVER').order('created_at', { ascending: false }).limit(5),
-        supabase.from('customer_enquiries').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+        supabase.from('users').select('*, driver_profiles(*)').eq('role', 'DRIVER').eq('is_suspended', false).order('created_at', { ascending: false }).limit(5),
+        supabase.from('customer_enquiries').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', true)
       ])
 
       if (recentBookingsRes.error) throw recentBookingsRes.error
@@ -152,6 +154,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         pendingDriversCount: pendingDriversRes.count || 0,
         pendingBookingsCount: pendingBookingsRes.count || 0,
         pendingEnquiriesCount: pendingEnquiriesRes.count || 0,
+        suspendedDriversCount: suspendedDriversRes.count || 0,
       })
     } catch (err: any) {
       console.error('Error fetching admin data:', err)
@@ -312,6 +315,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
               { id: 'history' as const, label: 'Completed & Cancelled Booking', icon: CheckCircle2 },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
+              { id: 'suspended-drivers' as const, label: 'Suspended Drivers', icon: UserX },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
             ].map((item) => {
               const Icon = item.icon
@@ -339,6 +343,17 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   <span className={`${isCollapsed ? 'lg:hidden' : 'inline'} whitespace-nowrap transition-all duration-300`}>
                     {item.label}
                   </span>
+                  {item.id === 'suspended-drivers' && stats.suspendedDriversCount && stats.suspendedDriversCount > 0 ? (
+                    <span
+                      className={`bg-rose-500/20 text-rose-300 border border-rose-500/30 font-extrabold text-[9px] rounded-full transition-all duration-300 ${
+                        isCollapsed
+                          ? 'lg:absolute lg:top-1 lg:right-1.5 lg:px-1.5 lg:py-0.5'
+                          : 'ml-auto px-2 py-0.5'
+                      }`}
+                    >
+                      {stats.suspendedDriversCount}
+                    </span>
+                  ) : null}
                   {item.id === 'enquiries' && stats.pendingEnquiriesCount && stats.pendingEnquiriesCount > 0 ? (
                     <span
                       className={`bg-amber-400 text-slate-950 font-extrabold text-[9px] rounded-full transition-all duration-300 ${
@@ -393,7 +408,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               <Menu size={20} />
             </button>
             <span className="text-xs font-bold text-slate-200 capitalize hidden sm:inline-block">
-              Root Console / {activeTab === 'history' ? 'Completed & Cancelled Booking' : activeTab}
+              Root Console / {activeTab === 'history' ? 'Completed & Cancelled Booking' : activeTab === 'suspended-drivers' ? 'Suspended Drivers' : activeTab}
             </span>
           </div>
 
@@ -490,6 +505,14 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
               {activeTab === 'drivers' && (
                 <DriversTab
+                  mode="active"
+                  onRefresh={fetchData}
+                />
+              )}
+
+              {activeTab === 'suspended-drivers' && (
+                <DriversTab
+                  mode="suspended"
                   onRefresh={fetchData}
                 />
               )}

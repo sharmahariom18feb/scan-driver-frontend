@@ -9,6 +9,7 @@ create table if not exists public.users (
   phone text not null,
   license_no text not null,
   current_area text not null,
+  current_address text,
   rating numeric(3,2) default 5.00 not null check (rating >= 1.00 and rating <= 5.00),
   verified boolean default false not null,
   is_online boolean default false not null,
@@ -172,7 +173,7 @@ begin
     v_unique_id := 'SU' || v_num::text;
   end if;
 
-  insert into public.users (id, username, email, full_name, phone, license_no, current_area, rating, verified, is_online, role, unique_id)
+  insert into public.users (id, username, email, full_name, phone, license_no, current_area, current_address, rating, verified, is_online, role, unique_id)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
@@ -181,6 +182,7 @@ begin
     coalesce(new.raw_user_meta_data->>'phone', new.phone, ''),
     coalesce(new.raw_user_meta_data->>'license_no', ''),
     coalesce(new.raw_user_meta_data->>'current_area', ''),
+    coalesce(new.raw_user_meta_data->>'current_address', ''),
     5.00,
     false,
     false,
@@ -371,6 +373,7 @@ create table if not exists public.driver_profiles (
   vehicle_specialties text[] not null default '{}',
   previous_platforms text,
   additional_comments text,
+  current_address text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -453,3 +456,46 @@ create policy "Admins can update system settings." on public.system_settings
 insert into public.system_settings (key, value)
 values ('auto_approval_enabled', 'false')
 on conflict (key) do nothing;
+
+-- 16. Add current_address column to users and driver_profiles tables
+alter table public.users add column if not exists current_address text;
+alter table public.driver_profiles add column if not exists current_address text;
+
+-- Update handle_new_user trigger function to populate current_address from raw_user_meta_data
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  v_role text;
+  v_unique_id text;
+  v_num bigint;
+begin
+  v_role := coalesce(new.raw_user_meta_data->>'role', 'DRIVER');
+  v_num := nextval('public.unique_id_global_seq');
+  
+  if v_role = 'DRIVER' then
+    v_unique_id := 'SD' || v_num::text;
+  elsif v_role = 'ADMIN' then
+    v_unique_id := 'SA' || v_num::text;
+  else
+    v_unique_id := 'SU' || v_num::text;
+  end if;
+
+  insert into public.users (id, username, email, full_name, phone, license_no, current_area, current_address, rating, verified, is_online, role, unique_id)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', trim(coalesce(new.raw_user_meta_data->>'first_name', '') || ' ' || coalesce(new.raw_user_meta_data->>'last_name', '')), ''),
+    coalesce(new.raw_user_meta_data->>'phone', new.phone, ''),
+    coalesce(new.raw_user_meta_data->>'license_no', ''),
+    coalesce(new.raw_user_meta_data->>'current_area', ''),
+    coalesce(new.raw_user_meta_data->>'current_address', ''),
+    5.00,
+    false,
+    false,
+    v_role,
+    v_unique_id
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
