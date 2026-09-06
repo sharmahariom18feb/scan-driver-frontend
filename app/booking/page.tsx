@@ -173,17 +173,17 @@ export default function BookingPage() {
 
   // Pricing engine definitions
   const oneWayPrices: Record<number, number> = {
-    10: 299, 15: 349, 20: 399, 25: 439, 30: 479, 35: 519,
-    40: 559, 45: 599, 50: 639, 55: 679, 60: 719, 65: 759, 70: 799
+    10: 289, 15: 340, 20: 390, 25: 430, 30: 470, 35: 510,
+    40: 550, 45: 590, 50: 630, 55: 670, 60: 710, 65: 750, 70: 790
   }
   const roundTripPrices: Record<number, number> = {
-    2: 299, 3: 399, 4: 499, 5: 599, 6: 689, 7: 779,
-    8: 869, 9: 959, 10: 1049, 11: 1139, 12: 1229
+    2: 299, 3: 399, 4: 499, 5: 599, 6: 699, 7: 799,
+    8: 899, 9: 999, 10: 1099, 11: 1199, 12: 1299
   }
 
   const getOneWayPrice = (km: number) => {
     const slabs = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
-    if (km > 70) return 799 + Math.round((km - 70) * 10)
+    if (km > 70) return 790 + Math.round((km - 70) * 8)
     for (let i = slabs.length - 1; i >= 0; i--) {
       if (km >= slabs[i]) return oneWayPrices[slabs[i]]
     }
@@ -192,25 +192,31 @@ export default function BookingPage() {
 
   const getRoundTripPrice = (hrs: number) => {
     if (hrs < 2) return null
-    if (hrs > 12) return 1199 + (hrs - 12) * 100
+    if (hrs > 12) return 1299 + (hrs - 12) * 100
     return roundTripPrices[hrs] || null
   }
 
   const getOutstationOWPrice = (km: number) => {
     const outstationOWPrices: Record<number, number> = {
-      100: 1050, 150: 1299, 200: 1499, 250: 1699, 300: 1899, 350: 2099, 400: 2299
+      100: 1099, 150: 1299, 200: 1499, 250: 1699, 300: 1899,
+      350: 2099, 400: 2299, 450: 2499, 500: 2699, 550: 2899,
+      600: 3099, 650: 3299, 700: 3499, 750: 3699, 800: 3899,
+      850: 4099, 900: 4299, 950: 4499, 1000: 4699
     }
     if (outstationOWPrices[km] !== undefined) {
       return outstationOWPrices[km]
     }
     // Fallback logic for values between slabs
-    const slabs = [100, 150, 200, 250, 300, 350, 400]
-    if (km < 100) return 1050
-    if (km > 400) return 2299 + Math.round((km - 400) * 10)
+    const slabs = [
+      100, 150, 200, 250, 300, 350, 400, 450, 500,
+      550, 600, 650, 700, 750, 800, 850, 900, 950, 1000
+    ]
+    if (km < 100) return 1099
+    if (km > 1000) return 4699 + Math.round((km - 1000) * 7)
     for (let i = slabs.length - 1; i >= 0; i--) {
       if (km >= slabs[i]) return outstationOWPrices[slabs[i]]
     }
-    return 1050
+    return 1099
   }
 
   const calcMonthlyPriceVal = (days: number, hours: number) => {
@@ -241,7 +247,7 @@ export default function BookingPage() {
         } else {
           amount = getRoundTripPrice(roundHours)
           note = roundHours > 12
-            ? '₹1,199 + ₹100 per extra hour · ₹25/fifteen minutes if time exceeded'
+            ? '₹1,299 + ₹100 per extra hour · ₹25/fifteen minutes if time exceeded'
             : '₹25/fifteen minutes if time exceeded'
         }
       }
@@ -269,9 +275,9 @@ export default function BookingPage() {
       } else {
         if (outDays > 0) {
           const outRTprices: Record<number, number> = {
-            1: 1199, 2: 2299, 3: 3399, 4: 4499, 5: 5599, 6: 6699, 7: 7799
+            1: 1249, 2: 2399, 3: 3599, 4: 4799, 5: 5999, 6: 7199, 7: 8399
           }
-          amount = outRTprices[outDays] || (outDays * 1100 + 99)
+          amount = outRTprices[outDays] || (8399 + (outDays - 7) * 1200)
           note = `${outDays} day${outDays > 1 ? 's' : ''} · Max 12 hrs/day · ₹2/min if time exceeded`
         }
       }
@@ -2030,7 +2036,7 @@ ${commentsStr}${gpsStr}
                           className={cn(errors.outKms && 'error')}
                         >
                           <option value="">— Select Distance —</option>
-                          {[100, 150, 200, 250, 300, 350, 400].map((val) => (
+                          {[100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000].map((val) => (
                             <option key={val} value={val}>{val} km</option>
                           ))}
                         </select>
