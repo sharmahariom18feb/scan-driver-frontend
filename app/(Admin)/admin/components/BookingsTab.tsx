@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink } from 'lucide-react'
+import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink, FileSpreadsheet } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Booking, Driver } from '../types'
@@ -34,6 +34,7 @@ export default function BookingsTab({
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
 
   // Local drivers list for ID-to-name lookup and assignment modal
@@ -701,6 +702,140 @@ export default function BookingsTab({
     }
   }
 
+  // Export Bookings Data to Excel
+  const handleExportExcel = async () => {
+    setExportingExcel(true)
+    const toastId = toast.loading('Generating Excel export...')
+    try {
+      let query = supabase
+        .from('bookings')
+        .select('*')
+
+      // 1. Apply Search Filter if entered
+      if (searchTerm.trim()) {
+        const term = `%${searchTerm.trim()}%`
+        query = query.or(`id.ilike.${term},customer_name.ilike.${term},phone.ilike.${term},vehicle.ilike.${term}`)
+      }
+
+      // 2. Apply Mode & Status Filter
+      if (mode === 'history') {
+        if (statusFilter === 'all') {
+          query = query.or('status.eq.completed,trip_status.eq.cancelled,trip_status.eq.cancelled_by_driver')
+        } else if (statusFilter === 'completed') {
+          query = query.eq('status', 'completed')
+            .not('trip_status', 'eq', 'cancelled')
+            .not('trip_status', 'eq', 'cancelled_by_driver')
+        } else if (statusFilter === 'cancelled') {
+          query = query.in('trip_status', ['cancelled_by_driver', 'cancelled'])
+        }
+      } else {
+        if (statusFilter === 'all') {
+          query = query
+            .not('status', 'eq', 'completed')
+            .not('trip_status', 'eq', 'cancelled')
+            .not('trip_status', 'eq', 'cancelled_by_driver')
+        } else if (statusFilter === 'available') {
+          query = query.eq('status', 'available')
+        } else if (statusFilter === 'accepted') {
+          query = query.eq('status', 'accepted')
+            .not('trip_status', 'eq', 'cancelled')
+            .not('trip_status', 'eq', 'cancelled_by_driver')
+        }
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        toast.info('No bookings found to export.', { id: toastId })
+        return
+      }
+
+      const minimalData = data.map((b: Booking) => {
+        const assignedDriver = drivers.find((d) => d.id === b.driver_id)
+
+        let statusLabel = 'Completed'
+        if (b.trip_status === 'cancelled_by_driver') {
+          statusLabel = 'Cancelled (Driver)'
+        } else if (b.trip_status === 'cancelled') {
+          statusLabel = 'Cancelled'
+        } else if (b.status === 'completed') {
+          statusLabel = 'Completed'
+        } else if (b.status === 'accepted') {
+          statusLabel = 'Accepted'
+        } else if (b.status === 'available') {
+          statusLabel = 'Available'
+        } else {
+          statusLabel = b.status || 'N/A'
+        }
+
+        return {
+          'Booking ID': b.id,
+          'Status': statusLabel,
+          'Trip Status': b.trip_status || 'N/A',
+          'Customer Name': b.customer_name || 'N/A',
+          'Customer Phone': b.phone || 'N/A',
+          'Trip Type': b.type || 'N/A',
+          'Vehicle': b.vehicle || 'N/A',
+          'Pickup Location': b.pickup || 'N/A',
+          'Drop Location': b.drop || 'N/A',
+          'Date & Time': b.date_time || 'N/A',
+          'Duration': b.duration || 'N/A',
+          'Distance': b.distance || 'N/A',
+          'Fare (₹)': b.fare ?? 'N/A',
+          'Payment Type': b.payment_type || 'N/A',
+          'Invoice ID': b.invoice_id || 'N/A',
+          'Driver Name': assignedDriver?.full_name || (b.driver_id ? 'Driver Assigned' : 'Unassigned'),
+          'Driver ID': assignedDriver?.unique_id || 'N/A',
+          'Driver Phone': assignedDriver?.phone || 'N/A',
+          'Booked At': b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN') : 'N/A',
+        }
+      })
+
+      const XLSX = await import('xlsx')
+      const worksheet = XLSX.utils.json_to_sheet(minimalData)
+
+      // Set clean column widths
+      worksheet['!cols'] = [
+        { wch: 14 }, // Booking ID
+        { wch: 20 }, // Status
+        { wch: 18 }, // Trip Status
+        { wch: 22 }, // Customer Name
+        { wch: 16 }, // Customer Phone
+        { wch: 16 }, // Trip Type
+        { wch: 18 }, // Vehicle
+        { wch: 32 }, // Pickup Location
+        { wch: 32 }, // Drop Location
+        { wch: 22 }, // Date & Time
+        { wch: 14 }, // Duration
+        { wch: 14 }, // Distance
+        { wch: 12 }, // Fare (₹)
+        { wch: 14 }, // Payment Type
+        { wch: 16 }, // Invoice ID
+        { wch: 22 }, // Driver Name
+        { wch: 14 }, // Driver ID
+        { wch: 16 }, // Driver Phone
+        { wch: 14 }, // Booked At
+      ]
+
+      const workbook = XLSX.utils.book_new()
+      const sheetName = mode === 'history' ? 'Completed & Cancelled' : 'Bookings'
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
+
+      const dateStr = new Date().toISOString().split('T')[0]
+      const filename = `ScanDriver_${mode === 'history' ? 'Completed_Cancelled_Bookings' : 'Bookings'}_${dateStr}.xlsx`
+
+      XLSX.writeFile(workbook, filename)
+      toast.success(`Exported ${minimalData.length} bookings to Excel!`, { id: toastId })
+    } catch (err: any) {
+      console.error('Error exporting bookings to Excel:', err)
+      toast.error(err.message || 'Failed to export Excel file', { id: toastId })
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-300">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -714,14 +849,32 @@ export default function BookingsTab({
               : 'Create, dispatch, and manage active ride bookings.'}
           </p>
         </div>
-        {mode === 'active' && (
-          <a
-            href="/booking"
-            className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs py-3 px-5 rounded-xl transition-all shadow-md shadow-amber-500/10 cursor-pointer"
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50 border border-emerald-500/30"
+            title="Export Bookings to Excel (.xlsx)"
           >
-            <Plus size={16} /> CREATE NEW BOOKING
-          </a>
-        )}
+            {exportingExcel ? (
+              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <FileSpreadsheet size={15} />
+            )}
+            <span>{exportingExcel ? 'Exporting...' : 'Export Excel'}</span>
+          </button>
+
+          {mode === 'active' && (
+            <a
+              href="/booking"
+              className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-md shadow-amber-500/10 cursor-pointer"
+            >
+              <Plus size={16} /> CREATE NEW BOOKING
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Auto Approval Status Bar */}
