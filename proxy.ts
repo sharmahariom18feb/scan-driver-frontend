@@ -39,6 +39,6 @@ export const config = {
      * - Static asset files with extensions (.jpeg, .jpg, .png, .svg, .webp, .ico, .json, etc.)
      * - PWA icons/assets (e.g., logo-sd.png, icons, screenshots, driver-manifest.json, sw.js)
      */
-    '/((?!api|_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|js|css|woff2?|ttf|eot)$|driver-manifest.json|sw.js).*)',
+    '/((?!api|_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|js|css|woff2?|ttf|eot)$|driver-manifest.json|sw.js|firebase-messaging-sw.js).*)',
   ],
 }

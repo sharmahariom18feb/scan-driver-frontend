@@ -8,6 +8,9 @@ if (!admin.apps.length) {
     const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
     if (serviceAccountKey) {
       const serviceAccount = JSON.parse(serviceAccountKey)
+      if (typeof serviceAccount.private_key === 'string') {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n')
+      }
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       })
@@ -166,14 +169,35 @@ export async function POST(request: Request) {
       })
     }
 
+    const partnerAppUrl = process.env.NODE_ENV === 'production'
+      ? 'https://partner.scandriver.in/'
+      : '/'
+
     const message: admin.messaging.MulticastMessage = {
       notification: {
         title,
         body: description,
       },
       data: {
-        bookingId: booking.id,
-        click_action: '/driver-app',
+        title,
+        body: description,
+        bookingId: String(booking.id),
+        click_action: partnerAppUrl,
+      },
+      webpush: {
+        fcmOptions: {
+          link: partnerAppUrl,
+        },
+        notification: {
+          title,
+          body: description,
+          icon: '/android-chrome-192x192.png',
+          badge: '/favicon-32x32.png',
+          vibrate: [300, 100, 300, 100, 300],
+          tag: 'booking-alert',
+          renotify: true,
+          requireInteraction: true,
+        },
       },
       tokens: registrationTokens,
     }

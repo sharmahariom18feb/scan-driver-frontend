@@ -26,6 +26,7 @@ interface HomeTabProps {
   handleOpenDetails: (booking: Booking) => void
   onTotalTripsClick?: () => void
   onAccept: (id: string) => Promise<void>
+  onRequestNotificationPermission?: () => Promise<void> | void
 }
 
 const formatTripType = (type: string) => {
@@ -108,11 +109,55 @@ export default function HomeTab({
   handleOpenDetails,
   onTotalTripsClick,
   onAccept,
+  onRequestNotificationPermission,
 }: HomeTabProps) {
   const [acceptingIds, setAcceptingIds] = React.useState<Record<string, boolean>>({})
+  const [permStatus, setPermStatus] = React.useState<string>('default')
+  const [isRequestingPerm, setIsRequestingPerm] = React.useState(false)
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPermStatus(Notification.permission)
+    } else {
+      setPermStatus('unsupported')
+    }
+  }, [])
 
   return (
     <div className="px-5 py-6 space-y-6">
+      {/* Push Notification Opt-in Prompt (if not yet granted) */}
+      {permStatus === 'default' && onRequestNotificationPermission && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-base shrink-0">
+              🔔
+            </div>
+            <div>
+              <p className="font-semibold text-xs text-amber-200">Enable Booking Alerts</p>
+              <p className="text-[11px] text-amber-200/70">Receive instant push notifications when rides are available.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={isRequestingPerm}
+            onClick={async () => {
+              setIsRequestingPerm(true)
+              try {
+                await onRequestNotificationPermission()
+                if (typeof window !== 'undefined' && 'Notification' in window) {
+                  setPermStatus(Notification.permission)
+                }
+              } finally {
+                setIsRequestingPerm(false)
+              }
+            }}
+            className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs transition cursor-pointer shrink-0 disabled:opacity-50"
+          >
+            {isRequestingPerm ? 'Enabling...' : 'Enable'}
+          </button>
+        </div>
+      )}
+
       {/* Status card offline/online */}
       <div
         className={cn(

@@ -7,12 +7,12 @@ export function DriverServiceWorker() {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       const handleRegister = () => {
         navigator.serviceWorker
-          .register('/sw.js', { scope: '/driver-app/' })
+          .register('/firebase-messaging-sw.js', { scope: '/' })
           .then((registration) => {
-            console.log('Driver ServiceWorker registered successfully with scope:', registration.scope)
+            console.log('Driver FCM ServiceWorker registered successfully with scope:', registration.scope)
           })
           .catch((error) => {
-            console.error('Driver ServiceWorker registration failed:', error)
+            console.error('Driver FCM ServiceWorker registration failed:', error)
           })
       }
 

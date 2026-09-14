@@ -42,7 +42,16 @@ export const requestForToken = async (): Promise<string | null> => {
     if (permission === 'granted') {
       let registration: ServiceWorkerRegistration | undefined = undefined
       if ('serviceWorker' in navigator) {
-        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        try {
+          registration = await navigator.serviceWorker.getRegistration('/') ||
+                         await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
+          if (navigator.serviceWorker.ready) {
+            const readyReg = await navigator.serviceWorker.ready
+            if (readyReg) registration = readyReg
+          }
+        } catch (swErr) {
+          console.warn('Could not retrieve active service worker registration for FCM:', swErr)
+        }
       }
 
       const currentToken = await getToken(messaging, {

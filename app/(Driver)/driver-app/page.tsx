@@ -222,31 +222,39 @@ export default function DriverApp() {
 
     const registerFcm = async () => {
       try {
-        // Force session load/verification on Supabase client
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
           console.warn('FCM registration delayed: Supabase session not fully loaded yet.')
           return
         }
 
-        const { requestForToken, messaging } = await import('@/lib/firebase')
-        const token = await requestForToken()
-        if (token) {
-          const { error } = await supabase
-            .from('driver_fcm_tokens')
-            .upsert({
-              driver_id: user.id,
-              fcm_token: token,
-            }, { onConflict: 'fcm_token' })
+        // If permission is already granted, refresh/upsert the token
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          const { requestForToken } = await import('@/lib/firebase')
+          const token = await requestForToken()
+          if (token) {
+            const { error } = await supabase
+              .from('driver_fcm_tokens')
+              .upsert({
+                driver_id: user.id,
+                fcm_token: token,
+              }, { onConflict: 'fcm_token' })
 
-          if (error) throw error
-          console.log('FCM token registered successfully:', token)
+            if (error) console.warn('FCM upsert warning:', error)
+            else console.log('FCM token registered successfully:', token)
+          }
         }
 
+        const { messaging } = await import('@/lib/firebase')
         if (messaging) {
           const { onMessage } = await import('firebase/messaging')
           unsubscribe = onMessage(messaging, (payload) => {
-            console.log("Message received:", payload);
+            console.log('Foreground FCM message received:', payload)
+            const title = payload.notification?.title || payload.data?.title || '🚨 New Booking Available!'
+            const body = payload.notification?.body || payload.data?.body || 'A new ride is waiting for you.'
+            toast.success(`🔔 ${title}: ${body}`, { duration: 8000 })
+            // Auto-refresh bookings so the ride instantly appears
+            dispatch(fetchBookings())
           })
         }
       } catch (err) {
@@ -382,6 +390,43 @@ export default function DriverApp() {
     }
   }
 
+  const handleRequestNotificationPermission = async (showToast = true) => {
+    try {
+      if (typeof window === 'undefined' || !('Notification' in window)) {
+        if (showToast) toast.error('Push notifications are not supported on this browser.')
+        return
+      }
+
+      const { requestForToken } = await import('@/lib/firebase')
+      const token = await requestForToken()
+      if (token) {
+        const { data: { user } } = await supabase.auth.getUser()
+        const targetId = user?.id || info?.id
+        if (targetId) {
+          const { error } = await supabase
+            .from('driver_fcm_tokens')
+            .upsert({
+              driver_id: targetId,
+              fcm_token: token,
+            }, { onConflict: 'fcm_token' })
+
+          if (!error) {
+            console.log('FCM token registered:', token)
+            if (showToast) toast.success('Booking notifications enabled successfully!')
+            return
+          }
+        }
+      }
+
+      if (Notification.permission === 'denied' && showToast) {
+        toast.error('Notifications are blocked in browser settings. Please allow them for partner.scandriver.in')
+      }
+    } catch (err) {
+      console.error('Failed to request notification permission:', err)
+      if (showToast) toast.error('Could not activate notifications.')
+    }
+  }
+
   const handleToggleOnline = async () => {
     // If trying to go online (currently offline), fetch latest driver info from DB
     if (!isOnline) {
@@ -438,6 +483,10 @@ export default function DriverApp() {
       if (online) {
         toast.success('You are now ONLINE. Searching for bookings...')
         dispatch(fetchBookings())
+        // Prompt for notification permission during this user interaction if not granted yet
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+          handleRequestNotificationPermission(false)
+        }
       } else {
         toast.info('You are now OFFLINE.')
       }
@@ -718,6 +767,7 @@ export default function DriverApp() {
               setActiveTab('bookings')
               setBookingFilter('history')
             }}
+            onRequestNotificationPermission={() => handleRequestNotificationPermission(true)}
           />
         )}
 
