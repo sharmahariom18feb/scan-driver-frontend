@@ -29,6 +29,21 @@ if (typeof window !== 'undefined') {
   }
 }
 
+/**
+ * Constructs the Firebase service worker registration URL with environment variables passed as query parameters.
+ */
+export const getFirebaseSwUrl = (): string => {
+  const params = new URLSearchParams({
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  })
+  return `/firebase-messaging-sw.js?${params.toString()}`
+}
+
 export { app, messaging }
 
 /**
@@ -43,8 +58,8 @@ export const requestForToken = async (): Promise<string | null> => {
       let registration: ServiceWorkerRegistration | undefined = undefined
       if ('serviceWorker' in navigator) {
         try {
-          registration = await navigator.serviceWorker.getRegistration('/') ||
-                         await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
+          const swUrl = getFirebaseSwUrl()
+          registration = await navigator.serviceWorker.register(swUrl, { scope: '/' })
           if (navigator.serviceWorker.ready) {
             const readyReg = await navigator.serviceWorker.ready
             if (readyReg) registration = readyReg

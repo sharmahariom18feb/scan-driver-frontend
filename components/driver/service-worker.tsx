@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
+import { getFirebaseSwUrl } from '@/lib/firebase'
 
 export function DriverServiceWorker() {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       const handleRegister = () => {
         navigator.serviceWorker
-          .register('/firebase-messaging-sw.js', { scope: '/' })
+          .register(getFirebaseSwUrl(), { scope: '/' })
           .then((registration) => {
             console.log('Driver FCM ServiceWorker registered successfully with scope:', registration.scope)
           })

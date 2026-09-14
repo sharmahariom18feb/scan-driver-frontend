@@ -2,20 +2,25 @@
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
 
-// 1. Initialize Firebase inside Service Worker
-firebase.initializeApp({
-  apiKey: "AIzaSyBP_o-bLpoWdHmZSC2EUnq21Bo0PbQ_9mo",
-  authDomain: "scan-driver-e5099.firebaseapp.com",
-  projectId: "scan-driver-e5099",
-  storageBucket: "scan-driver-e5099.firebasestorage.app",
-  messagingSenderId: "642331777634",
-  appId: "1:642331777634:web:e5d78a1068e287e76b0f3b",
-});
+// 1. Initialize Firebase inside Service Worker using config passed via registration query params (from env)
+const urlParams = new URLSearchParams(self.location.search);
 
-const messaging = firebase.messaging();
+const firebaseConfig = {
+  apiKey: urlParams.get('apiKey'),
+  authDomain: urlParams.get('authDomain'),
+  projectId: urlParams.get('projectId'),
+  storageBucket: urlParams.get('storageBucket'),
+  messagingSenderId: urlParams.get('messagingSenderId'),
+  appId: urlParams.get('appId'),
+};
 
-// 2. Handle background push notifications (when PWA is closed, minimized, or screen locked)
-messaging.onBackgroundMessage((payload) => {
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+  firebase.initializeApp(firebaseConfig);
+
+  const messaging = firebase.messaging();
+
+  // 2. Handle background push notifications (when PWA is closed, minimized, or screen locked)
+  messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
   const title = payload.notification?.title || payload.data?.title || '🚨 New Booking Available!';
@@ -45,7 +50,8 @@ messaging.onBackgroundMessage((payload) => {
   };
 
   return self.registration.showNotification(title, options);
-});
+  });
+}
 
 // 3. Handle Notification Click event: Exclusively focus/open partner.scandriver.in PWA
 self.addEventListener('notificationclick', (event) => {
