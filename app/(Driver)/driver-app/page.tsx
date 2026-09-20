@@ -47,6 +47,7 @@ import BookingsTab from '@/components/driver/BookingsTab'
 import AlertsTab from '@/components/driver/AlertsTab'
 import ProfileTab from '@/components/driver/ProfileTab'
 import BookingDetailModal from '@/components/driver/BookingDetailModal'
+import AcceptBookingModal from '@/components/driver/AcceptBookingModal'
 
 export default function DriverApp() {
   const dispatch = useDispatch<AppDispatch>()
@@ -86,6 +87,10 @@ export default function DriverApp() {
   // Selected Booking for Modal
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Booking Acceptance Confirmation Modal
+  const [bookingToConfirm, setBookingToConfirm] = useState<Booking | null>(null)
+  const [isAcceptingBooking, setIsAcceptingBooking] = useState(false)
 
   // Booking filtering: 'current' | 'history'
   const [bookingFilter, setBookingFilter] = useState<'current' | 'history'>('current')
@@ -513,7 +518,24 @@ export default function DriverApp() {
     setIsModalOpen(true)
   }
 
-  const handleAccept = async (bookingId: string) => {
+  const handleRequestAccept = (bookingId: string) => {
+    const booking =
+      bookings.find((b) => b.id === bookingId) ||
+      availableBookings.find((b) => b.id === bookingId) ||
+      (selectedBooking?.id === bookingId ? selectedBooking : null)
+
+    if (booking) {
+      // Skip the confirmation popup for monthly bookings
+      if (booking.type === 'MONTHLY') {
+        handleConfirmAccept(bookingId)
+        return
+      }
+      setBookingToConfirm(booking)
+    }
+  }
+
+  const handleConfirmAccept = async (bookingId: string) => {
+    setIsAcceptingBooking(true)
     // First check that the driver is verified and not suspended
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -555,22 +577,24 @@ export default function DriverApp() {
       if (info) {
         dispatch(setDriverInfo({ ...info, verified: true, isSuspended: false }))
       }
+
+      const result = await dispatch(acceptBooking(bookingId))
+      if (acceptBooking.fulfilled.match(result)) {
+        toast.success('Booking accepted! Customer details unlocked.', {
+          duration: 5000,
+        })
+        setBookingToConfirm(null)
+        setIsModalOpen(false)
+        setSelectedBooking(null)
+      } else {
+        const errMsg = result.payload as string || 'Failed to accept booking. It may have been accepted by another driver.'
+        toast.error(errMsg)
+      }
     } catch (err) {
       console.error('Error verifying status before acceptance:', err)
       toast.error('Failed to verify status. Please try again.')
-      return
-    }
-
-    setIsModalOpen(false)
-    setSelectedBooking(null)
-    const result = await dispatch(acceptBooking(bookingId))
-    if (acceptBooking.fulfilled.match(result)) {
-      toast.success('Booking accepted! Customer details unlocked.', {
-        duration: 5000,
-      })
-    } else {
-      const errMsg = result.payload as string || 'Failed to accept booking. It may have been accepted by another driver.'
-      toast.error(errMsg)
+    } finally {
+      setIsAcceptingBooking(false)
     }
   }
 
@@ -762,7 +786,7 @@ export default function DriverApp() {
             stats={derivedStats}
             availableBookings={availableBookings}
             handleOpenDetails={handleOpenDetails}
-            onAccept={handleAccept}
+            onAccept={async (id) => handleRequestAccept(id)}
             onTotalTripsClick={() => {
               setActiveTab('bookings')
               setBookingFilter('history')
@@ -874,8 +898,19 @@ export default function DriverApp() {
           isOpen={isModalOpen}
           booking={selectedBooking}
           onClose={() => setIsModalOpen(false)}
-          onAccept={handleAccept}
+          onAccept={handleRequestAccept}
           onPass={handlePass}
+        />
+      )}
+
+      {/* 5. Accept Booking Confirmation Modal */}
+      {bookingToConfirm && (
+        <AcceptBookingModal
+          isOpen={!!bookingToConfirm}
+          booking={bookingToConfirm}
+          isLoading={isAcceptingBooking}
+          onClose={() => setBookingToConfirm(null)}
+          onConfirm={handleConfirmAccept}
         />
       )}
     </div>

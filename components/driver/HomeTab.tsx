@@ -27,6 +27,7 @@ interface HomeTabProps {
   onTotalTripsClick?: () => void
   onAccept: (id: string) => Promise<void>
   onRequestNotificationPermission?: () => Promise<void> | void
+
 }
 
 const formatTripType = (type: string) => {
@@ -358,30 +359,18 @@ export default function HomeTab({
                       {getPackageText(booking)}
                     </div>
                     <button
-                      disabled={acceptingIds[booking.id]}
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation()
-                        setAcceptingIds(prev => ({ ...prev, [booking.id]: true }))
-                        try {
-                          await onAccept(booking.id)
-                        } catch (err) {
-                          console.error('Accept booking error:', err)
-                        } finally {
-                          setAcceptingIds(prev => ({ ...prev, [booking.id]: false }))
-                        }
+                        onAccept(booking.id)
                       }}
                       className={cn(
-                        'w-full py-2 px-3 font-bold text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed',
+                        'w-full py-2 px-3 font-bold text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1',
                         booking.type === 'MONTHLY'
                           ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                           : 'bg-primary hover:bg-gold-light text-black'
                       )}
                     >
-                      {acceptingIds[booking.id] ? (
-                        <span className="inline-block border-2 border-current border-t-transparent rounded-full h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        'Accept'
-                      )}
+                      Accept
                     </button>
                   </div>
                 </div>
