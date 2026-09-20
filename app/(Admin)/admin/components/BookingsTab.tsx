@@ -7,6 +7,49 @@ import { toast } from 'sonner'
 import { Booking, Driver } from '../types'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 import DriverDetailModal from './DriverDetailModal'
+import { getMonthlyDutyHours } from '@/lib/utils'
+
+export const renderBookingTypeBadge = (type?: string, duration?: string | null) => {
+  const isMonthly = type === 'MONTHLY'
+  const isHourly = type === 'HOURLY'
+  const dutyHours = isMonthly ? getMonthlyDutyHours(duration) : null
+
+  let badgeClass = 'bg-slate-800 text-slate-300 border-slate-700'
+  let label = type || 'N/A'
+
+  if (isMonthly) {
+    badgeClass = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-xs shadow-emerald-500/10'
+    label = '📅 MONTHLY'
+  } else if (isHourly) {
+    badgeClass = 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-xs shadow-amber-500/10'
+    label = '⏱️ HOURLY'
+  } else if (type === 'AIRPORT DROP') {
+    badgeClass = 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+    label = 'AIRPORT DROP'
+  } else if (type === 'OUTSTATION') {
+    badgeClass = 'bg-purple-500/15 text-purple-400 border-purple-500/30'
+    label = 'OUTSTATION'
+  } else if (type === 'WEEKLY') {
+    badgeClass = 'bg-teal-500/15 text-teal-400 border-teal-500/30'
+    label = 'WEEKLY'
+  } else if (type === 'CORPORATE' || type === 'EVENT') {
+    badgeClass = 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
+    label = type
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1.5 flex-wrap">
+      <span className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wide ${badgeClass}`}>
+        {label}
+      </span>
+      {dutyHours && (
+        <span className="inline-block text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 whitespace-nowrap">
+          ⏰ {dutyHours}
+        </span>
+      )}
+    </div>
+  )
+}
 
 interface BookingsTabProps {
   onRefresh: () => void
@@ -27,6 +70,7 @@ export default function BookingsTab({
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'accepted' | 'completed' | 'cancelled'>('all')
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'HOURLY' | 'MONTHLY' | 'OUTSTATION' | 'AIRPORT DROP'>('all')
 
   // Pagination & Loading States
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -151,12 +195,17 @@ export default function BookingsTab({
         }
       }
 
-      // 3. Apply Approval Filter
+      // 3. Apply Type Filter
+      if (typeFilter !== 'all') {
+        query = query.eq('type', typeFilter)
+      }
+
+      // 4. Apply Approval Filter
       if (approvalFilter !== 'all') {
         query = query.eq('admin_approved', approvalFilter === 'approved')
       }
 
-      // 4. Sorting & Range
+      // 5. Sorting & Range
       const from = (page - 1) * pageSize
       const to = from + pageSize - 1
 
@@ -182,10 +231,11 @@ export default function BookingsTab({
 
   useEffect(() => {
     fetchBookingsLocal()
-  }, [page, pageSize, searchTerm, statusFilter, approvalFilter, mode])
+  }, [page, pageSize, searchTerm, statusFilter, approvalFilter, typeFilter, mode])
 
   useEffect(() => {
     setStatusFilter('all')
+    setTypeFilter('all')
     setPage(1)
   }, [mode])
 
@@ -208,6 +258,11 @@ export default function BookingsTab({
 
   const handleApprovalFilterChange = (val: typeof approvalFilter) => {
     setApprovalFilter(val)
+    setPage(1)
+  }
+
+  const handleTypeFilterChange = (val: typeof typeFilter) => {
+    setTypeFilter(val)
     setPage(1)
   }
 
@@ -907,66 +962,108 @@ export default function BookingsTab({
 
       {/* Filters bar */}
 
-      <div className="flex flex-col md:flex-row gap-4 bg-slate-900 border border-slate-700/80 p-4 rounded-2xl">
-        {/* Search */}
-        <div className="relative flex-1">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-450">
-            <Search size={16} />
+      <div className="flex flex-col gap-3 bg-slate-900 border border-slate-700/80 p-4 rounded-2xl">
+        {/* Top row: Search, Status filters, Approval filters */}
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* Search */}
+          <div className="relative flex-1">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-450">
+              <Search size={16} />
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full pl-10 pr-3 py-2.5 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-500 transition-colors"
+              placeholder="Search by ID, name, phone, vehicle..."
+            />
+          </div>
+
+          {/* Status filters */}
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
+            {(mode === 'history'
+              ? ([
+                  { id: 'all', label: 'All History' },
+                  { id: 'completed', label: 'Completed' },
+                  { id: 'cancelled', label: 'Cancelled' },
+                ] as const)
+              : ([
+                  { id: 'all', label: 'All Active' },
+                  { id: 'available', label: 'Available' },
+                  { id: 'accepted', label: 'Accepted' },
+                ] as const)
+            ).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleStatusFilterChange(item.id)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${statusFilter === item.id
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-slate-350 hover:text-white'
+                  }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Approval filters */}
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
+            {([
+              { id: 'all', label: 'All Approval' },
+              { id: 'approved', label: 'Approved Only' },
+              { id: 'pending', label: 'Pending Approval' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => handleApprovalFilterChange(opt.id)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${approvalFilter === opt.id
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-slate-350 hover:text-white'
+                  }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom row: Booking Type Filters (Hourly vs Monthly differentiating) */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80 overflow-x-auto">
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0 pl-1">
+            Trip Type:
           </span>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-10 pr-3 py-2.5 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-500 transition-colors"
-            placeholder="Search by ID, name, phone, vehicle..."
-          />
-        </div>
-
-        {/* Status filters */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
-          {(mode === 'history'
-            ? ([
-                { id: 'all', label: 'All History' },
-                { id: 'completed', label: 'Completed' },
-                { id: 'cancelled', label: 'Cancelled' },
-              ] as const)
-            : ([
-                { id: 'all', label: 'All Active' },
-                { id: 'available', label: 'Available' },
-                { id: 'accepted', label: 'Accepted' },
-              ] as const)
-          ).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleStatusFilterChange(item.id)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${statusFilter === item.id
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-350 hover:text-white'
-                }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Approval filters */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-700 overflow-x-auto">
-          {([
-            { id: 'all', label: 'All Approval' },
-            { id: 'approved', label: 'Approved Only' },
-            { id: 'pending', label: 'Pending Approval' },
-          ] as const).map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => handleApprovalFilterChange(opt.id)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${approvalFilter === opt.id
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-350 hover:text-white'
-                }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-700">
+            {[
+              { id: 'all', label: 'All Types' },
+              { id: 'HOURLY', label: '⏱️ Hourly' },
+              { id: 'MONTHLY', label: '📅 Monthly' },
+              { id: 'OUTSTATION', label: 'Outstation' },
+              { id: 'AIRPORT DROP', label: 'Airport Drop' },
+            ].map((item) => {
+              const isSelected = typeFilter === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleTypeFilterChange(item.id as any)}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    isSelected
+                      ? item.id === 'MONTHLY'
+                        ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/20 font-black'
+                        : item.id === 'HOURLY'
+                        ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
+                        : 'bg-amber-500 text-slate-950 shadow-sm font-black'
+                      : item.id === 'MONTHLY'
+                      ? 'text-emerald-400/90 hover:text-emerald-300 hover:bg-emerald-500/10'
+                      : item.id === 'HOURLY'
+                      ? 'text-amber-400/90 hover:text-amber-300 hover:bg-amber-500/10'
+                      : 'text-slate-350 hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -1003,8 +1100,19 @@ export default function BookingsTab({
               ) : (
                 filteredBookings.map((b) => {
                   const assignedDriver = drivers.find((d) => d.id === b.driver_id)
+                  const isMonthly = b.type === 'MONTHLY'
+                  const isHourly = b.type === 'HOURLY'
                   return (
-                    <tr key={b.id} className="hover:bg-slate-800/30 transition-all text-xs">
+                    <tr
+                      key={b.id}
+                      className={`transition-all text-xs ${
+                        isMonthly
+                          ? 'bg-emerald-950/[0.12] hover:bg-emerald-950/25 border-l-2 border-l-emerald-500'
+                          : isHourly
+                          ? 'hover:bg-slate-800/30 border-l-2 border-l-amber-500/50'
+                          : 'hover:bg-slate-800/30 border-l-2 border-l-transparent'
+                      }`}
+                    >
                       {/* ID / Type */}
                       <td className="py-4 px-5">
                         <div className="space-y-1">
@@ -1016,9 +1124,7 @@ export default function BookingsTab({
                               </span>
                             )}
                           </div>
-                          <span className="inline-block text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-slate-950 border border-slate-750 text-slate-300 uppercase tracking-wide">
-                            {b.type}
-                          </span>
+                          {renderBookingTypeBadge(b.type, b.duration)}
                         </div>
                       </td>
 
@@ -1198,16 +1304,28 @@ export default function BookingsTab({
           ) : (
             filteredBookings.map((b) => {
               const assignedDriver = drivers.find((d) => d.id === b.driver_id)
+              const isMonthly = b.type === 'MONTHLY'
+              const isHourly = b.type === 'HOURLY'
               return (
-                <div key={b.id} className="p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
+                <div
+                  key={b.id}
+                  className={`p-4 space-y-3 transition-all ${
+                    isMonthly
+                      ? 'bg-emerald-950/[0.12] border-l-4 border-l-emerald-500'
+                      : isHourly
+                      ? 'border-l-4 border-l-amber-500/60'
+                      : ''
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-extrabold text-white">{b.id}</span>
                       {!b.admin_approved && (
                         <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 uppercase tracking-wide">
                           PENDING
                         </span>
                       )}
+                      {renderBookingTypeBadge(b.type, b.duration)}
                     </div>
                     <span
                       className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
@@ -1225,7 +1343,7 @@ export default function BookingsTab({
 
                   <div className="space-y-1.5 text-slate-200 text-xs">
                     <p className="font-extrabold text-white">{b.customer_name} • {b.phone}</p>
-                    <p className="font-bold text-slate-300">{b.vehicle} ({b.type})</p>
+                    <p className="font-bold text-slate-300">{b.vehicle}</p>
                     <p className="text-[10px] text-slate-300 font-semibold">
                       {b.date_time} • <span className="text-xs font-extrabold text-amber-400">₹{b.fare}</span> ({b.duration})
                     </p>
@@ -1756,7 +1874,10 @@ export default function BookingsTab({
             <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-white text-sm">Assign Driver</h3>
-                <p className="text-[10px] text-slate-500 mt-0.5">Select a driver for Booking {assigningBooking.id}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-[10px] text-slate-400 font-semibold">Booking {assigningBooking.id}</p>
+                  {renderBookingTypeBadge(assigningBooking.type, assigningBooking.duration)}
+                </div>
               </div>
               <button
                 onClick={() => setAssigningBooking(null)}

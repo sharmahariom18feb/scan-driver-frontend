@@ -313,7 +313,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             {[
               { id: 'dashboard' as const, label: 'Overview', icon: LayoutDashboard },
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
-              { id: 'history' as const, label: 'Completed & Cancelled Booking', icon: CheckCircle2 },
+              { id: 'history' as const, label: 'Completed & Cancelled', icon: CheckCircle2 },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'suspended-drivers' as const, label: 'Suspended Drivers', icon: UserX },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },

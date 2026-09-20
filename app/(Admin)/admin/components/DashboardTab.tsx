@@ -3,6 +3,7 @@
 import React from 'react'
 import { Briefcase, Users, CheckCircle, Clock, ShieldAlert, Activity, ArrowRight, Zap } from 'lucide-react'
 import { DashboardStats, Booking, Driver } from '../types'
+import { renderBookingTypeBadge } from './BookingsTab'
 
 interface DashboardTabProps {
   stats: DashboardStats
@@ -208,9 +209,7 @@ export default function DashboardTab({
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-extrabold text-white">{b.id}</span>
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-950 text-slate-300 border border-slate-750">
-                        {b.type}
-                      </span>
+                      {renderBookingTypeBadge(b.type, b.duration)}
                     </div>
                     <p className="text-xs text-slate-200 font-semibold">{b.customer_name} • {b.vehicle}</p>
                     <p className="text-[10px] text-slate-400">{formatTime(b.created_at)}</p>
