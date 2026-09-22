@@ -1,9 +1,10 @@
 'use client'
 
-import React from 'react'
-import { ShieldCheck, AlertTriangle, LogOut, Copy } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { ShieldCheck, AlertTriangle, LogOut, Copy, X, Camera } from 'lucide-react'
 import { DriverInfo } from '@/redux/slices/driverSlice'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabaseClient'
 
 interface ProfileTabProps {
   info: DriverInfo | null
@@ -34,6 +35,43 @@ export default function ProfileTab({
   handleUpdateProfile,
   handleLogout,
 }: ProfileTabProps) {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(info?.photoUrl || null)
+  const [imgError, setImgError] = useState(false)
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (info?.photoUrl) {
+      setPhotoUrl(info.photoUrl)
+      setImgError(false)
+      return
+    }
+
+    const fetchPhoto = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const driverId = info?.id || session?.user?.id
+        if (!driverId) return
+
+        const { data, error } = await supabase
+          .from('driver_documents')
+          .select('selfie_url')
+          .eq('driver_id', driverId)
+          .maybeSingle()
+
+        if (!error && data?.selfie_url) {
+          setPhotoUrl(data.selfie_url)
+          setImgError(false)
+        }
+      } catch (err) {
+        console.warn('Error fetching driver photo in ProfileTab:', err)
+      }
+    }
+
+    fetchPhoto()
+  }, [info?.id, info?.photoUrl])
+
+  const hasValidPhoto = Boolean(photoUrl && !imgError)
+
   return (
     <div className="px-5 py-6 space-y-6">
       <h2 className="text-3xl font-bold tracking-tight text-foreground font-sans">
@@ -44,8 +82,36 @@ export default function ProfileTab({
       <div className="bg-card border border-border/10 p-5 rounded-xl flex items-center gap-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-xl" />
 
-        <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-gold to-yellow-500 text-black font-bold text-2xl flex items-center justify-center shadow-lg border border-gold/20 shrink-0">
-          {info?.avatar || 'RK'}
+        {/* Driver Photo Avatar */}
+        <div className="relative shrink-0">
+          <div
+            onClick={() => hasValidPhoto && setIsPhotoModalOpen(true)}
+            className={`h-20 w-20 rounded-full overflow-hidden flex items-center justify-center shadow-lg border-2 border-gold/50 transition-all ${
+              hasValidPhoto
+                ? 'cursor-pointer hover:border-gold hover:scale-105 active:scale-95 ring-2 ring-primary/20'
+                : 'bg-gradient-to-tr from-gold to-yellow-500 text-black font-bold text-2xl'
+            }`}
+            title={hasValidPhoto ? 'Click to view full photo' : undefined}
+          >
+            {hasValidPhoto ? (
+              <img
+                src={photoUrl!}
+                alt={info?.fullName || 'Driver'}
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              info?.avatar || 'RK'
+            )}
+          </div>
+
+          {/* Online status indicator dot */}
+          <span
+            className={`absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full border-2 border-card ${
+              info?.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+            }`}
+            title={info?.isOnline ? 'Online' : 'Offline'}
+          />
         </div>
 
         <div className="space-y-1">
@@ -173,6 +239,50 @@ export default function ProfileTab({
           </button>
         </div>
       </form>
+
+      {/* Driver Photo Preview Modal */}
+      {isPhotoModalOpen && photoUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in-50 duration-200">
+          <div className="bg-card border border-border/20 max-w-sm w-full rounded-2xl overflow-hidden shadow-2xl relative flex flex-col items-center p-6 space-y-4">
+            <button
+              type="button"
+              onClick={() => setIsPhotoModalOpen(false)}
+              className="absolute top-3 right-3 text-text-muted hover:text-foreground p-1.5 rounded-full hover:bg-surface2 transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-gold shadow-xl ring-4 ring-primary/20 shrink-0 mt-2">
+              <img
+                src={photoUrl}
+                alt={info?.fullName || 'Driver Photo'}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-bold text-lg text-foreground">{info?.fullName}</h3>
+              <p className="text-xs text-text-muted">
+                {info?.uniqueId ? `Driver ID: ${info.uniqueId}` : 'Registered Driver'}
+              </p>
+              {info?.verified && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-500 uppercase tracking-wider mt-1">
+                  <ShieldCheck size={12} /> Verified Driver
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsPhotoModalOpen(false)}
+              className="w-full py-2 bg-surface2 hover:bg-surface border border-border/20 text-foreground font-semibold text-xs rounded-xl transition-all cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

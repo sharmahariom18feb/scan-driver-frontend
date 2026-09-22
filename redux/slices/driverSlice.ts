@@ -67,6 +67,7 @@ export interface DriverInfo {
   uniqueId?: string
   referralCode?: string
   referredBy?: string
+  photoUrl?: string | null
 }
 
 export interface DriverState {
@@ -239,6 +240,20 @@ export const loginDriver = createAsyncThunk(
         throw new Error('Access Denied: Only driver accounts are allowed to log in.')
       }
 
+      let photoUrl: string | null = null
+      try {
+        const { data: docs } = await supabase
+          .from('driver_documents')
+          .select('selfie_url')
+          .eq('driver_id', user.id)
+          .maybeSingle()
+        if (docs?.selfie_url) {
+          photoUrl = docs.selfie_url
+        }
+      } catch (e) {
+        console.warn('Could not fetch driver selfie_url:', e)
+      }
+
       const driverInfo: DriverInfo = {
         id: user.id,
         fullName: profile.full_name,
@@ -255,6 +270,7 @@ export const loginDriver = createAsyncThunk(
         isOnline: profile.is_online,
         uniqueId: profile.unique_id,
         referralCode: profile.unique_id,
+        photoUrl,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -331,6 +347,20 @@ export const verifyDriverOtp = createAsyncThunk(
         throw new Error('Access Denied: Only driver accounts are allowed to log in.')
       }
 
+      let photoUrl: string | null = null
+      try {
+        const { data: docs } = await supabase
+          .from('driver_documents')
+          .select('selfie_url')
+          .eq('driver_id', user.id)
+          .maybeSingle()
+        if (docs?.selfie_url) {
+          photoUrl = docs.selfie_url
+        }
+      } catch (e) {
+        console.warn('Could not fetch driver selfie_url:', e)
+      }
+
       const driverInfo: DriverInfo = {
         id: user.id,
         fullName: profile.full_name,
@@ -347,6 +377,7 @@ export const verifyDriverOtp = createAsyncThunk(
         isOnline: profile.is_online,
         uniqueId: profile.unique_id,
         referralCode: profile.unique_id,
+        photoUrl,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -549,6 +580,20 @@ export const fetchDriverProfile = createAsyncThunk(
       if (error) throw error
       if (!profile) throw new Error('Profile not found')
 
+      let photoUrl: string | null = null
+      try {
+        const { data: docs } = await supabase
+          .from('driver_documents')
+          .select('selfie_url')
+          .eq('driver_id', session.user.id)
+          .maybeSingle()
+        if (docs?.selfie_url) {
+          photoUrl = docs.selfie_url
+        }
+      } catch (e) {
+        console.warn('Could not fetch driver selfie_url:', e)
+      }
+
       const driverInfo: DriverInfo = {
         id: session.user.id,
         fullName: profile.full_name,
@@ -564,6 +609,7 @@ export const fetchDriverProfile = createAsyncThunk(
         isOnline: profile.is_online,
         uniqueId: profile.unique_id,
         referralCode: profile.unique_id,
+        photoUrl,
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))

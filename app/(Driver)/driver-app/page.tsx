@@ -764,12 +764,21 @@ export default function DriverApp() {
             )}
           </button>
 
-          {/* User profile initials */}
+          {/* User profile photo / initials */}
           <button
             onClick={() => setActiveTab('profile')}
-            className="h-8 w-8 rounded-full bg-gradient-to-tr from-gold to-yellow-500 text-black font-semibold text-sm flex items-center justify-center hover:opacity-90 transition-all border border-gold/30 shadow-md"
+            className="h-8 w-8 rounded-full overflow-hidden bg-gradient-to-tr from-gold to-yellow-500 text-black font-semibold text-sm flex items-center justify-center hover:opacity-90 transition-all border border-gold/30 shadow-md shrink-0 cursor-pointer"
+            title="Profile"
           >
-            {info?.avatar || 'RK'}
+            {info?.photoUrl ? (
+              <img
+                src={info.photoUrl}
+                alt={info.fullName || 'Profile'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              info?.avatar || 'RK'
+            )}
           </button>
         </div>
       </header>
