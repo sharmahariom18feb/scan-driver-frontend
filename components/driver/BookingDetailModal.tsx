@@ -32,7 +32,9 @@ interface BookingDetailModalProps {
   booking: Booking
   onClose: () => void
   onAccept: (id: string) => void
+  onApply?: (id: string) => void
   onPass: (id: string) => void
+  isApplied?: boolean
 }
 
 export default function BookingDetailModal({
@@ -40,7 +42,9 @@ export default function BookingDetailModal({
   booking,
   onClose,
   onAccept,
+  onApply,
   onPass,
+  isApplied = false,
 }: BookingDetailModalProps) {
   if (!isOpen) return null
 
@@ -270,23 +274,68 @@ export default function BookingDetailModal({
           </div>
         </div>
 
+        {/* Monthly Booking Notice */}
+        {booking.type === 'MONTHLY' && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold flex items-center gap-2">
+            <Clock size={16} className="shrink-0" />
+            <span>
+              {isApplied
+                ? 'Your application for this monthly booking has been submitted and is under admin review.'
+                : 'Monthly bookings require admin review. Apply below and the admin will evaluate and select a driver.'}
+            </span>
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="mt-8 grid grid-cols-2 gap-3">
           {booking.status === 'available' ? (
-            <>
-              <button
-                onClick={() => onAccept(booking.id)}
-                className="py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Check size={16} /> ACCEPT
-              </button>
-              <button
-                onClick={() => onPass(booking.id)}
-                className="py-3 px-4 bg-surface2 hover:bg-surface2/80 text-text-muted font-bold text-base rounded-lg shadow-sm border border-border/15 transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <XCircle size={16} /> PASS
-              </button>
-            </>
+            booking.type === 'MONTHLY' ? (
+              <>
+                {isApplied ? (
+                  <button
+                    disabled
+                    className="py-3 px-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold text-xs rounded-lg shadow-sm flex items-center justify-center gap-1.5 cursor-default"
+                  >
+                    <Check size={16} /> APPLIED (IN REVIEW)
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onApply ? onApply(booking.id) : onAccept(booking.id)}
+                    className="py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Check size={16} /> APPLY NOW
+                  </button>
+                )}
+                <button
+                  onClick={() => !isApplied && onPass(booking.id)}
+                  disabled={isApplied}
+                  title={isApplied ? 'You cannot pass a booking you have applied for' : undefined}
+                  className={cn(
+                    'py-3 px-4 font-bold text-base rounded-lg shadow-sm border transition-all duration-300 flex items-center justify-center gap-1.5',
+                    isApplied
+                      ? 'bg-surface2/40 text-text-muted/40 border-border/10 cursor-not-allowed opacity-50'
+                      : 'bg-surface2 hover:bg-surface2/80 text-text-muted border-border/15 cursor-pointer'
+                  )}
+                >
+                  <XCircle size={16} /> PASS
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => onAccept(booking.id)}
+                  className="py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base rounded-lg shadow-md transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check size={16} /> ACCEPT
+                </button>
+                <button
+                  onClick={() => onPass(booking.id)}
+                  className="py-3 px-4 bg-surface2 hover:bg-surface2/80 text-text-muted font-bold text-base rounded-lg shadow-sm border border-border/15 transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <XCircle size={16} /> PASS
+                </button>
+              </>
+            )
           ) : (
             <button
               onClick={onClose}

@@ -94,3 +94,12 @@ export interface Enquiry {
   created_at: string
 }
 
+export interface BookingApplication {
+  id: string
+  booking_id: string
+  driver_id: string
+  status: 'pending' | 'accepted' | 'rejected'
+  created_at: string
+  driver?: Driver | null
+}
+

@@ -36,6 +36,7 @@ import {
   fetchDriverProfile,
   updateTripStatus,
   setDriverInfo,
+  applyForMonthlyBooking,
 } from '@/redux/slices/driverSlice'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
@@ -52,9 +53,18 @@ import AcceptBookingModal from '@/components/driver/AcceptBookingModal'
 export default function DriverApp() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
-  const { isAuthenticated, isOnline, info, bookings, notifications, stats, loading, error, checkingSession } = useSelector(
-    (state: RootState) => state.driver
-  )
+  const {
+    isAuthenticated,
+    isOnline,
+    info,
+    bookings,
+    notifications,
+    stats,
+    loading,
+    error,
+    checkingSession,
+    appliedBookingIds = [],
+  } = useSelector((state: RootState) => state.driver)
   const { theme, setTheme } = useTheme()
   const [localCheckingSession, setLocalCheckingSession] = useState(true)
 
@@ -518,6 +528,57 @@ export default function DriverApp() {
     setIsModalOpen(true)
   }
 
+  const [isApplyingBooking, setIsApplyingBooking] = useState(false)
+
+  const handleApplyBooking = async (bookingId: string) => {
+    setIsApplyingBooking(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
+        toast.error('Session expired. Please log in again.')
+        return
+      }
+
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('verified, is_suspended')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !profile) {
+        toast.error('Failed to verify account status.')
+        return
+      }
+
+      if (!profile.verified) {
+        toast.error('Your account is not approved by the admin yet. Please wait for verification.')
+        return
+      }
+
+      if (profile.is_suspended) {
+        toast.error('Your account has been suspended by the administrator.')
+        return
+      }
+
+      const result = await dispatch(applyForMonthlyBooking(bookingId))
+      if (applyForMonthlyBooking.fulfilled.match(result)) {
+        toast.success('Application submitted! Admin will evaluate and notify you once selected.', {
+          duration: 5000,
+        })
+        setIsModalOpen(false)
+        setSelectedBooking(null)
+      } else {
+        const errMsg = (result.payload as string) || 'Failed to apply'
+        toast.error(errMsg)
+      }
+    } catch (err) {
+      console.error('Error applying for booking:', err)
+      toast.error('Failed to submit application. Please try again.')
+    } finally {
+      setIsApplyingBooking(false)
+    }
+  }
+
   const handleRequestAccept = (bookingId: string) => {
     const booking =
       bookings.find((b) => b.id === bookingId) ||
@@ -525,9 +586,9 @@ export default function DriverApp() {
       (selectedBooking?.id === bookingId ? selectedBooking : null)
 
     if (booking) {
-      // Skip the confirmation popup for monthly bookings
+      // Direct monthly bookings to the apply workflow
       if (booking.type === 'MONTHLY') {
-        handleConfirmAccept(bookingId)
+        handleApplyBooking(bookingId)
         return
       }
       setBookingToConfirm(booking)
@@ -614,6 +675,10 @@ export default function DriverApp() {
   }
 
   const handlePass = (bookingId: string) => {
+    if (appliedBookingIds.includes(bookingId)) {
+      toast.error('You cannot pass a booking you have already applied for.')
+      return
+    }
     dispatch(passBooking(bookingId))
     setIsModalOpen(false)
     setSelectedBooking(null)
@@ -796,6 +861,8 @@ export default function DriverApp() {
             availableBookings={availableBookings}
             handleOpenDetails={handleOpenDetails}
             onAccept={async (id) => handleRequestAccept(id)}
+            onApply={async (id) => handleApplyBooking(id)}
+            appliedBookingIds={appliedBookingIds}
             onTotalTripsClick={() => {
               setActiveTab('bookings')
               setBookingFilter('history')
@@ -908,7 +975,9 @@ export default function DriverApp() {
           booking={selectedBooking}
           onClose={() => setIsModalOpen(false)}
           onAccept={handleRequestAccept}
+          onApply={handleApplyBooking}
           onPass={handlePass}
+          isApplied={appliedBookingIds.includes(selectedBooking.id)}
         />
       )}
 

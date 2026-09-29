@@ -499,3 +499,31 @@ begin
   return new;
 end;
 $$ language plpgsql security definer;
+
+-- 11. Create booking_applications table for monthly booking multi-driver applications
+create table if not exists public.booking_applications (
+  id uuid primary key default gen_random_uuid(),
+  booking_id text references public.bookings(id) on delete cascade not null,
+  driver_id uuid references public.users(id) on delete cascade not null,
+  status text not null check (status in ('pending', 'accepted', 'rejected')) default 'pending',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (booking_id, driver_id)
+);
+
+create index if not exists idx_booking_applications_booking_id on public.booking_applications(booking_id);
+create index if not exists idx_booking_applications_driver_id on public.booking_applications(driver_id);
+
+alter table public.booking_applications enable row level security;
+
+create policy "Anyone authenticated can view booking applications." on public.booking_applications
+  for select using (auth.role() = 'authenticated');
+
+create policy "Drivers can insert their own booking applications." on public.booking_applications
+  for insert with check (auth.uid() = driver_id);
+
+create policy "Admins can update booking applications." on public.booking_applications
+  for update using (public.is_admin());
+
+create policy "Admins can delete booking applications." on public.booking_applications
+  for delete using (public.is_admin());
+

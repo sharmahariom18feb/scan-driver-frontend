@@ -26,8 +26,9 @@ interface HomeTabProps {
   handleOpenDetails: (booking: Booking) => void
   onTotalTripsClick?: () => void
   onAccept: (id: string) => Promise<void>
+  onApply?: (id: string) => Promise<void>
+  appliedBookingIds?: string[]
   onRequestNotificationPermission?: () => Promise<void> | void
-
 }
 
 const formatTripType = (type: string) => {
@@ -110,6 +111,8 @@ export default function HomeTab({
   handleOpenDetails,
   onTotalTripsClick,
   onAccept,
+  onApply,
+  appliedBookingIds = [],
   onRequestNotificationPermission,
 }: HomeTabProps) {
   const [acceptingIds, setAcceptingIds] = React.useState<Record<string, boolean>>({})
@@ -358,20 +361,41 @@ export default function HomeTab({
                     <div className="text-[10px] text-text-muted font-semibold leading-tight mb-1">
                       {getPackageText(booking)}
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onAccept(booking.id)
-                      }}
-                      className={cn(
-                        'w-full py-2 px-3 font-bold text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1',
-                        booking.type === 'MONTHLY'
-                          ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                          : 'bg-primary hover:bg-gold-light text-black'
-                      )}
-                    >
-                      Accept
-                    </button>
+                    {booking.type === 'MONTHLY' ? (
+                      appliedBookingIds.includes(booking.id) ? (
+                        <button
+                          disabled
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full py-2 px-2.5 font-bold text-[11px] rounded-lg shadow-sm border border-emerald-500/40 bg-emerald-500/15 text-emerald-400 flex items-center justify-center gap-1 cursor-default tracking-wide"
+                        >
+                          <span>✓ Applied</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (onApply) {
+                              onApply(booking.id)
+                            } else {
+                              onAccept(booking.id)
+                            }
+                          }}
+                          className="w-full py-2 px-3 font-bold text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                        >
+                          Apply
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onAccept(booking.id)
+                        }}
+                        className="w-full py-2 px-3 font-bold text-xs rounded-lg shadow-sm transition-all duration-300 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1 bg-primary hover:bg-gold-light text-black"
+                      >
+                        Accept
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

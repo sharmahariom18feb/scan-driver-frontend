@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink, FileSpreadsheet } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink, FileSpreadsheet, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
-import { Booking, Driver } from '../types'
+import { Booking, Driver, BookingApplication } from '../types'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 import DriverDetailModal from './DriverDetailModal'
 import { getMonthlyDutyHours } from '@/lib/utils'
@@ -84,6 +85,14 @@ export default function BookingsTab({
   // Local drivers list for ID-to-name lookup and assignment modal
   const [drivers, setDrivers] = useState<Driver[]>([])
 
+  // Client-side mount tracking for React Portal modals
+  const [mounted, setMounted] = useState(false)
+
+  // Monthly Booking Applications Review State
+  const [applications, setApplications] = useState<BookingApplication[]>([])
+  const [reviewingMonthlyBooking, setReviewingMonthlyBooking] = useState<Booking | null>(null)
+  const [acceptingApplicationId, setAcceptingApplicationId] = useState<string | null>(null)
+
   // Create Booking Modal State
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [customerName, setCustomerName] = useState('')
@@ -132,6 +141,24 @@ export default function BookingsTab({
       setDrivers((data || []) as Driver[])
     } catch (err) {
       console.error('Error fetching drivers for bookings:', err)
+    }
+  }
+
+  // Fetch all driver applications for monthly bookings
+  const fetchApplications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('booking_applications')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.warn('Note: booking_applications query error or table not yet migrated:', error.message)
+        return
+      }
+      setApplications((data || []) as BookingApplication[])
+    } catch (err) {
+      console.error('Error fetching booking applications:', err)
     }
   }
 
@@ -226,8 +253,40 @@ export default function BookingsTab({
   }
 
   useEffect(() => {
+    setMounted(true)
     fetchAllDrivers()
+    fetchApplications()
   }, [])
+
+  // Lock body scroll and listen for Escape key when any modal is open
+  useEffect(() => {
+    const isModalOpen = Boolean(
+      reviewingMonthlyBooking ||
+      showCreateModal ||
+      assigningBooking ||
+      viewingInvoice
+    )
+
+    if (isModalOpen) {
+      const prevOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          if (reviewingMonthlyBooking) setReviewingMonthlyBooking(null)
+          else if (assigningBooking) setAssigningBooking(null)
+          else if (viewingInvoice) setViewingInvoice(null)
+          else if (showCreateModal) handleCloseModal()
+        }
+      }
+
+      window.addEventListener('keydown', handleKeyDown)
+      return () => {
+        document.body.style.overflow = prevOverflow
+        window.removeEventListener('keydown', handleKeyDown)
+      }
+    }
+  }, [reviewingMonthlyBooking, showCreateModal, assigningBooking, viewingInvoice])
 
   useEffect(() => {
     fetchBookingsLocal()
@@ -271,6 +330,7 @@ export default function BookingsTab({
     onRefresh()
     fetchBookingsLocal()
     fetchAllDrivers() // Also keep drivers list updated
+    fetchApplications() // Keep monthly applications updated
   }
 
   const filteredBookings = bookings
@@ -598,6 +658,59 @@ export default function BookingsTab({
       toast.error(err.message || 'Failed to update assignment')
     } finally {
       setAssigning(false)
+    }
+  }
+
+  // Accept Monthly Booking Application Action
+  const handleAcceptApplication = async (app: BookingApplication) => {
+    if (!reviewingMonthlyBooking) return
+    setAcceptingApplicationId(app.id)
+    try {
+      // 1. Update Booking driver_id and status
+      const { error: bookingErr } = await supabase
+        .from('bookings')
+        .update({
+          driver_id: app.driver_id,
+          status: 'accepted',
+        })
+        .eq('id', reviewingMonthlyBooking.id)
+
+      if (bookingErr) throw bookingErr
+
+      // 2. Mark this application as 'accepted'
+      await supabase
+        .from('booking_applications')
+        .update({ status: 'accepted' })
+        .eq('id', app.id)
+
+      // 3. Mark all other applications for this booking as 'rejected'
+      await supabase
+        .from('booking_applications')
+        .update({ status: 'rejected' })
+        .eq('booking_id', reviewingMonthlyBooking.id)
+        .neq('id', app.id)
+
+      // 4. Send notification to the accepted driver
+      const selectedDriver = drivers.find((d) => d.id === app.driver_id)
+      const driverName = selectedDriver ? selectedDriver.full_name : 'Driver'
+
+      await supabase.from('notifications').insert({
+        driver_id: app.driver_id,
+        title: 'Monthly Booking Application Accepted! 🎉',
+        description: `Congratulations! Admin selected you for monthly booking #${reviewingMonthlyBooking.id} (${reviewingMonthlyBooking.vehicle}). Pickup: ${reviewingMonthlyBooking.pickup}.`,
+        time: 'Just now',
+        type: 'booking',
+        read: false,
+      })
+
+      toast.success(`Application accepted! Monthly booking #${reviewingMonthlyBooking.id} assigned to ${driverName}.`)
+      setReviewingMonthlyBooking(null)
+      refreshAll()
+    } catch (err: any) {
+      console.error('Error accepting application:', err)
+      toast.error(err.message || 'Failed to accept application')
+    } finally {
+      setAcceptingApplicationId(null)
     }
   }
 
@@ -1209,6 +1322,28 @@ export default function BookingsTab({
                             Assign Driver
                           </button>
                         )}
+                        {isMonthly && (
+                          <div className="mt-1.5">
+                            {(() => {
+                              const bookingApps = applications.filter((a) => a.booking_id === b.id)
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setReviewingMonthlyBooking(b)}
+                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-extrabold border transition-all cursor-pointer ${
+                                    bookingApps.length > 0
+                                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 shadow-xs'
+                                      : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:bg-slate-800'
+                                  }`}
+                                  title="View driver applications for this monthly booking"
+                                >
+                                  <Users size={11} className={bookingApps.length > 0 ? "text-emerald-400" : "text-slate-500"} />
+                                  <span>{bookingApps.length} {bookingApps.length === 1 ? 'Applicant' : 'Applicants'}</span>
+                                </button>
+                              )
+                            })()}
+                          </div>
+                        )}
                       </td>
 
                       {/* Actions */}
@@ -1385,12 +1520,26 @@ export default function BookingsTab({
                           <span className="text-[10px] text-slate-400 italic">No driver assigned</span>
                         )}
                       </div>
-                      <button
-                        onClick={() => setAssigningBooking(b)}
-                        className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
-                      >
-                        {assignedDriver ? 'Change' : 'Assign'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {isMonthly && (
+                          <button
+                            type="button"
+                            onClick={() => setReviewingMonthlyBooking(b)}
+                            className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 py-1 px-2 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer flex items-center gap-1"
+                          >
+                            <Users size={10} />
+                            <span>
+                              {applications.filter((a) => a.booking_id === b.id).length} Apps
+                            </span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setAssigningBooking(b)}
+                          className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer"
+                        >
+                          {assignedDriver ? 'Change' : 'Assign'}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Actions and Status Row */}
@@ -1532,9 +1681,14 @@ export default function BookingsTab({
       </div>
 
       {/* Modal: Create or Edit Booking */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-200">
+      {showCreateModal && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseModal()
+          }}
+        >
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col relative my-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center">
               <h3 className="font-bold text-white text-sm">
@@ -1849,7 +2003,7 @@ export default function BookingsTab({
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 rounded-xl border border-slate-850 hover:bg-slate-850 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer transition-all"
+                  className="px-4 py-2 rounded-xl border border-slate-855 hover:bg-slate-850 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer transition-all"
                 >
                   CANCEL
                 </button>
@@ -1863,13 +2017,19 @@ export default function BookingsTab({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: Driver Assignment */}
-      {assigningBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-200">
+      {assigningBooking && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAssigningBooking(null)
+          }}
+        >
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col relative my-auto animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center">
               <div>
@@ -1964,13 +2124,260 @@ export default function BookingsTab({
               })()}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal: Monthly Booking Applications Review */}
+      {reviewingMonthlyBooking && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setReviewingMonthlyBooking(null)
+          }}
+        >
+          <div className="bg-slate-900 border border-slate-800 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative my-auto animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <Users size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-white text-sm">Monthly Booking Applications</h3>
+                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                      ID: {reviewingMonthlyBooking.id}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    {reviewingMonthlyBooking.vehicle} • ₹{reviewingMonthlyBooking.fare} • {reviewingMonthlyBooking.duration}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReviewingMonthlyBooking(null)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Subheader / Booking Route Context */}
+            <div className="px-5 py-3 bg-slate-950/30 border-b border-slate-800/80 text-xs flex flex-wrap gap-4 items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-[10px] text-slate-400">
+                  <span className="text-emerald-400 font-bold">Pickup:</span> {reviewingMonthlyBooking.pickup}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  <span className="text-rose-400 font-bold">Drop:</span> {reviewingMonthlyBooking.drop}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400">Customer: <strong className="text-white">{reviewingMonthlyBooking.customer_name}</strong></p>
+                <p className="text-[10px] text-slate-400">Current Status: <strong className="text-amber-400 uppercase">{reviewingMonthlyBooking.status}</strong></p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
+              {(() => {
+                const bookingApps = applications.filter((a) => a.booking_id === reviewingMonthlyBooking.id)
+
+                if (bookingApps.length === 0) {
+                  return (
+                    <div className="py-12 text-center space-y-3">
+                      <div className="inline-flex p-3 rounded-2xl bg-slate-800/60 text-slate-500 border border-slate-700/50">
+                        <Users size={28} />
+                      </div>
+                      <p className="text-sm font-bold text-slate-300">No applications received yet</p>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        Drivers can view this monthly duty in their driver app and submit an application. Received applications will be listed here for your review and selection.
+                      </p>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        {bookingApps.length} {bookingApps.length === 1 ? 'Driver Applied' : 'Drivers Applied'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Review qualifications and assign the best fit
+                      </p>
+                    </div>
+
+                    {bookingApps.map((app) => {
+                      const driver = drivers.find((d) => d.id === app.driver_id) || app.driver
+                      const isCurrentlyAssigned = reviewingMonthlyBooking.driver_id === app.driver_id
+                      const isAccepted = app.status === 'accepted' || isCurrentlyAssigned
+
+                      // Extract selfie
+                      const docs = Array.isArray(driver?.driver_documents)
+                        ? driver.driver_documents[0]
+                        : driver?.driver_documents
+                      const selfieUrl = docs?.selfie_url
+
+                      // Extract profile
+                      const profile = Array.isArray(driver?.driver_profiles)
+                        ? driver.driver_profiles[0]
+                        : driver?.driver_profiles
+
+                      return (
+                        <div
+                          key={app.id}
+                          className={`p-4 rounded-xl border transition-all ${
+                            isAccepted
+                              ? 'bg-emerald-950/20 border-emerald-500/50 shadow-md shadow-emerald-950/30'
+                              : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            {/* Driver Info */}
+                            <div className="flex items-start gap-3.5">
+                              {/* Avatar */}
+                              <div className="relative shrink-0">
+                                {selfieUrl ? (
+                                  <img
+                                    src={selfieUrl}
+                                    alt={driver?.full_name || 'Driver'}
+                                    className="w-12 h-12 rounded-xl object-cover border border-slate-700 shadow-sm"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-extrabold text-sm">
+                                    {(driver?.full_name || 'D').slice(0, 2).toUpperCase()}
+                                  </div>
+                                )}
+                                {driver?.is_online && (
+                                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-900" title="Online" />
+                                )}
+                              </div>
+
+                              {/* Details */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-extrabold text-white text-sm">
+                                    {driver?.full_name || 'Unknown Driver'}
+                                  </h4>
+                                  {driver?.unique_id && (
+                                    <span className="text-[9px] font-mono text-slate-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                                      {driver.unique_id}
+                                    </span>
+                                  )}
+                                  {driver?.verified ? (
+                                    <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                      VERIFIED
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                      UNVERIFIED
+                                    </span>
+                                  )}
+                                  {isAccepted && (
+                                    <span className="text-[9px] font-extrabold text-emerald-300 bg-emerald-500/30 px-2 py-0.5 rounded-full border border-emerald-400 flex items-center gap-1">
+                                      <Check size={10} /> ASSIGNED
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+                                  {driver?.phone && (
+                                    <span className="flex items-center gap-1">
+                                      <Phone size={11} className="text-slate-500" /> {driver.phone}
+                                    </span>
+                                  )}
+                                  {driver?.current_area && (
+                                    <span className="flex items-center gap-1">
+                                      <MapPin size={11} className="text-slate-500" /> {driver.current_area}
+                                    </span>
+                                  )}
+                                  {driver?.rating !== undefined && (
+                                    <span className="text-amber-400 font-bold">
+                                      ★ {driver.rating}
+                                    </span>
+                                  )}
+                                  {profile?.experience && (
+                                    <span className="text-slate-300 bg-slate-900/80 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]">
+                                      Exp: {profile.experience}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <p className="text-[10px] text-slate-500 pt-0.5">
+                                  Applied: {formatTime(app.created_at)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                              {driver && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewDriver(driver as Driver, reviewingMonthlyBooking)}
+                                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold border border-slate-700 transition-colors cursor-pointer flex items-center gap-1"
+                                >
+                                  <span>Profile</span>
+                                  <ExternalLink size={12} />
+                                </button>
+                              )}
+
+                              {isAccepted ? (
+                                <span className="px-3.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-extrabold flex items-center gap-1.5">
+                                  <Check size={13} /> Selected
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={acceptingApplicationId === app.id}
+                                  onClick={() => handleAcceptApplication(app)}
+                                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                  {acceptingApplicationId === app.id ? (
+                                    <span>Accepting...</span>
+                                  ) : (
+                                    <>
+                                      <Check size={13} />
+                                      <span>Accept & Assign</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-slate-800 flex justify-end bg-slate-950/60">
+              <button
+                onClick={() => setReviewingMonthlyBooking(null)}
+                className="px-4 py-2 rounded-xl border border-slate-800 hover:bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: View Invoice */}
-      {viewingInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+      {viewingInvoice && mounted && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingInvoice(null)
+          }}
+        >
+          <div className="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative my-auto animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/40">
               <h3 className="font-bold text-white text-sm">Ride Invoice Receipt</h3>
@@ -2006,7 +2413,8 @@ export default function BookingsTab({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: Comprehensive Driver Details */}

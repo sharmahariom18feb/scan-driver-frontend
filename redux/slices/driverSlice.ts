@@ -76,6 +76,7 @@ export interface DriverState {
   info: DriverInfo | null
   bookings: Booking[]
   notifications: DriverNotification[]
+  appliedBookingIds: string[]
   stats: {
     trips: number
     earnings: number
@@ -91,6 +92,7 @@ const initialState: DriverState = {
   info: null,
   bookings: [],
   notifications: [],
+  appliedBookingIds: [],
   stats: {
     trips: 0,
     earnings: 0,
@@ -103,9 +105,13 @@ const initialState: DriverState = {
 // 1. Fetch bookings from Supabase
 export const fetchBookings = createAsyncThunk(
   'driver/fetchBookings',
-  async (_, { rejectWithValue }) => {
+  async (_, { dispatch, rejectWithValue }) => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
+
+      if (session?.user) {
+        dispatch(fetchDriverApplications())
+      }
 
       let query = supabase.from('bookings').select('*')
 
@@ -842,6 +848,63 @@ export const updateTripStatus = createAsyncThunk(
   }
 )
 
+// 8d. Fetch Driver Applications Thunk
+export const fetchDriverApplications = createAsyncThunk(
+  'driver/fetchDriverApplications',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return []
+
+      const { data, error } = await supabase
+        .from('booking_applications')
+        .select('booking_id')
+        .eq('driver_id', session.user.id)
+
+      if (error) {
+        console.warn('fetchDriverApplications warning:', error.message)
+        return []
+      }
+
+      return (data || []).map((row: any) => row.booking_id as string)
+    } catch (err: any) {
+      console.warn('fetchDriverApplications exception:', err)
+      return []
+    }
+  }
+)
+
+// 8e. Apply For Monthly Booking Thunk
+export const applyForMonthlyBooking = createAsyncThunk(
+  'driver/applyForMonthlyBooking',
+  async (bookingId: string, { rejectWithValue }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('Not authenticated')
+
+      const { error } = await supabase
+        .from('booking_applications')
+        .insert({
+          booking_id: bookingId,
+          driver_id: session.user.id,
+          status: 'pending',
+        })
+
+      if (error) {
+        if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique')) {
+          return bookingId
+        }
+        throw error
+      }
+
+      return bookingId
+    } catch (err: any) {
+      console.error('applyForMonthlyBooking error:', err)
+      return rejectWithValue(err.message || 'Failed to submit application')
+    }
+  }
+)
+
 // 9. Mark notifications as read thunk
 export const markAllNotificationsAsRead = createAsyncThunk(
   'driver/markAllNotificationsAsRead',
@@ -1137,6 +1200,18 @@ export const driverSlice = createSlice({
       state.notifications = state.notifications.map((n) => ({ ...n, read: true }))
     })
 
+    // Fetch Driver Applications
+    builder.addCase(fetchDriverApplications.fulfilled, (state, action: PayloadAction<string[]>) => {
+      state.appliedBookingIds = action.payload || []
+    })
+
+    // Apply for Monthly Booking
+    builder.addCase(applyForMonthlyBooking.fulfilled, (state, action: PayloadAction<string>) => {
+      if (!state.appliedBookingIds.includes(action.payload)) {
+        state.appliedBookingIds.push(action.payload)
+      }
+    })
+
     // Logout
     builder.addCase(logoutDriver.fulfilled, (state) => {
       state.isAuthenticated = false
@@ -1145,6 +1220,7 @@ export const driverSlice = createSlice({
       state.stats = { trips: 0, earnings: 0 }
       state.bookings = []
       state.notifications = []
+      state.appliedBookingIds = []
     })
   },
 })
