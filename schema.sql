@@ -16,6 +16,7 @@ create table if not exists public.users (
   role text not null check (role in ('ADMIN', 'DRIVER', 'CUSTOMER')) default 'DRIVER',
   is_suspended boolean default false not null,
   unique_id text unique,
+  managed_by text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -374,6 +375,7 @@ create table if not exists public.driver_profiles (
   previous_platforms text,
   additional_comments text,
   current_address text,
+  managed_by text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

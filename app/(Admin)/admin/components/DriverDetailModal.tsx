@@ -24,7 +24,8 @@ import {
   ExternalLink,
   Briefcase,
   Users,
-  AlertCircle
+  AlertCircle,
+  UserCheck
 } from 'lucide-react'
 import JSZip from 'jszip'
 import { toast } from 'sonner'
@@ -250,6 +251,12 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
                     {driver.unique_id}
                   </span>
                 )}
+                {(driver.managed_by || profile?.managed_by) && (
+                  <span className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <UserCheck size={11} className="text-indigo-400" />
+                    SPOC: {driver.managed_by || profile?.managed_by}
+                  </span>
+                )}
                 {/* Rating Badge */}
                 <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] font-bold px-2 py-0.5 rounded-md">
                   <Star size={12} className="fill-amber-400 text-amber-400" />
@@ -313,7 +320,7 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
         <div className="flex-1 overflow-y-auto p-6 space-y-6 text-slate-350">
 
           {/* 1. Quick Contact Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Phone & Direct Call */}
             <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -381,6 +388,25 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
                   <p className="text-[9px] font-extrabold uppercase text-slate-500">Current Area</p>
                   <p className="text-xs font-bold text-white truncate" title={driver.current_area || 'Delhi NCR'}>
                     {driver.current_area || 'Delhi NCR'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Managed By (SPOC) */}
+            <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+                  <UserCheck size={15} />
+                </div>
+                <div className="truncate">
+                  <p className="text-[9px] font-extrabold uppercase text-slate-500">Managed By (SPOC)</p>
+                  <p className="text-xs font-bold text-white truncate" title={driver.managed_by || profile?.managed_by || 'Not Assigned'}>
+                    {driver.managed_by || profile?.managed_by ? (
+                      <span className="text-indigo-300 font-bold">{driver.managed_by || profile?.managed_by}</span>
+                    ) : (
+                      <span className="text-slate-500 italic font-normal">Not Assigned</span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -464,9 +490,17 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
               </div>
             </div>
 
-            {/* Previous platforms & comments */}
-            {(profile?.previous_platforms || profile?.additional_comments || driver.email) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* Previous platforms, comments, email & SPOC */}
+            {(profile?.previous_platforms || profile?.additional_comments || driver.email || driver.managed_by || profile?.managed_by) && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl">
+                  <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Managed By (SPOC)</span>
+                  <span className="text-xs font-semibold text-slate-200">
+                    {driver.managed_by || profile?.managed_by || (
+                      <span className="text-slate-500 italic font-normal">Not Assigned</span>
+                    )}
+                  </span>
+                </div>
                 {driver.email && (
                   <div className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl">
                     <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Email Address</span>

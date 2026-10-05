@@ -313,7 +313,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             {[
               { id: 'dashboard' as const, label: 'Overview', icon: LayoutDashboard },
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
-              { id: 'history' as const, label: 'Completed & Cancelled', icon: CheckCircle2 },
+              { id: 'history' as const, label: 'Booking History', icon: CheckCircle2 },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'suspended-drivers' as const, label: 'Suspended Drivers', icon: UserX },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
@@ -408,7 +408,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               <Menu size={20} />
             </button>
             <span className="text-xs font-bold text-slate-200 capitalize hidden sm:inline-block">
-              Root Console / {activeTab === 'history' ? 'Completed & Cancelled Booking' : activeTab === 'suspended-drivers' ? 'Suspended Drivers' : activeTab}
+              Root Console / {activeTab === 'history' ? 'Booking History' : activeTab === 'suspended-drivers' ? 'Suspended Drivers' : activeTab}
             </span>
           </div>
 

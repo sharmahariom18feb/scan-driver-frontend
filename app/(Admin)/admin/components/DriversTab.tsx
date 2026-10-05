@@ -350,6 +350,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
   const [editIsOnline, setEditIsOnline] = useState(false)
   const [editRole, setEditRole] = useState<'ADMIN' | 'DRIVER' | 'CUSTOMER'>('DRIVER')
   const [editUniqueId, setEditUniqueId] = useState('')
+  const [editManagedBy, setEditManagedBy] = useState('')
 
   // Driver profile fields
   const [editExperience, setEditExperience] = useState('')
@@ -384,6 +385,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     setEditIsOnline(!!d.is_online)
     setEditRole((d.role as any) || 'DRIVER')
     setEditUniqueId(d.unique_id || '')
+    setEditManagedBy(d.managed_by || profile?.managed_by || '')
 
     // Profile fields
     setEditExperience(profile?.experience || '')
@@ -433,7 +435,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           verified: editVerified,
           is_online: editIsOnline,
           role: editRole,
-          unique_id: editUniqueId || null
+          unique_id: editUniqueId || null,
+          managed_by: editManagedBy.trim() || null
         },
         profileData: editRole === 'DRIVER' ? {
           experience: editExperience,
@@ -442,6 +445,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           previous_platforms: editPreviousPlatforms || null,
           additional_comments: editAdditionalComments || null,
           current_address: editCurrentAddress || null,
+          managed_by: editManagedBy.trim() || null,
           service_preference: normalizeServicePreferences(editServicePreference),
           vehicle_specialties: editVehicleSpecialties
         } : null,
@@ -602,7 +606,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
       // 1. Apply Search Filter
       if (searchTerm.trim()) {
         const term = `%${searchTerm.trim()}%`
-        query = query.or(`full_name.ilike.${term},phone.ilike.${term},license_no.ilike.${term},current_area.ilike.${term}`)
+        query = query.or(`full_name.ilike.${term},phone.ilike.${term},license_no.ilike.${term},current_area.ilike.${term},managed_by.ilike.${term}`)
       }
 
       // 2. Apply Verification Filter
@@ -829,6 +833,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           'License No': d.license_no || 'N/A',
           'Area': d.current_area || 'N/A',
           'Current Address': d.current_address || profile?.current_address || 'Not provided',
+          'Managed By (SPOC)': d.managed_by || profile?.managed_by || 'Not Assigned',
           'Employment Type': profile?.availability || 'N/A',
           'Rating': Number(d.rating || 5.0).toFixed(2),
           'Verification': d.verified ? 'Verified' : 'Pending',
@@ -849,6 +854,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
         { wch: 24 }, // License No
         { wch: 24 }, // Area
         { wch: 36 }, // Current Address
+        { wch: 22 }, // Managed By (SPOC)
         { wch: 18 }, // Employment Type
         { wch: 10 }, // Rating
         { wch: 15 }, // Verification
@@ -983,6 +989,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                 <th className="py-4 px-5">License</th>
                 <th className="py-4 px-5">Area & Rating</th>
                 <th className="py-4 px-5">Employment Type</th>
+                <th className="py-4 px-5">Managed By (SPOC)</th>
                 <th className="py-4 px-5">Status</th>
                 <th className="py-4 px-5 text-right">Verification Action</th>
               </tr>
@@ -990,7 +997,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
             <tbody className="divide-y divide-slate-800 text-slate-200">
               {filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-slate-400 italic">
+                  <td colSpan={8} className="py-12 text-center text-xs text-slate-400 italic">
                     {mode === 'suspended'
                       ? 'No suspended drivers found.'
                       : 'No drivers registered matching current filters.'}
@@ -1088,6 +1095,20 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       })()}
                     </td>
 
+                    {/* Managed By (SPOC) */}
+                    <td className="py-4 px-5">
+                      {d.managed_by || getProfile(d)?.managed_by ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                          <UserCheck size={11} className="text-indigo-400" />
+                          {d.managed_by || getProfile(d)?.managed_by}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-slate-450 italic">
+                          Not Assigned
+                        </span>
+                      )}
+                    </td>
+
                     {/* Online status */}
                     <td className="py-4 px-5">
                       <button
@@ -1159,7 +1180,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     const profile = getProfile(d)
                     return (
                       <tr className="bg-slate-950/60 text-xs">
-                        <td colSpan={7} className="py-4 px-6 border-b border-slate-800">
+                        <td colSpan={8} className="py-4 px-6 border-b border-slate-800">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-300">
                             <div className="space-y-1.5">
                               <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
@@ -1178,6 +1199,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                             </div>
                             <div className="space-y-1.5">
                               <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Additional Details</h4>
+                              <p><span className="font-bold text-white">Managed By (SPOC):</span> {d.managed_by || profile?.managed_by ? <span className="text-indigo-300 font-bold">{d.managed_by || profile?.managed_by}</span> : <span className="text-slate-450 italic font-normal">Not Assigned</span>}</p>
                               <p><span className="font-bold text-white">Pehle platform pe:</span> {profile ? (profile.previous_platforms || 'Nahi') : 'N/A'}</p>
                               <p className="whitespace-pre-wrap"><span className="font-bold text-white">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
                             </div>
@@ -1256,6 +1278,14 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       <span className="text-slate-500 italic">Not provided</span>
                     )}
                   </p>
+                  <p className="text-[11px] font-semibold">
+                    <span className="text-slate-400">Managed By (SPOC):</span>{' '}
+                    {d.managed_by || getProfile(d)?.managed_by ? (
+                      <span className="text-indigo-300 font-bold">{d.managed_by || getProfile(d)?.managed_by}</span>
+                    ) : (
+                      <span className="text-slate-500 italic font-normal">Not Assigned</span>
+                    )}
+                  </p>
                   <p className="flex items-center gap-1 mt-1 font-semibold">
                     Status: <span className={`h-1.5 w-1.5 rounded-full ${d.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
                     <span className="font-bold text-slate-200">{d.is_online ? 'Online' : 'Offline'}</span>
@@ -1283,6 +1313,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       </div>
                       <div className="space-y-1">
                         <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Additional Details</h4>
+                        <p><span className="font-bold text-slate-200">Managed By (SPOC):</span> {d.managed_by || profile?.managed_by ? <span className="text-indigo-300 font-bold">{d.managed_by || profile?.managed_by}</span> : <span className="text-slate-500 italic font-normal">Not Assigned</span>}</p>
                         <p><span className="font-bold text-slate-200">Pehle Platform:</span> {profile ? (profile.previous_platforms || 'Nahi') : 'N/A'}</p>
                         <p className="whitespace-pre-wrap"><span className="font-bold text-slate-200">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
                       </div>
@@ -1624,6 +1655,20 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       onChange={(e) => setEditUniqueId(e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
                       placeholder="e.g. SD100234"
+                    />
+                  </div>
+
+                  {/* Managed By (SPOC) */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Managed By (SPOC)
+                    </label>
+                    <input
+                      type="text"
+                      value={editManagedBy}
+                      onChange={(e) => setEditManagedBy(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                      placeholder="e.g. Operations SPOC / Manager name (optional)"
                     />
                   </div>
                 </div>

@@ -988,7 +988,7 @@ export default function BookingsTab({
       ]
 
       const workbook = XLSX.utils.book_new()
-      const sheetName = mode === 'history' ? 'Completed & Cancelled' : 'Bookings'
+      const sheetName = mode === 'history' ? 'Booking History' : 'Bookings'
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
 
       const dateStr = new Date().toISOString().split('T')[0]
@@ -1009,7 +1009,7 @@ export default function BookingsTab({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">
-            {mode === 'history' ? 'Completed & Cancelled Bookings' : 'Bookings'}
+            {mode === 'history' ? 'Booking History' : 'Bookings'}
           </h1>
           <p className="text-slate-200 text-xs mt-1">
             {mode === 'history'

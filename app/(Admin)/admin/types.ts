@@ -8,6 +8,7 @@ export interface DriverProfile {
   previous_platforms?: string | null
   additional_comments?: string | null
   current_address?: string | null
+  managed_by?: string | null
 }
 
 export interface DriverReference {
@@ -43,6 +44,7 @@ export interface Driver {
   is_suspended: boolean
   role: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   unique_id?: string | null
+  managed_by?: string | null
   created_at: string
   driver_profiles?: DriverProfile | DriverProfile[] | null
   driver_documents?: DriverDocument | DriverDocument[] | null

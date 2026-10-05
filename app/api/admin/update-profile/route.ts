@@ -53,9 +53,10 @@ export async function POST(request: Request) {
         .update(finalUserData)
         .eq('id', driverId)
 
-      // Fallback if current_address column has not been migrated yet in Supabase schema
-      if (userUpdateError && userUpdateError.message?.includes('current_address')) {
-        delete finalUserData.current_address
+      // Fallback if current_address or managed_by column has not been migrated yet in Supabase schema
+      if (userUpdateError && (userUpdateError.message?.includes('current_address') || userUpdateError.message?.includes('managed_by'))) {
+        if (userUpdateError.message?.includes('current_address')) delete finalUserData.current_address
+        if (userUpdateError.message?.includes('managed_by')) delete finalUserData.managed_by
         const retry = await supabaseAdminClient
           .from('users')
           .update(finalUserData)
@@ -75,9 +76,10 @@ export async function POST(request: Request) {
         .from('driver_profiles')
         .upsert({ id: driverId, ...finalProfileData }, { onConflict: 'id' })
 
-      // Fallback if current_address column has not been migrated yet in Supabase schema
-      if (profileUpdateError && profileUpdateError.message?.includes('current_address')) {
-        delete finalProfileData.current_address
+      // Fallback if current_address or managed_by column has not been migrated yet in Supabase schema
+      if (profileUpdateError && (profileUpdateError.message?.includes('current_address') || profileUpdateError.message?.includes('managed_by'))) {
+        if (profileUpdateError.message?.includes('current_address')) delete finalProfileData.current_address
+        if (profileUpdateError.message?.includes('managed_by')) delete finalProfileData.managed_by
         const retry = await supabaseAdminClient
           .from('driver_profiles')
           .upsert({ id: driverId, ...finalProfileData }, { onConflict: 'id' })
