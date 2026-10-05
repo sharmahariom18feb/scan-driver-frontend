@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX, FileSpreadsheet } from 'lucide-react'
+import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX, FileSpreadsheet, FileText, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import JSZip from 'jszip'
@@ -48,6 +48,38 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     return d.driver_documents
   }
 
+  const ALLOWED_SERVICE_PREFERENCES = ['Hourly Hire', 'Monthly', 'Outstation'] as const
+
+  const normalizeServicePreferences = (savedPrefs?: string[] | null): string[] => {
+    if (!savedPrefs || !Array.isArray(savedPrefs)) return []
+    const mapped = savedPrefs.map(pref => {
+      const trimmed = (pref || '').trim()
+      if (ALLOWED_SERVICE_PREFERENCES.includes(trimmed as any)) {
+        return trimmed
+      }
+      const lower = trimmed.toLowerCase()
+      if (lower === 'hourly driver' || lower === 'hourly' || lower === 'hourly hire') return 'Hourly Hire'
+      if (lower === 'monthly driver' || lower === 'monthly') return 'Monthly'
+      if (lower === 'outstation driver' || lower === 'outstation') return 'Outstation'
+      return null
+    })
+    return Array.from(new Set(mapped.filter((p): p is string => p !== null && ALLOWED_SERVICE_PREFERENCES.includes(p as any))))
+  }
+
+  const getDocumentType = (url?: string | null): 'image' | 'pdf' | 'doc' | 'unknown' => {
+    if (!url) return 'unknown'
+    const cleanUrl = url.split('?')[0].toLowerCase()
+    if (cleanUrl.endsWith('.pdf') || cleanUrl.includes('.pdf') || cleanUrl.includes('/pdf/')) return 'pdf'
+    if (
+      cleanUrl.endsWith('.doc') ||
+      cleanUrl.endsWith('.docx') ||
+      cleanUrl.endsWith('.txt') ||
+      cleanUrl.endsWith('.rtf') ||
+      cleanUrl.includes('/raw/')
+    ) return 'doc'
+    return 'image'
+  }
+
   const downloadAllDocuments = async (d: Driver, excludePayment = false) => {
     const docs = getDocuments(d)
     if (!docs) {
@@ -61,6 +93,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
       { label: 'Driving_License', url: docs.driving_license_url },
       { label: 'PAN_Card', url: docs.pan_card_url },
       { label: 'Selfie', url: docs.selfie_url },
+      { label: 'Driver_Profile', url: docs.driver_profile_url },
       { label: 'Payment_Receipt', url: docs.payment, isPayment: true },
     ]
 
@@ -92,7 +125,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           throw new Error(`Failed to fetch ${item.label}`)
         }
         const blob = await response.blob()
-        const extension = item.url.split('.').pop()?.split('?')[0] || 'jpg'
+        let extension = item.url.split('.').pop()?.split('?')[0] || 'jpg'
+        if (extension.length > 5) extension = 'jpg'
         
         const fileNameInsideZip = `${baseZipName}_${item.label}.${extension}`
         zip.file(fileNameInsideZip, blob)
@@ -122,12 +156,18 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     
     const getDocsArray = (documentsObject: any) => {
       return [
-        { label: 'Aadhaar Front', field: 'aadhaar_front_url', url: documentsObject?.aadhaar_front_url },
-        { label: 'Aadhaar Back', field: 'aadhaar_back_url', url: documentsObject?.aadhaar_back_url },
-        { label: 'Driving License', field: 'driving_license_url', url: documentsObject?.driving_license_url },
-        { label: 'PAN Card', field: 'pan_card_url', url: documentsObject?.pan_card_url },
-        { label: 'Selfie', field: 'selfie_url', url: documentsObject?.selfie_url },
-        { label: 'Payment Receipt', field: 'payment', url: documentsObject?.payment },
+        { label: 'Aadhaar Front', field: 'aadhaar_front_url', url: documentsObject?.aadhaar_front_url, accept: 'image/*' },
+        { label: 'Aadhaar Back', field: 'aadhaar_back_url', url: documentsObject?.aadhaar_back_url, accept: 'image/*' },
+        { label: 'Driving License', field: 'driving_license_url', url: documentsObject?.driving_license_url, accept: 'image/*' },
+        { label: 'PAN Card', field: 'pan_card_url', url: documentsObject?.pan_card_url, accept: 'image/*' },
+        { label: 'Selfie', field: 'selfie_url', url: documentsObject?.selfie_url, accept: 'image/*' },
+        { 
+          label: 'Driver Profile', 
+          field: 'driver_profile_url', 
+          url: documentsObject?.driver_profile_url, 
+          accept: 'image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+        },
+        { label: 'Payment Receipt', field: 'payment', url: documentsObject?.payment, accept: 'image/*,.pdf,application/pdf' },
       ]
     }
 
@@ -160,74 +200,116 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-            {docsArray.map((doc, idx) => (
-              <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-col items-center space-y-1.5 relative">
-                <span className="text-[9px] font-bold text-slate-400 text-center">{doc.label}</span>
-                {doc.url ? (
-                  <>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setViewingImageUrl(doc.url || null)
-                        setViewingImageLabel(doc.label)
-                      }}
-                      className="relative block w-full h-20 rounded-lg overflow-hidden border border-slate-750 hover:border-amber-500 transition-all group cursor-zoom-in"
-                    >
-                      <img src={doc.url} alt={doc.label} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-[8px] font-extrabold text-white bg-slate-950/80 px-1.5 py-0.5 rounded">ZOOM</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {docsArray.map((doc, idx) => {
+              const docType = getDocumentType(doc.url)
+              return (
+                <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex flex-col items-center space-y-1.5 relative">
+                  <span className="text-[9px] font-bold text-slate-400 text-center truncate w-full" title={doc.label}>
+                    {doc.label}
+                  </span>
+                  {doc.url ? (
+                    <>
+                      {docType === 'pdf' ? (
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setViewingImageUrl(doc.url || null)
+                            setViewingImageLabel(doc.label)
+                          }}
+                          className="relative flex flex-col items-center justify-center w-full h-20 rounded-lg overflow-hidden border border-rose-500/30 bg-rose-950/20 hover:border-rose-400 hover:bg-rose-950/30 transition-all group cursor-pointer p-1 text-center"
+                          title="Click to view PDF"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                            <FileText size={16} />
+                          </div>
+                          <span className="text-[8px] font-extrabold text-rose-300 uppercase tracking-wider">PDF File</span>
+                          <span className="text-[7px] text-slate-400">Click to View</span>
+                        </button>
+                      ) : docType === 'doc' ? (
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setViewingImageUrl(doc.url || null)
+                            setViewingImageLabel(doc.label)
+                          }}
+                          className="relative flex flex-col items-center justify-center w-full h-20 rounded-lg overflow-hidden border border-blue-500/30 bg-blue-950/20 hover:border-blue-400 hover:bg-blue-950/30 transition-all group cursor-pointer p-1 text-center"
+                          title="Click to view Document"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                            <FileText size={16} />
+                          </div>
+                          <span className="text-[8px] font-extrabold text-blue-300 uppercase tracking-wider">Word DOC</span>
+                          <span className="text-[7px] text-slate-400">Click to View</span>
+                        </button>
+                      ) : (
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setViewingImageUrl(doc.url || null)
+                            setViewingImageLabel(doc.label)
+                          }}
+                          className="relative block w-full h-20 rounded-lg overflow-hidden border border-slate-750 hover:border-amber-500 transition-all group cursor-zoom-in"
+                        >
+                          <img src={doc.url} alt={doc.label} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="text-[8px] font-extrabold text-white bg-slate-950/80 px-1.5 py-0.5 rounded">ZOOM</span>
+                          </div>
+                        </button>
+                      )}
+
+                      <div className="flex w-full gap-1 mt-1">
+                        <label className="flex-grow text-center py-1 bg-slate-800 hover:bg-slate-700 text-slate-350 font-extrabold text-[8px] rounded border border-slate-700 cursor-pointer transition-all">
+                          REPLACE
+                          <input 
+                            type="file" 
+                            accept={doc.accept || 'image/*'}
+                            className="hidden" 
+                            disabled={managingDocId === `${d.id}-${doc.field}`}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleDocumentAction(d.id, doc.field, 'replace', file)
+                              e.target.value = ''
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          disabled={managingDocId === `${d.id}-${doc.field}`}
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete this ${doc.label} document?`)) {
+                              handleDocumentAction(d.id, doc.field, 'delete')
+                            }
+                          }}
+                          className="p-1 bg-rose-950/40 hover:bg-rose-900 border border-rose-900 text-rose-300 hover:text-rose-200 font-extrabold text-[8px] rounded transition-all cursor-pointer flex items-center justify-center shrink-0"
+                          title="Delete Document"
+                        >
+                          <Trash2 size={10} />
+                        </button>
                       </div>
-                    </button>
-                    <div className="flex w-full gap-1 mt-1">
-                      <label className="flex-grow text-center py-1 bg-slate-800 hover:bg-slate-700 text-slate-350 font-extrabold text-[8px] rounded border border-slate-700 cursor-pointer transition-all">
-                        REPLACE
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center w-full">
+                      <span className="text-[9px] text-rose-450 italic py-2">Not Uploaded</span>
+                      <label className="w-full text-center py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[8px] rounded cursor-pointer transition-all flex items-center justify-center gap-1">
+                        <Upload size={8} /> UPLOAD
                         <input 
                           type="file" 
-                          accept="image/*"
+                          accept={doc.accept || 'image/*'}
                           className="hidden" 
                           disabled={managingDocId === `${d.id}-${doc.field}`}
                           onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (file) handleDocumentAction(d.id, doc.field, 'replace', file)
+                            e.target.value = ''
                           }}
                         />
                       </label>
-                      <button
-                        type="button"
-                        disabled={managingDocId === `${d.id}-${doc.field}`}
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete this ${doc.label} document?`)) {
-                            handleDocumentAction(d.id, doc.field, 'delete')
-                          }
-                        }}
-                        className="p-1 bg-rose-950/40 hover:bg-rose-900 border border-rose-900 text-rose-300 hover:text-rose-200 font-extrabold text-[8px] rounded transition-all cursor-pointer flex items-center justify-center shrink-0"
-                        title="Delete Document"
-                      >
-                        <Trash2 size={10} />
-                      </button>
                     </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center w-full">
-                    <span className="text-[9px] text-rose-450 italic py-2">Not Uploaded</span>
-                    <label className="w-full text-center py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[8px] rounded cursor-pointer transition-all flex items-center justify-center gap-1">
-                      <Upload size={8} /> UPLOAD
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        className="hidden" 
-                        disabled={managingDocId === `${d.id}-${doc.field}`}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleDocumentAction(d.id, doc.field, 'replace', file)
-                        }}
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -309,7 +391,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     setEditAvailability(profile?.availability || '')
     setEditPreviousPlatforms(profile?.previous_platforms || '')
     setEditAdditionalComments(profile?.additional_comments || '')
-    setEditServicePreference(profile?.service_preference || [])
+    setEditServicePreference(normalizeServicePreferences(profile?.service_preference))
     setEditVehicleSpecialties(profile?.vehicle_specialties || [])
 
     // References fields
@@ -360,7 +442,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           previous_platforms: editPreviousPlatforms || null,
           additional_comments: editAdditionalComments || null,
           current_address: editCurrentAddress || null,
-          service_preference: editServicePreference,
+          service_preference: normalizeServicePreferences(editServicePreference),
           vehicle_specialties: editVehicleSpecialties
         } : null,
         documentData: editRole === 'DRIVER' ? {
@@ -747,6 +829,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           'License No': d.license_no || 'N/A',
           'Area': d.current_area || 'N/A',
           'Current Address': d.current_address || profile?.current_address || 'Not provided',
+          'Employment Type': profile?.availability || 'N/A',
           'Rating': Number(d.rating || 5.0).toFixed(2),
           'Verification': d.verified ? 'Verified' : 'Pending',
           'Status': d.is_suspended ? 'Suspended' : 'Active',
@@ -766,6 +849,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
         { wch: 24 }, // License No
         { wch: 24 }, // Area
         { wch: 36 }, // Current Address
+        { wch: 18 }, // Employment Type
         { wch: 10 }, // Rating
         { wch: 15 }, // Verification
         { wch: 14 }, // Status
@@ -898,6 +982,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                 <th className="py-4 px-5">Mobile</th>
                 <th className="py-4 px-5">License</th>
                 <th className="py-4 px-5">Area & Rating</th>
+                <th className="py-4 px-5">Employment Type</th>
                 <th className="py-4 px-5">Status</th>
                 <th className="py-4 px-5 text-right">Verification Action</th>
               </tr>
@@ -905,7 +990,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
             <tbody className="divide-y divide-slate-800 text-slate-200">
               {filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-xs text-slate-400 italic">
+                  <td colSpan={7} className="py-12 text-center text-xs text-slate-400 italic">
                     {mode === 'suspended'
                       ? 'No suspended drivers found.'
                       : 'No drivers registered matching current filters.'}
@@ -971,6 +1056,36 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                           <Star size={10} className="fill-amber-450" /> {Number(d.rating).toFixed(2)} / 5.0
                         </p>
                       </div>
+                    </td>
+
+                    {/* Employment Type */}
+                    <td className="py-4 px-5">
+                      {(() => {
+                        const profile = getProfile(d)
+                        const empType = (profile?.availability || '').trim()
+                        const isFullTime = empType.toLowerCase().includes('full')
+                        const isPartTime = empType.toLowerCase().includes('part')
+                        
+                        if (isFullTime) {
+                          return (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-extrabold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                              Full Time
+                            </span>
+                          )
+                        }
+                        if (isPartTime) {
+                          return (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              Part Time
+                            </span>
+                          )
+                        }
+                        return (
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            {empType || 'N/A'}
+                          </span>
+                        )
+                      })()}
                     </td>
 
                     {/* Online status */}
@@ -1044,7 +1159,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     const profile = getProfile(d)
                     return (
                       <tr className="bg-slate-950/60 text-xs">
-                        <td colSpan={6} className="py-4 px-6 border-b border-slate-800">
+                        <td colSpan={7} className="py-4 px-6 border-b border-slate-800">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-300">
                             <div className="space-y-1.5">
                               <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
@@ -1055,7 +1170,10 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                             <div className="space-y-1.5">
                               <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Availability & Preference</h4>
                               <p><span className="font-bold text-white">Kaam schedule:</span> {profile ? profile.availability : 'N/A'}</p>
-                              <p><span className="font-bold text-white">Service Preference:</span> {profile && profile.service_preference.length > 0 ? profile.service_preference.join(', ') : 'None selected'}</p>
+                              <p><span className="font-bold text-white">Service Preference:</span> {(() => {
+                                const services = normalizeServicePreferences(profile?.service_preference)
+                                return services.length > 0 ? services.join(', ') : 'None selected'
+                              })()}</p>
                               <p><span className="font-bold text-white">Vehicles:</span> {profile && profile.vehicle_specialties.length > 0 ? profile.vehicle_specialties.join(', ') : 'None selected'}</p>
                             </div>
                             <div className="space-y-1.5">
@@ -1116,6 +1234,22 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                   <p>License: <span className="font-mono text-white font-bold">{d.license_no}</span></p>
                   <p>Mobile: {d.phone}</p>
                   <p>Area: {d.current_area} • Rating: {Number(d.rating).toFixed(2)}★</p>
+                  <p>
+                    Employment Type:{' '}
+                    {(() => {
+                      const profile = getProfile(d)
+                      const empType = (profile?.availability || '').trim()
+                      const isFullTime = empType.toLowerCase().includes('full')
+                      const isPartTime = empType.toLowerCase().includes('part')
+                      if (isFullTime) {
+                        return <span className="text-blue-400 font-bold">Full Time</span>
+                      }
+                      if (isPartTime) {
+                        return <span className="text-amber-400 font-bold">Part Time</span>
+                      }
+                      return <span className="text-slate-400 font-bold">{empType || 'N/A'}</span>
+                    })()}
+                  </p>
                   <p className="text-[10px] text-slate-350 break-words">
                     <span className="text-slate-500 font-semibold">Address:</span>{' '}
                     {d.current_address || getProfile(d)?.current_address || (
@@ -1141,7 +1275,10 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       <div className="space-y-1">
                         <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Availability & Preference</h4>
                         <p><span className="font-bold text-slate-200">Schedule:</span> {profile ? profile.availability : 'N/A'}</p>
-                        <p><span className="font-bold text-slate-200">Services:</span> {profile && profile.service_preference.length > 0 ? profile.service_preference.join(', ') : 'None'}</p>
+                        <p><span className="font-bold text-slate-200">Services:</span> {(() => {
+                          const services = normalizeServicePreferences(profile?.service_preference)
+                          return services.length > 0 ? services.join(', ') : 'None'
+                        })()}</p>
                         <p><span className="font-bold text-slate-200">Vehicles:</span> {profile && profile.vehicle_specialties.length > 0 ? profile.vehicle_specialties.join(', ') : 'None'}</p>
                       </div>
                       <div className="space-y-1">
@@ -1548,18 +1685,23 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       />
                     </div>
 
-                    {/* Availability */}
+                    {/* Employment Type / Availability */}
                     <div>
                       <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
-                        Availability Schedule
+                        Employment Type
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={editAvailability}
                         onChange={(e) => setEditAvailability(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
-                        placeholder="e.g. Full Time"
-                      />
+                        className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl transition-colors cursor-pointer"
+                      >
+                        <option value="">Select Employment Type</option>
+                        <option value="Full Time">Full Time</option>
+                        <option value="Part Time">Part Time</option>
+                        {editAvailability && editAvailability !== 'Full Time' && editAvailability !== 'Part Time' && (
+                          <option value={editAvailability}>{editAvailability}</option>
+                        )}
+                      </select>
                     </div>
 
                     {/* Previous Platforms */}
@@ -1583,10 +1725,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       Service Preference (Select all applicable)
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                      {[
-                        'Hourly Driver', 'Monthly Driver', 'Weekly Driver',
-                        'Outstation Driver', 'Corporate Driver', 'Airport Transfer', 'Event & Wedding'
-                      ].map((pref) => {
+                      {ALLOWED_SERVICE_PREFERENCES.map((pref) => {
                         const checked = editServicePreference.includes(pref)
                         return (
                           <label key={pref} className="flex items-center gap-2 text-[10px] text-slate-300 font-bold cursor-pointer">
@@ -1597,7 +1736,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                                 if (checked) {
                                   setEditServicePreference(editServicePreference.filter(x => x !== pref))
                                 } else {
-                                  setEditServicePreference([...editServicePreference, pref])
+                                  setEditServicePreference([...editServicePreference.filter(x => ALLOWED_SERVICE_PREFERENCES.includes(x as any)), pref])
                                 }
                               }}
                               className="rounded border-slate-750 text-amber-500 bg-slate-900 focus:ring-amber-500 h-3 w-3"
@@ -1751,7 +1890,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
       {/* Modal: View Driver Document */}
       {viewingImageUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-4 py-3 border-b border-slate-800/60 flex justify-between items-center bg-slate-950">
               <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-amber-500">{viewingImageLabel}</h3>
@@ -1767,12 +1906,51 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
               </button>
             </div>
             {/* Body */}
-            <div className="p-4 flex flex-col items-center justify-center bg-slate-950 overflow-y-auto max-h-[70vh] w-full">
-              <img
-                src={viewingImageUrl}
-                alt={viewingImageLabel}
-                className="max-w-full h-auto max-h-[60vh] object-contain rounded-lg shadow-md"
-              />
+            <div className="p-4 flex flex-col items-center justify-center bg-slate-950 overflow-y-auto max-h-[75vh] w-full min-h-[300px]">
+              {getDocumentType(viewingImageUrl) === 'pdf' ? (
+                <div className="w-full h-[65vh] flex flex-col">
+                  <iframe
+                    src={viewingImageUrl}
+                    className="w-full h-full rounded-lg border border-slate-800"
+                    title={viewingImageLabel}
+                  />
+                </div>
+              ) : getDocumentType(viewingImageUrl) === 'doc' ? (
+                <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                    <FileText size={36} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white mb-1">{viewingImageLabel}</h4>
+                    <p className="text-xs text-slate-400 max-w-sm">Word Document file (.doc/.docx). You can view it using Google Docs Viewer or download it directly.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingImageUrl)}&embedded=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <ExternalLink size={13} /> View in Google Docs
+                    </a>
+                    <a
+                      href={viewingImageUrl}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-slate-700"
+                    >
+                      <Download size={13} /> Download File
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={viewingImageUrl}
+                  alt={viewingImageLabel}
+                  className="max-w-full h-auto max-h-[65vh] object-contain rounded-lg shadow-md"
+                />
+              )}
             </div>
             {/* Footer */}
             <div className="px-4 py-3 border-t border-slate-800/60 flex justify-between items-center bg-slate-950">
@@ -1780,9 +1958,10 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                 href={viewingImageUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 text-slate-350 text-[10px] font-bold cursor-pointer transition-all uppercase tracking-wider"
+                download
+                className="px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 text-slate-350 text-[10px] font-bold cursor-pointer transition-all uppercase tracking-wider inline-flex items-center gap-1"
               >
-                Open Raw File
+                <ExternalLink size={11} /> Open / Download File
               </a>
               <button
                 type="button"

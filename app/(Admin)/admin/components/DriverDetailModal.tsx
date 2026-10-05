@@ -94,6 +94,38 @@ export default function DriverDetailModal({ driver, booking, onClose }: DriverDe
 
   const cleanPhone = (driver.phone || '').replace(/\D/g, '').slice(-10)
 
+  const ALLOWED_SERVICE_PREFERENCES = ['Hourly Hire', 'Monthly', 'Outstation'] as const
+
+  const normalizeServicePreferences = (savedPrefs?: string[] | null): string[] => {
+    if (!savedPrefs || !Array.isArray(savedPrefs)) return []
+    const mapped = savedPrefs.map(pref => {
+      const trimmed = (pref || '').trim()
+      if (ALLOWED_SERVICE_PREFERENCES.includes(trimmed as any)) {
+        return trimmed
+      }
+      const lower = trimmed.toLowerCase()
+      if (lower === 'hourly driver' || lower === 'hourly' || lower === 'hourly hire') return 'Hourly Hire'
+      if (lower === 'monthly driver' || lower === 'monthly') return 'Monthly'
+      if (lower === 'outstation driver' || lower === 'outstation') return 'Outstation'
+      return null
+    })
+    return Array.from(new Set(mapped.filter((p): p is string => p !== null && ALLOWED_SERVICE_PREFERENCES.includes(p as any))))
+  }
+
+  const getDocumentType = (url?: string | null): 'image' | 'pdf' | 'doc' | 'unknown' => {
+    if (!url) return 'unknown'
+    const cleanUrl = url.split('?')[0].toLowerCase()
+    if (cleanUrl.endsWith('.pdf') || cleanUrl.includes('.pdf') || cleanUrl.includes('/pdf/')) return 'pdf'
+    if (
+      cleanUrl.endsWith('.doc') ||
+      cleanUrl.endsWith('.docx') ||
+      cleanUrl.endsWith('.txt') ||
+      cleanUrl.endsWith('.rtf') ||
+      cleanUrl.includes('/raw/')
+    ) return 'doc'
+    return 'image'
+  }
+
   // Document list
   const documentsList = [
     { label: 'Aadhaar Card (Front)', url: docs?.aadhaar_front_url, isPayment: false },
@@ -101,6 +133,7 @@ export default function DriverDetailModal({ driver, booking, onClose }: DriverDe
     { label: 'Driving License', url: docs?.driving_license_url, isPayment: false },
     { label: 'PAN Card', url: docs?.pan_card_url, isPayment: false },
     { label: 'Selfie / Photo', url: docs?.selfie_url, isPayment: false },
+    { label: 'Driver Profile', url: docs?.driver_profile_url, isPayment: false },
     { label: 'Payment Receipt', url: docs?.payment, isPayment: true },
   ]
 
@@ -485,18 +518,20 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
               <div className="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-xl space-y-2">
                 <span className="text-[9px] font-extrabold uppercase text-slate-500">Service Preferences</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {profile?.service_preference && profile.service_preference.length > 0 ? (
-                    profile.service_preference.map((pref, i) => (
-                      <span
-                        key={i}
-                        className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[10px] font-bold rounded-lg"
-                      >
-                        {pref}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-slate-500 italic">Hourly, Outstation, Monthly</span>
-                  )}
+                  {(() => {
+                    const services = normalizeServicePreferences(profile?.service_preference)
+                    if (services.length > 0) {
+                      return services.map((pref, i) => (
+                        <span
+                          key={i}
+                          className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[10px] font-bold rounded-lg"
+                        >
+                          {pref}
+                        </span>
+                      ))
+                    }
+                    return <span className="text-xs text-slate-500 italic">None selected</span>
+                  })()}
                 </div>
               </div>
             </div>
@@ -532,50 +567,79 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-              {documentsList.map((doc, idx) => (
-                <div
-                  key={idx}
-                  className="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col items-center justify-between text-center space-y-1.5"
-                >
-                  <span className="text-[9px] font-bold text-slate-400 line-clamp-1" title={doc.label}>
-                    {doc.label}
-                  </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+              {documentsList.map((doc, idx) => {
+                const docType = getDocumentType(doc.url)
+                return (
+                  <div
+                    key={idx}
+                    className="bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col items-center justify-between text-center space-y-1.5"
+                  >
+                    <span className="text-[9px] font-bold text-slate-400 line-clamp-1 w-full" title={doc.label}>
+                      {doc.label}
+                    </span>
 
-                  {doc.url ? (
-                    <div
-                      onClick={() => setViewingImage({ url: doc.url!, label: doc.label })}
-                      className="relative w-full h-20 rounded-lg overflow-hidden border border-slate-800 hover:border-amber-500 cursor-zoom-in group transition-all"
-                    >
-                      <img
-                        src={doc.url}
-                        alt={doc.label}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                        <ZoomIn size={14} className="text-white" />
-                        <span className="text-[9px] font-bold text-white">VIEW</span>
+                    {doc.url ? (
+                      docType === 'pdf' ? (
+                        <div
+                          onClick={() => setViewingImage({ url: doc.url!, label: doc.label })}
+                          className="relative flex flex-col items-center justify-center w-full h-20 rounded-lg overflow-hidden border border-rose-500/30 bg-rose-950/20 hover:border-rose-400 hover:bg-rose-950/30 cursor-pointer group transition-all p-1 text-center"
+                          title="Click to view PDF"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                            <FileText size={16} />
+                          </div>
+                          <span className="text-[8px] font-extrabold text-rose-300 uppercase tracking-wider">PDF File</span>
+                          <span className="text-[7px] text-slate-400">Click to View</span>
+                        </div>
+                      ) : docType === 'doc' ? (
+                        <div
+                          onClick={() => setViewingImage({ url: doc.url!, label: doc.label })}
+                          className="relative flex flex-col items-center justify-center w-full h-20 rounded-lg overflow-hidden border border-blue-500/30 bg-blue-950/20 hover:border-blue-400 hover:bg-blue-950/30 cursor-pointer group transition-all p-1 text-center"
+                          title="Click to view Document"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                            <FileText size={16} />
+                          </div>
+                          <span className="text-[8px] font-extrabold text-blue-300 uppercase tracking-wider">Word DOC</span>
+                          <span className="text-[7px] text-slate-400">Click to View</span>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => setViewingImage({ url: doc.url!, label: doc.label })}
+                          className="relative w-full h-20 rounded-lg overflow-hidden border border-slate-800 hover:border-amber-500 cursor-zoom-in group transition-all"
+                        >
+                          <img
+                            src={doc.url}
+                            alt={doc.label}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <ZoomIn size={14} className="text-white" />
+                            <span className="text-[9px] font-bold text-white">VIEW</span>
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <div className="w-full h-20 rounded-lg bg-slate-900 border border-dashed border-slate-800 flex flex-col items-center justify-center text-slate-600">
+                        <FileText size={16} />
+                        <span className="text-[8px] font-bold mt-1 text-slate-500">Not Uploaded</span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-20 rounded-lg bg-slate-900 border border-dashed border-slate-800 flex flex-col items-center justify-center text-slate-600">
-                      <FileText size={16} />
-                      <span className="text-[8px] font-bold mt-1 text-slate-500">Not Uploaded</span>
-                    </div>
-                  )}
+                    )}
 
-                  {doc.url && (
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[8px] font-extrabold text-amber-400 hover:underline uppercase inline-flex items-center gap-0.5"
-                    >
-                      Open <ExternalLink size={8} />
-                    </a>
-                  )}
-                </div>
-              ))}
+                    {doc.url && (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[8px] font-extrabold text-amber-400 hover:underline uppercase inline-flex items-center gap-0.5"
+                      >
+                        Open <ExternalLink size={8} />
+                      </a>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -658,21 +722,61 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
                 <X size={16} />
               </button>
             </div>
-            <div className="p-4 flex items-center justify-center max-h-[75vh] overflow-auto bg-slate-950/50">
-              <img
-                src={viewingImage.url}
-                alt={viewingImage.label}
-                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg border border-slate-800"
-              />
+            <div className="p-4 flex flex-col items-center justify-center max-h-[75vh] overflow-auto bg-slate-950/50 min-h-[300px]">
+              {getDocumentType(viewingImage.url) === 'pdf' ? (
+                <div className="w-full h-[65vh] flex flex-col">
+                  <iframe
+                    src={viewingImage.url}
+                    className="w-full h-full rounded-lg border border-slate-800"
+                    title={viewingImage.label}
+                  />
+                </div>
+              ) : getDocumentType(viewingImage.url) === 'doc' ? (
+                <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                    <FileText size={36} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white mb-1">{viewingImage.label}</h4>
+                    <p className="text-xs text-slate-400 max-w-sm">Word Document file (.doc/.docx). You can view it using Google Docs Viewer or download it directly.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingImage.url)}&embedded=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <ExternalLink size={13} /> View in Google Docs
+                    </a>
+                    <a
+                      href={viewingImage.url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 border border-slate-700"
+                    >
+                      <Download size={13} /> Download File
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={viewingImage.url}
+                  alt={viewingImage.label}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg border border-slate-800"
+                />
+              )}
             </div>
             <div className="px-5 py-3 border-t border-slate-800 flex justify-end gap-2 bg-slate-950">
               <a
                 href={viewingImage.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                download
                 className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 inline-flex items-center gap-1"
               >
-                Open Original <ExternalLink size={12} />
+                Open / Download <ExternalLink size={12} />
               </a>
               <button
                 onClick={() => setViewingImage(null)}

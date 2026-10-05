@@ -118,14 +118,13 @@ export default function OnboardingPage() {
   const availabilityOptions = [
     { value: 'Full Time', label: 'Full Time', subtext: '6+ ghante roz available' },
     { value: 'Part Time', label: 'Part Time', subtext: 'Morning ya Evening shift' },
-    { value: 'Weekend Only', label: 'Weekend Only', subtext: 'Saturday–Sunday' }
+    // { value: 'Weekend Only', label: 'Weekend Only', subtext: 'Saturday–Sunday' }
   ]
 
   const serviceOptions = [
     'Hourly Hire',
-    'Daily',
-    'Weekly',
-    'Monthly'
+    'Monthly',
+    'Outstation'
   ]
 
   const vehicleOptions = ['Manual', 'Automatic']
@@ -777,14 +776,14 @@ export default function OnboardingPage() {
                   Required
                 </span>
               </div>
-              <p className="text-[10px] text-text-muted mb-1.5">Aapka abhi ka pura pata (House No., Gali/Colony, Landmark)</p>
+              <p className="text-[10px] text-text-muted mb-1.5">Aapka abhi ka pata</p>
               <textarea
                 rows={2}
                 required
                 value={currentAddress}
                 onChange={(e) => setCurrentAddress(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-surface2 border border-border/40 rounded-xl focus:border-primary focus:outline-none text-foreground transition-colors placeholder:text-text-muted/50 resize-none"
-                placeholder="Jaise: House No., Ward/Gali No., Colony, Landmark, Delhi NCR"
+                placeholder="Jaise: Chhatarpur, South Delhi"
               />
             </div>
 

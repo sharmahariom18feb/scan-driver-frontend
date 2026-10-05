@@ -23,6 +23,7 @@ export interface DriverDocument {
   driving_license_url: string
   pan_card_url: string
   selfie_url: string
+  driver_profile_url?: string | null
   references: DriverReference[]
   payment?: string | null
   created_at: string

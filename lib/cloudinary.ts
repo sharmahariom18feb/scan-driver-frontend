@@ -27,7 +27,7 @@ export async function uploadToCloudinary(
     const xhr = new XMLHttpRequest();
     xhr.open(
       'POST',
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`
+      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`
     );
 
     xhr.upload.onprogress = (event) => {

@@ -11,37 +11,52 @@ const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey, {
   }
 })
 
-// Helper to extract Cloudinary public_id from secure URL
-function extractPublicIdFromUrl(url: string): string | null {
+// Helper to extract Cloudinary public_id and resource type from secure URL
+function extractCloudinaryInfoFromUrl(url: string): { publicId: string; resourceType: string } | null {
   if (!url) return null
   try {
-    const parts = url.split('/image/upload/')
-    if (parts.length < 2) return null
+    let resourceType = 'image'
+    let parts = url.split('/image/upload/')
+    if (parts.length < 2) {
+      parts = url.split('/raw/upload/')
+      if (parts.length >= 2) {
+        resourceType = 'raw'
+      } else {
+        parts = url.split('/video/upload/')
+        if (parts.length >= 2) {
+          resourceType = 'video'
+        } else {
+          return null
+        }
+      }
+    }
     
     let path = parts[1]
     const versionRegex = /^v\d+\//
     path = path.replace(versionRegex, '')
     
-    const dotIndex = path.lastIndexOf('.')
-    if (dotIndex !== -1) {
-      path = path.substring(0, dotIndex)
+    if (resourceType !== 'raw') {
+      const dotIndex = path.lastIndexOf('.')
+      if (dotIndex !== -1) {
+        path = path.substring(0, dotIndex)
+      }
     }
     
-    return path
+    return { publicId: decodeURIComponent(path), resourceType }
   } catch (error) {
     console.error('Failed to extract public_id from Cloudinary URL:', error)
     return null
   }
 }
 
-// Helper to delete an image from Cloudinary using signed signature
-async function deleteFromCloudinary(publicId: string, cloudName: string, apiKey: string, apiSecret: string) {
+// Helper to delete an asset from Cloudinary using signed signature
+async function deleteFromCloudinary(publicId: string, resourceType: string, cloudName: string, apiKey: string, apiSecret: string) {
   try {
     const timestamp = Math.round(new Date().getTime() / 1000)
     const signatureInput = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`
     const signature = crypto.createHash('sha1').update(signatureInput).digest('hex')
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/destroy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,17 +66,18 @@ async function deleteFromCloudinary(publicId: string, cloudName: string, apiKey:
         api_key: apiKey,
         timestamp: timestamp,
         signature: signature,
+        resource_type: resourceType,
       }),
     })
 
     const result = await response.json()
     if (result.result !== 'ok') {
-      console.error(`Failed to delete image ${publicId} from Cloudinary:`, result)
+      console.error(`Failed to delete ${resourceType} ${publicId} from Cloudinary:`, result)
     } else {
-      console.log(`Successfully deleted image ${publicId} from Cloudinary`)
+      console.log(`Successfully deleted ${resourceType} ${publicId} from Cloudinary`)
     }
   } catch (err) {
-    console.error(`Error deleting image ${publicId} from Cloudinary:`, err)
+    console.error(`Error deleting asset ${publicId} from Cloudinary:`, err)
   }
 }
 
@@ -100,7 +116,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
     }
 
-    const allowedFields = ['aadhaar_front_url', 'aadhaar_back_url', 'driving_license_url', 'pan_card_url', 'selfie_url', 'payment']
+    const allowedFields = [
+      'aadhaar_front_url',
+      'aadhaar_back_url',
+      'driving_license_url',
+      'pan_card_url',
+      'selfie_url',
+      'payment',
+      'driver_profile_url'
+    ]
     if (!allowedFields.includes(documentField)) {
       return NextResponse.json({ error: 'Invalid document field' }, { status: 400 })
     }
@@ -120,14 +144,14 @@ export async function POST(request: Request) {
 
     // 5. Delete current file from Cloudinary if it exists
     if (currentUrl) {
-      const publicId = extractPublicIdFromUrl(currentUrl)
-      if (publicId) {
+      const cInfo = extractCloudinaryInfoFromUrl(currentUrl)
+      if (cInfo) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
         const apiKey = process.env.CLOUDINARY_API_KEY
         const apiSecret = process.env.CLOUDINARY_API_SECRET
 
         if (cloudName && apiKey && apiSecret && cloudName !== 'your_cloud_name') {
-          await deleteFromCloudinary(publicId, cloudName, apiKey, apiSecret)
+          await deleteFromCloudinary(cInfo.publicId, cInfo.resourceType, cloudName, apiKey, apiSecret)
         } else {
           console.warn('Cloudinary not fully configured. Skipping Cloudinary asset deletion.')
         }
