@@ -71,7 +71,7 @@ export default function BookingsTab({
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'accepted' | 'completed' | 'cancelled'>('all')
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'HOURLY' | 'MONTHLY' | 'OUTSTATION' | 'AIRPORT DROP'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'HOURLY' | 'MONTHLY' | 'OUTSTATION'>('all')
 
   // Pagination & Loading States
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -1151,7 +1151,6 @@ export default function BookingsTab({
               { id: 'HOURLY', label: '⏱️ Hourly' },
               { id: 'MONTHLY', label: '📅 Monthly' },
               { id: 'OUTSTATION', label: 'Outstation' },
-              { id: 'AIRPORT DROP', label: 'Airport Drop' },
             ].map((item) => {
               const isSelected = typeFilter === item.id
               return (
