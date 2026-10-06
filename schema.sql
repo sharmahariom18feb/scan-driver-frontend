@@ -17,6 +17,7 @@ create table if not exists public.users (
   is_suspended boolean default false not null,
   unique_id text unique,
   managed_by text,
+  type text default 'FREE' check (type in ('FREE', 'PREMIUM')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -245,7 +246,14 @@ create or replace function public.accept_booking_safe(p_booking_id text, p_drive
 returns json as $$
 declare
   v_booking public.bookings%rowtype;
+  v_driver_type text;
 begin
+  -- 0. Check driver subscription type
+  select type into v_driver_type from public.users where id = p_driver_id;
+  if coalesce(v_driver_type, 'FREE') = 'FREE' then
+    return json_build_object('success', false, 'message', 'Please take subscription plan to accept the booking');
+  end if;
+
   -- 1. Select the row for update to lock it
   select * into v_booking
   from public.bookings

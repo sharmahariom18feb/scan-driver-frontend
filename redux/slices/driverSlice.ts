@@ -68,6 +68,7 @@ export interface DriverInfo {
   referralCode?: string
   referredBy?: string
   photoUrl?: string | null
+  type?: 'FREE' | 'PREMIUM'
 }
 
 export interface DriverState {
@@ -277,6 +278,7 @@ export const loginDriver = createAsyncThunk(
         uniqueId: profile.unique_id,
         referralCode: profile.unique_id,
         photoUrl,
+        type: (profile.type || 'FREE') as 'FREE' | 'PREMIUM',
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -384,6 +386,7 @@ export const verifyDriverOtp = createAsyncThunk(
         uniqueId: profile.unique_id,
         referralCode: profile.unique_id,
         photoUrl,
+        type: (profile.type || 'FREE') as 'FREE' | 'PREMIUM',
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -506,6 +509,7 @@ export const checkDriverSession = createAsyncThunk(
             isOnline: profile.is_online,
             uniqueId: profile.unique_id,
             referralCode: profile.unique_id,
+            type: (profile.type || 'FREE') as 'FREE' | 'PREMIUM',
           } as DriverInfo
 
           localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -616,6 +620,7 @@ export const fetchDriverProfile = createAsyncThunk(
         uniqueId: profile.unique_id,
         referralCode: profile.unique_id,
         photoUrl,
+        type: (profile.type || 'FREE') as 'FREE' | 'PREMIUM',
       }
 
       localStorage.setItem('driver_session', JSON.stringify(driverInfo))
@@ -717,6 +722,17 @@ export const acceptBooking = createAsyncThunk(
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
+
+      // Check subscription plan
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('type')
+        .eq('id', session.user.id)
+        .maybeSingle()
+
+      if ((userProfile?.type || 'FREE').toUpperCase() === 'FREE') {
+        throw new Error('Please take subscription plan to accept the booking')
+      }
 
       // Call postgres safe acceptance RPC to handle row locking (FOR UPDATE) and check status
       const { data, error } = await supabase.rpc('accept_booking_safe', {
@@ -881,6 +897,17 @@ export const applyForMonthlyBooking = createAsyncThunk(
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) throw new Error('Not authenticated')
+
+      // Check subscription plan
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('type')
+        .eq('id', session.user.id)
+        .maybeSingle()
+
+      if ((userProfile?.type || 'FREE').toUpperCase() === 'FREE') {
+        throw new Error('Please take subscription plan to accept the booking')
+      }
 
       const { error } = await supabase
         .from('booking_applications')

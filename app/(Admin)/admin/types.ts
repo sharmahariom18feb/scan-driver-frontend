@@ -45,6 +45,7 @@ export interface Driver {
   role: 'ADMIN' | 'DRIVER' | 'CUSTOMER'
   unique_id?: string | null
   managed_by?: string | null
+  type?: 'FREE' | 'PREMIUM'
   created_at: string
   driver_profiles?: DriverProfile | DriverProfile[] | null
   driver_documents?: DriverDocument | DriverDocument[] | null

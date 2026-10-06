@@ -541,7 +541,7 @@ export default function DriverApp() {
 
       const { data: profile, error } = await supabase
         .from('users')
-        .select('verified, is_suspended')
+        .select('verified, is_suspended, type')
         .eq('id', session.user.id)
         .single()
 
@@ -557,6 +557,11 @@ export default function DriverApp() {
 
       if (profile.is_suspended) {
         toast.error('Your account has been suspended by the administrator.')
+        return
+      }
+
+      if ((profile.type || 'FREE').toUpperCase() === 'FREE') {
+        toast.error('Please take subscription plan to accept the booking')
         return
       }
 
@@ -580,6 +585,11 @@ export default function DriverApp() {
   }
 
   const handleRequestAccept = (bookingId: string) => {
+    if (info && (info.type || 'FREE').toUpperCase() === 'FREE') {
+      toast.error('Please take subscription plan to accept the booking')
+      return
+    }
+
     const booking =
       bookings.find((b) => b.id === bookingId) ||
       availableBookings.find((b) => b.id === bookingId) ||
@@ -607,7 +617,7 @@ export default function DriverApp() {
 
       const { data: profile, error } = await supabase
         .from('users')
-        .select('verified, is_suspended')
+        .select('verified, is_suspended, type')
         .eq('id', session.user.id)
         .single()
 
@@ -634,9 +644,15 @@ export default function DriverApp() {
         return
       }
 
+      // 3. Check subscription plan
+      if ((profile.type || 'FREE').toUpperCase() === 'FREE') {
+        toast.error('Please take subscription plan to accept the booking')
+        return
+      }
+
       // Keep local state in sync
       if (info) {
-        dispatch(setDriverInfo({ ...info, verified: true, isSuspended: false }))
+        dispatch(setDriverInfo({ ...info, verified: true, isSuspended: false, type: (profile.type || 'FREE') as 'FREE' | 'PREMIUM' }))
       }
 
       const result = await dispatch(acceptBooking(bookingId))

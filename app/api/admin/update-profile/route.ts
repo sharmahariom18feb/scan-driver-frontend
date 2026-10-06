@@ -53,10 +53,11 @@ export async function POST(request: Request) {
         .update(finalUserData)
         .eq('id', driverId)
 
-      // Fallback if current_address or managed_by column has not been migrated yet in Supabase schema
-      if (userUpdateError && (userUpdateError.message?.includes('current_address') || userUpdateError.message?.includes('managed_by'))) {
+      // Fallback if current_address, managed_by, or type column has not been migrated yet in Supabase schema
+      if (userUpdateError && (userUpdateError.message?.includes('current_address') || userUpdateError.message?.includes('managed_by') || userUpdateError.message?.includes('type'))) {
         if (userUpdateError.message?.includes('current_address')) delete finalUserData.current_address
         if (userUpdateError.message?.includes('managed_by')) delete finalUserData.managed_by
+        if (userUpdateError.message?.includes('type')) delete finalUserData.type
         const retry = await supabaseAdminClient
           .from('users')
           .update(finalUserData)

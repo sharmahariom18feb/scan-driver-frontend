@@ -25,7 +25,8 @@ import {
   Briefcase,
   Users,
   AlertCircle,
-  UserCheck
+  UserCheck,
+  Crown
 } from 'lucide-react'
 import JSZip from 'jszip'
 import { toast } from 'sonner'
@@ -273,6 +274,17 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
                 ) : (
                   <span className="inline-flex items-center gap-1 text-amber-400 text-[11px] font-semibold">
                     <ShieldAlert size={13} /> Unverified Profile
+                  </span>
+                )}
+                <span className="text-slate-600">•</span>
+                {/* Plan Badge */}
+                {(driver.type || 'FREE').toUpperCase() === 'PREMIUM' ? (
+                  <span className="inline-flex items-center gap-1 text-amber-300 font-extrabold text-[10px] bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded">
+                    <Crown size={11} className="text-amber-400" /> PREMIUM
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-slate-400 font-semibold text-[10px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded">
+                    FREE PLAN
                   </span>
                 )}
                 <span className="text-slate-600">•</span>

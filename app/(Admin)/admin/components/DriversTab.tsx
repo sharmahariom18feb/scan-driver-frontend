@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX, FileSpreadsheet, FileText, ExternalLink } from 'lucide-react'
+import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX, FileSpreadsheet, FileText, ExternalLink, Crown } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import JSZip from 'jszip'
@@ -351,6 +351,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
   const [editRole, setEditRole] = useState<'ADMIN' | 'DRIVER' | 'CUSTOMER'>('DRIVER')
   const [editUniqueId, setEditUniqueId] = useState('')
   const [editManagedBy, setEditManagedBy] = useState('')
+  const [editType, setEditType] = useState<'FREE' | 'PREMIUM'>('FREE')
 
   // Driver profile fields
   const [editExperience, setEditExperience] = useState('')
@@ -386,6 +387,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     setEditRole((d.role as any) || 'DRIVER')
     setEditUniqueId(d.unique_id || '')
     setEditManagedBy(d.managed_by || profile?.managed_by || '')
+    setEditType(((d.type || 'FREE') as any).toUpperCase() === 'PREMIUM' ? 'PREMIUM' : 'FREE')
 
     // Profile fields
     setEditExperience(profile?.experience || '')
@@ -436,7 +438,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           is_online: editIsOnline,
           role: editRole,
           unique_id: editUniqueId || null,
-          managed_by: editManagedBy.trim() || null
+          managed_by: editManagedBy.trim() || null,
+          type: editType
         },
         profileData: editRole === 'DRIVER' ? {
           experience: editExperience,
@@ -668,26 +671,37 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
   const filteredDrivers = drivers
 
   // Verify/Suspend Action
-  const toggleVerification = async (driverId: string, currentStatus: boolean) => {
+  const toggleVerification = async (driverId: string, currentStatus: boolean, planType: 'FREE' | 'PREMIUM' = 'FREE') => {
     setUpdatingId(driverId)
     const newStatus = !currentStatus
 
     try {
+      const updateData: any = { verified: newStatus }
+      if (newStatus) {
+        updateData.type = planType
+      }
+
       const { error } = await supabase
         .from('users')
-        .update({ verified: newStatus })
+        .update(updateData)
         .eq('id', driverId)
 
       if (error) throw error
 
-      toast.success(`Driver verification ${newStatus ? 'Approved' : 'Removed'}!`)
+      toast.success(
+        newStatus
+          ? `Driver verified as ${planType === 'PREMIUM' ? 'PREMIUM' : 'FREE'}!`
+          : 'Driver verification removed!'
+      )
 
       // Add a system notification to the driver
       await supabase.from('notifications').insert({
         driver_id: driverId,
-        title: newStatus ? 'Account Approved!' : 'Verification Status Removed',
+        title: newStatus ? (planType === 'PREMIUM' ? 'Account Verified (Premium Plan)!' : 'Account Verified!') : 'Verification Status Removed',
         description: newStatus 
-          ? 'Your ScanDriver profile has been verified and approved by the administrator. You are now authorized to accept rides!' 
+          ? (planType === 'PREMIUM'
+              ? 'Your ScanDriver profile has been verified as PREMIUM. You are now authorized to accept and apply for rides!' 
+              : 'Your ScanDriver profile has been verified. To start accepting rides, please take a subscription plan.')
           : 'Your account verification has been removed by the administrator.',
         time: 'Just now',
         type: 'system',
@@ -698,6 +712,38 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     } catch (err: any) {
       console.error('Error toggling driver verification:', err)
       toast.error(err.message || 'Failed to update verification status')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  // Quick Plan Switch Action (FREE <-> PREMIUM)
+  const handleUpdateDriverType = async (driverId: string, newType: 'FREE' | 'PREMIUM') => {
+    setUpdatingId(driverId)
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ type: newType })
+        .eq('id', driverId)
+
+      if (error) throw error
+      toast.success(`Driver plan switched to ${newType}!`)
+
+      await supabase.from('notifications').insert({
+        driver_id: driverId,
+        title: `Plan Updated: ${newType}`,
+        description: newType === 'PREMIUM'
+          ? 'Your ScanDriver profile has been upgraded to PREMIUM. You can now accept and apply for all rides!'
+          : 'Your ScanDriver profile has been set to the FREE plan. To accept bookings, please take a subscription plan.',
+        time: 'Just now',
+        type: 'system',
+        read: false,
+      })
+
+      refreshAll()
+    } catch (err: any) {
+      console.error('Error switching driver plan:', err)
+      toast.error(err.message || 'Failed to update plan')
     } finally {
       setUpdatingId(null)
     }
@@ -834,6 +880,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           'Area': d.current_area || 'N/A',
           'Current Address': d.current_address || profile?.current_address || 'Not provided',
           'Managed By (SPOC)': d.managed_by || profile?.managed_by || 'Not Assigned',
+          'Plan Type': (d.type || 'FREE').toUpperCase(),
           'Employment Type': profile?.availability || 'N/A',
           'Rating': Number(d.rating || 5.0).toFixed(2),
           'Verification': d.verified ? 'Verified' : 'Pending',
@@ -1014,10 +1061,21 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                           {(d.full_name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase() || ''}
                         </div>
                         <div>
-                          <p className="font-extrabold text-white flex items-center gap-1.5">
-                            {d.full_name}
-                            {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-extrabold text-white flex items-center gap-1">
+                              {d.full_name}
+                              {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
+                            </p>
+                            {(d.type || 'FREE').toUpperCase() === 'PREMIUM' ? (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40" title="Premium Driver">
+                                <Crown size={9} /> PREMIUM
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700" title="Free Driver (Subscription required for bookings)">
+                                FREE
+                              </span>
+                            )}
+                          </div>
                           {d.unique_id && (
                             <p className="text-[9px] font-mono text-slate-400 mt-0.5 select-all">
                               ID: {d.unique_id}
@@ -1120,16 +1178,25 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       </button>
                     </td>
 
-                     {/* Verification Toggle & Reset Password */}
+                    {/* Verification Toggle & Actions */}
                     <td className="py-4 px-5 text-right whitespace-nowrap space-x-2">
                       {!d.verified ? (
                         <>
                           <button
-                            onClick={() => toggleVerification(d.id, d.verified)}
+                            onClick={() => toggleVerification(d.id, false, 'FREE')}
                             disabled={updatingId === d.id}
                             className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/5"
+                            title="Verify as Free driver (Verified: True, Type: FREE)"
                           >
-                            <UserCheck size={12} /> APPROVE
+                            <UserCheck size={12} /> VERIFIED
+                          </button>
+                          <button
+                            onClick={() => toggleVerification(d.id, false, 'PREMIUM')}
+                            disabled={updatingId === d.id}
+                            className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-amber-500/20"
+                            title="Verify as Premium driver (Verified: True, Type: PREMIUM)"
+                          >
+                            <Crown size={12} /> PREMIUM
                           </button>
                           <button
                             onClick={() => handleRejectDriver(d.id)}
@@ -1148,13 +1215,34 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                           <UserCheck size={12} /> UNSUSPEND
                         </button>
                       ) : (
-                        <button
-                          onClick={() => toggleSuspension(d.id, d.is_suspended)}
-                          disabled={updatingId === d.id}
-                          className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
-                        >
-                          <Ban size={12} /> SUSPEND
-                        </button>
+                        <>
+                          <button
+                            onClick={() => toggleSuspension(d.id, d.is_suspended)}
+                            disabled={updatingId === d.id}
+                            className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            <Ban size={12} /> SUSPEND
+                          </button>
+                          {(d.type || 'FREE').toUpperCase() === 'PREMIUM' ? (
+                            <button
+                              onClick={() => handleUpdateDriverType(d.id, 'FREE')}
+                              disabled={updatingId === d.id}
+                              className="inline-flex items-center gap-1 bg-amber-500/10 hover:bg-slate-800 border border-amber-500/30 text-amber-300 hover:text-slate-300 font-extrabold text-[10px] py-1.5 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                              title="Currently Premium. Click to switch to Free"
+                            >
+                              <Crown size={11} className="text-amber-400" /> PREMIUM
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleUpdateDriverType(d.id, 'PREMIUM')}
+                              disabled={updatingId === d.id}
+                              className="inline-flex items-center gap-1 bg-slate-800 hover:bg-gradient-to-r hover:from-amber-500 hover:to-amber-400 text-slate-300 hover:text-slate-950 border border-slate-700 font-extrabold text-[10px] py-1.5 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                              title="Currently Free. Click to upgrade to Premium"
+                            >
+                              <Crown size={11} className="text-amber-400" /> UPGRADE
+                            </button>
+                          )}
+                        </>
                       )}
                       <button
                         onClick={() => openEditModal(d)}
@@ -1229,10 +1317,21 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       {(d.full_name || '').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase() || ''}
                     </div>
                     <div>
-                      <p className="font-extrabold text-white flex items-center gap-1 text-xs">
-                        {d.full_name}
-                        {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
-                      </p>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <p className="font-extrabold text-white flex items-center gap-1 text-xs">
+                          {d.full_name}
+                          {d.verified && <ShieldCheck size={14} className="text-emerald-400" />}
+                        </p>
+                        {(d.type || 'FREE').toUpperCase() === 'PREMIUM' ? (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[7px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            <Crown size={8} /> PREMIUM
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[7px] font-black uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
+                            FREE
+                          </span>
+                        )}
+                      </div>
                       {d.unique_id && (
                         <p className="text-[8px] font-mono text-slate-400 mt-0.5 select-all">
                           ID: {d.unique_id}
@@ -1326,11 +1425,18 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                   {!d.verified ? (
                     <>
                       <button
-                        onClick={() => toggleVerification(d.id, d.verified)}
+                        onClick={() => toggleVerification(d.id, false, 'FREE')}
                         disabled={updatingId === d.id}
-                        className="bg-emerald-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer shadow-md"
+                        className="bg-emerald-500 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer shadow-md inline-flex items-center gap-1"
                       >
-                        Approve
+                        <UserCheck size={11} /> Verified
+                      </button>
+                      <button
+                        onClick={() => toggleVerification(d.id, false, 'PREMIUM')}
+                        disabled={updatingId === d.id}
+                        className="bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer shadow-md inline-flex items-center gap-1"
+                      >
+                        <Crown size={11} /> Premium
                       </button>
                       <button
                         onClick={() => handleRejectDriver(d.id)}
@@ -1644,6 +1750,21 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     </select>
                   </div>
 
+                  {/* Driver Plan Type */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Driver Plan Type
+                    </label>
+                    <select
+                      value={editType}
+                      onChange={(e: any) => setEditType(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl transition-colors cursor-pointer"
+                    >
+                      <option value="FREE">FREE (Cannot accept bookings)</option>
+                      <option value="PREMIUM">PREMIUM (Authorized to accept/apply)</option>
+                    </select>
+                  </div>
+
                   {/* Unique ID */}
                   <div>
                     <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
@@ -1659,7 +1780,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                   </div>
 
                   {/* Managed By (SPOC) */}
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
                       Managed By (SPOC)
                     </label>
