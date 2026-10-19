@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Download, X, Share } from 'lucide-react'
 
 export function PwaInstaller() {
@@ -8,8 +9,10 @@ export function PwaInstaller() {
   const [showBanner, setShowBanner] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [showIosModal, setShowIosModal] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     // 1. Safety check for SSR
     if (typeof window === 'undefined') return
 
@@ -114,9 +117,15 @@ export function PwaInstaller() {
       </div>
 
       {/* iOS Manual Instructions Modal */}
-      {showIosModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in">
-          <div className="w-full sm:max-w-xs bg-slate-900 border border-gold-light/20 rounded-2xl p-5 shadow-2xl text-center space-y-4 animate-slide-up">
+      {showIosModal && mounted && typeof document !== 'undefined' && createPortal(
+        <div 
+          onClick={() => setShowIosModal(false)}
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full sm:max-w-xs bg-slate-900 border border-gold-light/20 rounded-2xl p-5 shadow-2xl text-center space-y-4 my-auto animate-slide-up"
+          >
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <h3 className="font-bold text-sm text-gold-light uppercase tracking-wider">
                 Install on iOS
@@ -167,7 +176,8 @@ export function PwaInstaller() {
               Got it
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

@@ -37,6 +37,7 @@ export interface Driver {
   full_name: string
   phone: string
   license_no: string
+  amount?: number | null
   current_area: string
   current_address?: string | null
   rating: number

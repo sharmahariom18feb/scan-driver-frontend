@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ShieldCheck, AlertTriangle, LogOut, Copy, X, Camera } from 'lucide-react'
 import { DriverInfo } from '@/redux/slices/driverSlice'
 import { toast } from 'sonner'
@@ -38,6 +39,11 @@ export default function ProfileTab({
   const [photoUrl, setPhotoUrl] = useState<string | null>(info?.photoUrl || null)
   const [imgError, setImgError] = useState(false)
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (info?.photoUrl) {
@@ -241,9 +247,17 @@ export default function ProfileTab({
       </form>
 
       {/* Driver Photo Preview Modal */}
-      {isPhotoModalOpen && photoUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in-50 duration-200">
-          <div className="bg-card border border-border/20 max-w-sm w-full rounded-2xl overflow-hidden shadow-2xl relative flex flex-col items-center p-6 space-y-4">
+      {isPhotoModalOpen && photoUrl && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto animate-in fade-in-50 duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsPhotoModalOpen(false)
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-card border border-border/20 max-w-sm w-full rounded-2xl overflow-hidden shadow-2xl relative my-auto flex flex-col items-center p-6 space-y-4 animate-in zoom-in-95 duration-200"
+          >
             <button
               type="button"
               onClick={() => setIsPhotoModalOpen(false)}
@@ -281,7 +295,8 @@ export default function ProfileTab({
               Close
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

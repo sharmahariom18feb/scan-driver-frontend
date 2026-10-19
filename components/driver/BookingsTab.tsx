@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Briefcase,
   Phone,
@@ -105,6 +106,11 @@ function ActiveBookingCard({
   const [comment, setComment] = useState('')
   const [viewingInvoice, setViewingInvoice] = useState<string | null>(null)
   const [viewingQr, setViewingQr] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const tripStatus = booking.tripStatus || 'not_started'
 
@@ -699,9 +705,17 @@ function ActiveBookingCard({
       </div>
 
       {/* Modal: View QR Code */}
-      {viewingQr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+      {viewingQr && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingQr(false)
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative my-auto animate-in zoom-in-95 duration-200"
+          >
             {/* Header */}
             <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
               <h3 className="font-bold text-foreground text-xs uppercase tracking-wider">Payment QR Code</h3>
@@ -730,13 +744,22 @@ function ActiveBookingCard({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: View Invoice Receipt */}
-      {viewingInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+      {viewingInvoice && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingInvoice(null)
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative my-auto animate-in zoom-in-95 duration-200"
+          >
             {/* Header */}
             <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
               <h3 className="font-bold text-foreground text-xs uppercase tracking-wider">Invoice Receipt</h3>
@@ -772,7 +795,8 @@ function ActiveBookingCard({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

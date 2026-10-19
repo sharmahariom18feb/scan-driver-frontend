@@ -58,6 +58,7 @@ export interface DriverInfo {
   currentArea: string
   currentAddress?: string
   licenseNo: string
+  amount?: number | null
   rating: number
   verified: boolean
   isSuspended: boolean
@@ -731,7 +732,7 @@ export const acceptBooking = createAsyncThunk(
         .maybeSingle()
 
       if ((userProfile?.type || 'FREE').toUpperCase() === 'FREE') {
-        throw new Error('Please take subscription plan to accept the booking')
+        throw new Error('Your payment is pending, contact : +91-9717498198')
       }
 
       // Call postgres safe acceptance RPC to handle row locking (FOR UPDATE) and check status
@@ -906,7 +907,7 @@ export const applyForMonthlyBooking = createAsyncThunk(
         .maybeSingle()
 
       if ((userProfile?.type || 'FREE').toUpperCase() === 'FREE') {
-        throw new Error('Please take subscription plan to accept the booking')
+        throw new Error('Your payment is pending, contact : +91-9717498198')
       }
 
       const { error } = await supabase

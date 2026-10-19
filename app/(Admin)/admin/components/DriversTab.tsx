@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, ShieldCheck, UserCheck, ShieldAlert, Star, Phone, MapPin, Award, CheckCircle, Ban, Key, X, Edit, Trash2, Upload, Download, UserX, FileSpreadsheet, FileText, ExternalLink, Crown } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -23,6 +24,11 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Image viewing modal states
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null)
@@ -93,8 +99,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
       { label: 'Driving_License_Front', url: docs.driving_license_url },
       { label: 'Driving_License_Back', url: (docs as any).driving_license_back_url || docs.pan_card_url },
       { label: 'Selfie', url: docs.selfie_url },
-      { label: 'Driver_Profile', url: docs.driver_profile_url },
       { label: 'Payment_Receipt', url: docs.payment, isPayment: true },
+      { label: 'Driver_Profile', url: docs.driver_profile_url },
     ]
 
     const filesToDownload = allFiles
@@ -166,13 +172,13 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
         { label: 'Driving License Front', field: 'driving_license_url', url: documentsObject?.driving_license_url, accept: 'image/*' },
         { label: 'Driving License Back', field: dlBackField, url: dlBackUrl, accept: 'image/*' },
         { label: 'Selfie', field: 'selfie_url', url: documentsObject?.selfie_url, accept: 'image/*' },
+        { label: 'Payment Receipt', field: 'payment', url: documentsObject?.payment, accept: 'image/*,.pdf,application/pdf' },
         { 
           label: 'Driver Profile', 
           field: 'driver_profile_url', 
           url: documentsObject?.driver_profile_url, 
           accept: 'image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
         },
-        { label: 'Payment Receipt', field: 'payment', url: documentsObject?.payment, accept: 'image/*,.pdf,application/pdf' },
       ]
     }
 
@@ -348,6 +354,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
   const [editPhone, setEditPhone] = useState('')
   const [editEmail, setEditEmail] = useState('')
   const [editLicenseNo, setEditLicenseNo] = useState('')
+  const [editAmount, setEditAmount] = useState<number | string>('')
   const [editCurrentArea, setEditCurrentArea] = useState('')
   const [editCurrentAddress, setEditCurrentAddress] = useState('')
   const [editRating, setEditRating] = useState(5.0)
@@ -384,6 +391,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     setEditPhone(d.phone || '')
     setEditEmail(d.email || '')
     setEditLicenseNo(d.license_no || '')
+    setEditAmount(d.amount !== undefined && d.amount !== null ? d.amount : '')
     setEditCurrentArea(d.current_area || '')
     setEditCurrentAddress(d.current_address || profile?.current_address || '')
     setEditRating(Number(d.rating) || 5.0)
@@ -436,6 +444,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           phone: editPhone,
           email: editEmail || null,
           license_no: editLicenseNo,
+          amount: editAmount !== '' ? Number(editAmount) : 0,
           current_area: editCurrentArea,
           current_address: editCurrentAddress || null,
           rating: Number(editRating),
@@ -882,6 +891,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           'Full Name': d.full_name || 'N/A',
           'Mobile': d.phone || 'N/A',
           'License No': d.license_no || 'N/A',
+          'Amount (₹)': d.amount !== undefined && d.amount !== null ? Number(d.amount) : 0,
           'Area': d.current_area || 'N/A',
           'Current Address': d.current_address || profile?.current_address || 'Not provided',
           'Managed By (SPOC)': d.managed_by || profile?.managed_by || 'Not Assigned',
@@ -904,6 +914,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
         { wch: 24 }, // Full Name
         { wch: 18 }, // Mobile
         { wch: 24 }, // License No
+        { wch: 14 }, // Amount (₹)
         { wch: 24 }, // Area
         { wch: 36 }, // Current Address
         { wch: 22 }, // Managed By (SPOC)
@@ -1101,6 +1112,12 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     <td className="py-4 px-5">
                       <div className="space-y-0.5">
                         <p className="font-bold text-white tracking-wide font-mono uppercase">{d.license_no}</p>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-slate-400 font-semibold">Amount:</span>
+                          <span className="font-mono font-bold text-amber-400">
+                            {d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}
+                          </span>
+                        </div>
                         <p className="text-[9px] text-slate-350 uppercase tracking-widest font-bold flex items-center gap-1">
                           <Award size={10} className="text-amber-500" /> Professional Class
                         </p>
@@ -1357,7 +1374,11 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                 </div>
 
                 <div className="space-y-1 text-slate-200 text-[11px] font-semibold">
-                  <p>License: <span className="font-mono text-white font-bold">{d.license_no}</span></p>
+                  <p>
+                    License: <span className="font-mono text-white font-bold">{d.license_no}</span>
+                    <span className="mx-1.5 text-slate-600">•</span>
+                    Amount: <span className="font-mono text-amber-400 font-bold">{d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}</span>
+                  </p>
                   <p>Mobile: {d.phone}</p>
                   <p>Area: {d.current_area} • Rating: {Number(d.rating).toFixed(2)}★</p>
                   <p>
@@ -1558,9 +1579,17 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
       </div>
 
       {/* Password Reset Modal */}
-      {resetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      {resetModalOpen && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setResetModalOpen(false)
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 w-full max-w-md shadow-2xl relative my-auto animate-in fade-in zoom-in-95 duration-150"
+          >
             <h3 className="text-base font-bold text-white mb-2">Reset Password</h3>
             <p className="text-xs text-slate-350 mb-4">
               Enter a new password for <span className="font-extrabold text-amber-400">{targetDriverName}</span>. 
@@ -1609,13 +1638,22 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Profile Modal */}
-      {editModalOpen && editingDriver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      {editModalOpen && editingDriver && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditModalOpen(false)
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+          >
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-800/80 flex justify-between items-center bg-slate-950 rounded-t-2xl shrink-0">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -1691,6 +1729,22 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       value={editLicenseNo}
                       onChange={(e) => setEditLicenseNo(e.target.value)}
                       className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                    />
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
+                      Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors font-mono"
                     />
                   </div>
 
@@ -2055,13 +2109,25 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: View Driver Document */}
-      {viewingImageUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+      {viewingImageUrl && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setViewingImageUrl(null)
+              setViewingImageLabel('')
+            }
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-800 max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative my-auto animate-in zoom-in-95 duration-200"
+          >
             {/* Header */}
             <div className="px-4 py-3 border-b border-slate-800/60 flex justify-between items-center bg-slate-950">
               <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-amber-500">{viewingImageLabel}</h3>
@@ -2146,7 +2212,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

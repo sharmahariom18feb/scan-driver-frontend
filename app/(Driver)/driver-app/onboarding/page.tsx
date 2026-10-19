@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -19,6 +20,11 @@ export default function OnboardingPage() {
   const dispatch = useDispatch<AppDispatch>()
   const router = useRouter()
   const { loading } = useSelector((state: RootState) => state.driver)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Steps: 
   // 1: Basic Info
@@ -782,7 +788,7 @@ export default function OnboardingPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-foreground">
-                  <span className="text-black font-bold mr-1">4</span> Current Address
+                  <span className="text-black font-bold mr-1">4</span> Current Location
                 </label>
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-[#E8B84B]/10 border border-[#E8B84B]/20 text-[#E8B84B]">
                   Required
@@ -795,7 +801,7 @@ export default function OnboardingPage() {
                 value={currentAddress}
                 onChange={(e) => setCurrentAddress(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-surface2 border border-border/40 rounded-xl focus:border-primary focus:outline-none text-foreground transition-colors placeholder:text-text-muted/50 resize-none"
-                placeholder="Jaise: Chhatarpur, South Delhi"
+                placeholder="Jaise: Saket, Dwarka, Sector 10, Rithala"
               />
             </div>
 
@@ -1279,9 +1285,15 @@ export default function OnboardingPage() {
           </div>
         )}
         {/* Modal: View QR Code */}
-        {viewingQr && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-            <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+        {viewingQr && mounted && typeof document !== 'undefined' && createPortal(
+          <div 
+            onClick={() => setViewingQr(false)}
+            className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 font-sans"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative my-auto animate-in zoom-in-95 duration-200"
+            >
               {/* Header */}
               <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
                 <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#E8B84B]">Registration Payment QR</h3>
@@ -1310,13 +1322,23 @@ export default function OnboardingPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Modal: View Uploaded Document */}
-        {viewingImageUrl && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-            <div className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-200">
+        {viewingImageUrl && mounted && typeof document !== 'undefined' && createPortal(
+          <div 
+            onClick={() => {
+              setViewingImageUrl(null)
+              setViewingImageLabel('')
+            }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 font-sans"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-850 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col relative my-auto animate-in zoom-in-95 duration-200"
+            >
               {/* Header */}
               <div className="px-4 py-3 border-b border-border/10 flex justify-between items-center bg-surface">
                 <h3 className="font-bold text-foreground text-xs uppercase tracking-wider text-[#E8B84B]">{viewingImageLabel} Preview</h3>
@@ -1351,7 +1373,8 @@ export default function OnboardingPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </main>
     </div>

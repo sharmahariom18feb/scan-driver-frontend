@@ -177,7 +177,7 @@ export default function BookingPage() {
     40: 550, 45: 590, 50: 630, 55: 670, 60: 710, 65: 750, 70: 790
   }
   const roundTripPrices: Record<number, number> = {
-    2: 299, 3: 399, 4: 499, 5: 599, 6: 699, 7: 799,
+    3: 420, 4: 510, 5: 599, 6: 699, 7: 799,
     8: 899, 9: 999, 10: 1099, 11: 1199, 12: 1299
   }
 
@@ -191,7 +191,7 @@ export default function BookingPage() {
   }
 
   const getRoundTripPrice = (hrs: number) => {
-    if (hrs < 2) return null
+    if (hrs < 3) return null
     if (hrs > 12) return 1299 + (hrs - 12) * 100
     return roundTripPrices[hrs] || null
   }
@@ -242,8 +242,8 @@ export default function BookingPage() {
 
     if (tripType === 'roundtrip') {
       if (roundHours > 0) {
-        if (roundHours < 2) {
-          note = '⚠️ Minimum booking is 2 hours'
+        if (roundHours < 3) {
+          note = '⚠️ Minimum booking is 3 hours'
         } else {
           amount = getRoundTripPrice(roundHours)
           note = roundHours > 12
@@ -353,7 +353,7 @@ export default function BookingPage() {
     }
 
     if (tripType === 'roundtrip') {
-      if (!roundHours || roundHours < 2) e.roundHours = 'Minimum 2 hours required'
+      if (!roundHours || roundHours < 3) e.roundHours = 'Minimum 3 hours required'
       if (!pickupCommon.trim()) e.pickupCommon = 'Please enter pickup location'
     }
 
@@ -1678,7 +1678,7 @@ ${commentsStr}${gpsStr}
                 <div className="trip-tabs">
                   {[
                     { id: 'oneway', label: 'One Way', icon: '➡️', isLocal: true },
-                    { id: 'roundtrip', label: 'Round Trip', icon: '🔄', isLocal: true },
+                    { id: 'roundtrip', label: 'Round Trip/Hourly', icon: '🔄', isLocal: true },
                     { id: 'monthly', label: 'Monthly', icon: '📅', isLocal: false },
                     { id: 'outstation', label: 'Outstation', icon: '🛣️', isLocal: false },
                   ].map((t) => (
@@ -1813,11 +1813,16 @@ ${commentsStr}${gpsStr}
                     type="number"
                     value={roundHours || ''}
                     onChange={(e) => {
-                      setRoundHours(Number(e.target.value))
-                      if (errors.roundHours) setErrors(prev => { const c = { ...prev }; delete c.roundHours; return c; })
+                      const val = Number(e.target.value)
+                      setRoundHours(val)
+                      if (val > 0 && val < 3) {
+                        setErrors(prev => ({ ...prev, roundHours: 'Minimum 3 hours required' }))
+                      } else if (errors.roundHours) {
+                        setErrors(prev => { const c = { ...prev }; delete c.roundHours; return c; })
+                      }
                     }}
-                    placeholder="e.g. 4 (min 2 hours)"
-                    min="2"
+                    placeholder="e.g. 4 (min 3 hours)"
+                    min="3"
                     max="24"
                     className={cn(errors.roundHours && 'error')}
                   />

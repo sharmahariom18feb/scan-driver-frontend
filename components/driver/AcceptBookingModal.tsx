@@ -1,6 +1,7 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   MapPin,
   Calendar,
@@ -36,13 +37,19 @@ export default function AcceptBookingModal({
   onClose,
   onConfirm,
 }: AcceptBookingModalProps) {
-  if (!isOpen || !booking) return null
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!isOpen || !booking || !mounted) return null
 
   const pickupText = parseAddress(booking.pickup)
   const dropText = parseAddress(booking.drop)
 
-  return (
-    <div className="fixed sm:absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
       {/* Backdrop click */}
       <div
         className="absolute inset-0"
@@ -52,7 +59,7 @@ export default function AcceptBookingModal({
       />
 
       {/* Modal Card */}
-      <div className="relative w-full max-w-sm bg-card border border-border/20 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 z-10 animate-in zoom-in-95 duration-200">
+      <div className="relative my-auto w-full max-w-sm bg-card border border-border/20 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 z-10 animate-in zoom-in-95 duration-200">
         {/* Close button */}
         {!isLoading && (
           <button
@@ -179,6 +186,7 @@ export default function AcceptBookingModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

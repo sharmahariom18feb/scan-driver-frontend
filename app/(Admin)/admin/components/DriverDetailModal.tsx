@@ -135,8 +135,8 @@ export default function DriverDetailModal({ driver, booking, onClose }: DriverDe
     { label: 'Driving License (Front)', url: docs?.driving_license_url, isPayment: false },
     { label: 'Driving License (Back)', url: docs?.driving_license_back_url || docs?.pan_card_url || undefined, isPayment: false },
     { label: 'Selfie / Photo', url: docs?.selfie_url, isPayment: false },
-    { label: 'Driver Profile', url: docs?.driver_profile_url, isPayment: false },
     { label: 'Payment Receipt', url: docs?.payment, isPayment: true },
+    { label: 'Driver Profile', url: docs?.driver_profile_url, isPayment: false },
   ]
 
   const uploadedDocsCount = documentsList.filter(d => Boolean(d.url)).length
@@ -456,7 +456,7 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
               <Award size={13} /> Driver Credentials & Experience
             </h4>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {/* License Number */}
               <div className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl space-y-1">
                 <span className="text-[9px] font-extrabold uppercase text-slate-500">Driving License</span>
@@ -475,6 +475,16 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* Amount */}
+              <div className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl space-y-1">
+                <span className="text-[9px] font-extrabold uppercase text-slate-500">Amount</span>
+                <p className="text-xs font-bold text-amber-400 font-mono">
+                  {driver.amount !== undefined && driver.amount !== null
+                    ? `₹${Number(driver.amount).toLocaleString('en-IN')}`
+                    : '₹0'}
+                </p>
               </div>
 
               {/* License Status */}

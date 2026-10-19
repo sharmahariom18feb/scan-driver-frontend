@@ -1790,7 +1790,7 @@ export default function BookingsTab({
       {/* Modal: Create or Edit Booking */}
       {showCreateModal && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) handleCloseModal()
           }}
@@ -2131,7 +2131,7 @@ export default function BookingsTab({
       {/* Modal: Driver Assignment */}
       {assigningBooking && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setAssigningBooking(null)
           }}
@@ -2238,7 +2238,7 @@ export default function BookingsTab({
       {/* Modal: Monthly Booking Applications Review */}
       {reviewingMonthlyBooking && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setReviewingMonthlyBooking(null)
           }}
@@ -2733,7 +2733,7 @@ export default function BookingsTab({
       {/* Modal: View Invoice */}
       {viewingInvoice && mounted && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setViewingInvoice(null)
           }}

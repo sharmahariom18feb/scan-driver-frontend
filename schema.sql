@@ -18,6 +18,7 @@ create table if not exists public.users (
   unique_id text unique,
   managed_by text,
   type text default 'FREE' check (type in ('FREE', 'PREMIUM')),
+  amount numeric(10,2) default 0.00,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -542,4 +543,8 @@ create policy "Admins can delete booking applications." on public.booking_applic
 
 -- Add driving_license_back_url to driver_documents table (replaces pan_card_url)
 alter table if exists public.driver_documents add column if not exists driving_license_back_url text;
+
+-- Add amount number field to users table
+alter table if exists public.users add column if not exists amount numeric(10,2) default 0.00;
+
 

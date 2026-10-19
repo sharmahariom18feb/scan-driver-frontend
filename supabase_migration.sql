@@ -504,3 +504,7 @@ $$ language plpgsql security definer;
 -- 16. Add driving_license_back_url to driver_documents table (replaces pan_card_url)
 alter table if exists public.driver_documents add column if not exists driving_license_back_url text;
 
+-- 17. Add amount number field to users table
+alter table if exists public.users add column if not exists amount numeric(10,2) default 0.00;
+
+
