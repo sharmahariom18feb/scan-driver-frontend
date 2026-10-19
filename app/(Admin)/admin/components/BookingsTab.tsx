@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink, FileSpreadsheet, Users } from 'lucide-react'
+import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink, FileSpreadsheet, Users, UserPlus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Booking, Driver, BookingApplication } from '../types'
@@ -92,6 +92,11 @@ export default function BookingsTab({
   const [applications, setApplications] = useState<BookingApplication[]>([])
   const [reviewingMonthlyBooking, setReviewingMonthlyBooking] = useState<Booking | null>(null)
   const [acceptingApplicationId, setAcceptingApplicationId] = useState<string | null>(null)
+  const [showAddApplicant, setShowAddApplicant] = useState(false)
+  const [applicantDriverSearch, setApplicantDriverSearch] = useState('')
+  const [addApplicantFilter, setAddApplicantFilter] = useState<'all' | 'verified' | 'online'>('all')
+  const [addingDriverId, setAddingDriverId] = useState<string | null>(null)
+  const [removingApplicationId, setRemovingApplicationId] = useState<string | null>(null)
 
   // Create Booking Modal State
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -273,7 +278,8 @@ export default function BookingsTab({
 
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          if (reviewingMonthlyBooking) setReviewingMonthlyBooking(null)
+          if (showAddApplicant) setShowAddApplicant(false)
+          else if (reviewingMonthlyBooking) setReviewingMonthlyBooking(null)
           else if (assigningBooking) setAssigningBooking(null)
           else if (viewingInvoice) setViewingInvoice(null)
           else if (showCreateModal) handleCloseModal()
@@ -286,7 +292,16 @@ export default function BookingsTab({
         window.removeEventListener('keydown', handleKeyDown)
       }
     }
-  }, [reviewingMonthlyBooking, showCreateModal, assigningBooking, viewingInvoice])
+  }, [reviewingMonthlyBooking, showAddApplicant, showCreateModal, assigningBooking, viewingInvoice])
+
+  // Reset add applicant view when reviewingMonthlyBooking closes or changes
+  useEffect(() => {
+    if (!reviewingMonthlyBooking) {
+      setShowAddApplicant(false)
+      setApplicantDriverSearch('')
+      setAddApplicantFilter('all')
+    }
+  }, [reviewingMonthlyBooking])
 
   useEffect(() => {
     fetchBookingsLocal()
@@ -711,6 +726,99 @@ export default function BookingsTab({
       toast.error(err.message || 'Failed to accept application')
     } finally {
       setAcceptingApplicationId(null)
+    }
+  }
+
+  // Add Driver to Monthly Booking Applicants Action (Admin)
+  const handleAddDriverToApplicants = async (driver: Driver) => {
+    if (!reviewingMonthlyBooking) return
+    setAddingDriverId(driver.id)
+    try {
+      const sessionResult = await supabase.auth.getSession()
+      const token = sessionResult.data.session?.access_token
+
+      const res = await fetch('/api/admin/manage-booking-applicant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          booking_id: reviewingMonthlyBooking.id,
+          driver_id: driver.id,
+          action: 'add',
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add driver to applicant list')
+      }
+
+      toast.success(`${driver.full_name} added to applicant list!`)
+      await fetchApplications()
+    } catch (err: any) {
+      console.error('Error adding driver to applicant list:', err)
+      // Fallback direct attempt via supabase client
+      try {
+        const { error: directErr } = await supabase.from('booking_applications').insert({
+          booking_id: reviewingMonthlyBooking.id,
+          driver_id: driver.id,
+          status: 'pending',
+        })
+        if (!directErr) {
+          toast.success(`${driver.full_name} added to applicant list!`)
+          await fetchApplications()
+          return
+        }
+      } catch (fallbackErr) {}
+      toast.error(err.message || 'Failed to add driver to applicant list')
+    } finally {
+      setAddingDriverId(null)
+    }
+  }
+
+  // Remove Driver from Monthly Booking Applicants Action (Admin)
+  const handleRemoveApplicant = async (app: BookingApplication, driverName: string) => {
+    if (!confirm(`Are you sure you want to remove ${driverName} from the applicant list?`)) return
+    setRemovingApplicationId(app.id)
+    try {
+      const sessionResult = await supabase.auth.getSession()
+      const token = sessionResult.data.session?.access_token
+
+      const res = await fetch('/api/admin/manage-booking-applicant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          booking_id: app.booking_id,
+          driver_id: app.driver_id,
+          action: 'remove',
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to remove applicant')
+      }
+
+      toast.success(`${driverName} removed from applicant list.`)
+      await fetchApplications()
+    } catch (err: any) {
+      console.error('Error removing applicant:', err)
+      try {
+        const { error: directErr } = await supabase.from('booking_applications').delete().eq('id', app.id)
+        if (!directErr) {
+          toast.success(`${driverName} removed from applicant list.`)
+          await fetchApplications()
+          return
+        }
+      } catch (fallbackErr) {}
+      toast.error(err.message || 'Failed to remove applicant')
+    } finally {
+      setRemovingApplicationId(null)
     }
   }
 
@@ -2154,12 +2262,26 @@ export default function BookingsTab({
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setReviewingMonthlyBooking(null)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer hover:bg-slate-800 transition-colors"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddApplicant((prev) => !prev)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                    showAddApplicant
+                      ? 'bg-amber-500 text-slate-950 shadow-amber-500/20 hover:bg-amber-400'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                  }`}
+                >
+                  <UserPlus size={13} />
+                  <span>{showAddApplicant ? 'View Applicant List' : '+ Add Driver'}</span>
+                </button>
+                <button
+                  onClick={() => setReviewingMonthlyBooking(null)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-full cursor-pointer hover:bg-slate-800 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Subheader / Booking Route Context */}
@@ -2183,6 +2305,201 @@ export default function BookingsTab({
               {(() => {
                 const bookingApps = applications.filter((a) => a.booking_id === reviewingMonthlyBooking.id)
 
+                if (showAddApplicant) {
+                  const filteredDrivers = drivers.filter((driver) => {
+                    if (addApplicantFilter === 'verified' && !driver.verified) return false
+                    if (addApplicantFilter === 'online' && !driver.is_online) return false
+                    if (applicantDriverSearch.trim()) {
+                      const q = applicantDriverSearch.toLowerCase()
+                      const matchesName = (driver.full_name || '').toLowerCase().includes(q)
+                      const matchesPhone = (driver.phone || '').toLowerCase().includes(q)
+                      const matchesUid = (driver.unique_id || '').toLowerCase().includes(q)
+                      const matchesArea = (driver.current_area || '').toLowerCase().includes(q)
+                      return matchesName || matchesPhone || matchesUid || matchesArea
+                    }
+                    return true
+                  })
+
+                  return (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      {/* Search and Filter Panel */}
+                      <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <h4 className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-1.5">
+                              <UserPlus size={14} className="text-emerald-400" />
+                              Add Driver to Applicants
+                            </h4>
+                            <p className="text-[11px] text-slate-400">
+                              Pick any driver from your fleet who is suitable for this monthly duty to add them directly to this list.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddApplicant(false)}
+                            className="text-[11px] text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 font-semibold cursor-pointer shrink-0"
+                          >
+                            Back to Applicants ({bookingApps.length})
+                          </button>
+                        </div>
+
+                        {/* Search Input */}
+                        <div className="relative">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <input
+                            type="text"
+                            value={applicantDriverSearch}
+                            onChange={(e) => setApplicantDriverSearch(e.target.value)}
+                            placeholder="Search driver by name, phone, area, or ID..."
+                            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-900 border border-slate-800 focus:border-emerald-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
+                          />
+                        </div>
+
+                        {/* Filter tabs */}
+                        <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider pr-1 shrink-0">Filter:</span>
+                          {(['all', 'verified', 'online'] as const).map((key) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => setAddApplicantFilter(key)}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                                addApplicantFilter === key
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                  : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+                              }`}
+                            >
+                              {key === 'all' && `All Drivers (${drivers.length})`}
+                              {key === 'verified' && `Verified (${drivers.filter((d) => d.verified).length})`}
+                              {key === 'online' && `Online (${drivers.filter((d) => d.is_online).length})`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Drivers List */}
+                      <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                        {filteredDrivers.length === 0 ? (
+                          <div className="text-center py-8 text-slate-500 text-xs italic bg-slate-950/40 rounded-xl border border-slate-800/60">
+                            No drivers match your search or filter.
+                          </div>
+                        ) : (
+                          filteredDrivers.map((driver) => {
+                            const isAlreadyApplicant = bookingApps.some((a) => a.driver_id === driver.id)
+                            const isCurrentlyAssigned = reviewingMonthlyBooking.driver_id === driver.id
+                            const isAdding = addingDriverId === driver.id
+
+                            const docs = Array.isArray(driver?.driver_documents)
+                              ? driver.driver_documents[0]
+                              : driver?.driver_documents
+                            const selfieUrl = docs?.selfie_url
+
+                            const profile = Array.isArray(driver?.driver_profiles)
+                              ? driver.driver_profiles[0]
+                              : driver?.driver_profiles
+
+                            return (
+                              <div
+                                key={driver.id}
+                                className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                                  isAlreadyApplicant
+                                    ? 'bg-slate-950/40 border-slate-850 opacity-85'
+                                    : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="relative shrink-0">
+                                    {selfieUrl ? (
+                                      <img
+                                        src={selfieUrl}
+                                        alt={driver.full_name || 'Driver'}
+                                        className="w-10 h-10 rounded-xl object-cover border border-slate-700"
+                                      />
+                                    ) : (
+                                      <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-extrabold text-xs">
+                                        {(driver.full_name || 'D').slice(0, 2).toUpperCase()}
+                                      </div>
+                                    )}
+                                    {driver.is_online && (
+                                      <span
+                                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-900"
+                                        title="Online"
+                                      />
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0 space-y-0.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-xs font-bold text-white truncate">{driver.full_name}</p>
+                                      {driver.unique_id && (
+                                        <span className="text-[8px] font-mono text-slate-400 bg-slate-900 px-1 py-0.5 rounded border border-slate-800">
+                                          {driver.unique_id}
+                                        </span>
+                                      )}
+                                      {driver.verified ? (
+                                        <span className="text-[8px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded border border-emerald-500/20">
+                                          VERIFIED
+                                        </span>
+                                      ) : (
+                                        <span className="text-[8px] font-extrabold text-amber-400 bg-amber-500/10 px-1 py-0.2 rounded border border-amber-500/20">
+                                          UNVERIFIED
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2.5 text-[11px] text-slate-400 flex-wrap">
+                                      {driver.phone && <span>{driver.phone}</span>}
+                                      {driver.current_area && <span>• {driver.current_area}</span>}
+                                      {driver.rating !== undefined && (
+                                        <span className="text-amber-400 font-semibold">★ {driver.rating}</span>
+                                      )}
+                                      {profile?.experience && (
+                                        <span className="text-slate-400 text-[10px]">({profile.experience})</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleViewDriver(driver, reviewingMonthlyBooking)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold border border-slate-700 cursor-pointer"
+                                  >
+                                    Profile
+                                  </button>
+
+                                  {isAlreadyApplicant ? (
+                                    <span className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-extrabold flex items-center gap-1">
+                                      <Check size={12} />
+                                      {isCurrentlyAssigned ? 'Assigned' : 'In List'}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={isAdding}
+                                      onClick={() => handleAddDriverToApplicants(driver)}
+                                      className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-extrabold shadow-sm shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                                    >
+                                      {isAdding ? (
+                                        <span>Adding...</span>
+                                      ) : (
+                                        <>
+                                          <UserPlus size={12} />
+                                          <span>+ Add to List</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )
+                }
+
                 if (bookingApps.length === 0) {
                   return (
                     <div className="py-12 text-center space-y-3">
@@ -2191,8 +2508,18 @@ export default function BookingsTab({
                       </div>
                       <p className="text-sm font-bold text-slate-300">No applications received yet</p>
                       <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                        Drivers can view this monthly duty in their driver app and submit an application. Received applications will be listed here for your review and selection.
+                        Drivers can view this monthly duty in their driver app and submit an application, or you can directly add any qualified driver from your fleet right now.
                       </p>
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddApplicant(true)}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                        >
+                          <UserPlus size={14} />
+                          <span>Add Driver to Applicant List</span>
+                        </button>
+                      </div>
                     </div>
                   )
                 }
@@ -2203,9 +2530,14 @@ export default function BookingsTab({
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                         {bookingApps.length} {bookingApps.length === 1 ? 'Driver Applied' : 'Drivers Applied'}
                       </p>
-                      <p className="text-[11px] text-slate-500">
-                        Review qualifications and assign the best fit
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddApplicant(true)}
+                        className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-extrabold hover:underline cursor-pointer"
+                      >
+                        <UserPlus size={12} />
+                        <span>+ Add Another Driver</span>
+                      </button>
                     </div>
 
                     {bookingApps.map((app) => {
@@ -2328,21 +2660,33 @@ export default function BookingsTab({
                                   <Check size={13} /> Selected
                                 </span>
                               ) : (
-                                <button
-                                  type="button"
-                                  disabled={acceptingApplicationId === app.id}
-                                  onClick={() => handleAcceptApplication(app)}
-                                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                                >
-                                  {acceptingApplicationId === app.id ? (
-                                    <span>Accepting...</span>
-                                  ) : (
-                                    <>
-                                      <Check size={13} />
-                                      <span>Accept & Assign</span>
-                                    </>
-                                  )}
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={acceptingApplicationId === app.id}
+                                    onClick={() => handleAcceptApplication(app)}
+                                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                                  >
+                                    {acceptingApplicationId === app.id ? (
+                                      <span>Accepting...</span>
+                                    ) : (
+                                      <>
+                                        <Check size={13} />
+                                        <span>Accept & Assign</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={removingApplicationId === app.id}
+                                    onClick={() => handleRemoveApplicant(app, driver?.full_name || 'Driver')}
+                                    className="p-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 transition-colors cursor-pointer disabled:opacity-50"
+                                    title="Remove from applicant list"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
                               )}
                             </div>
                           </div>
@@ -2355,7 +2699,25 @@ export default function BookingsTab({
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-3 border-t border-slate-800 flex justify-end bg-slate-950/60">
+            <div className="px-5 py-3 border-t border-slate-800 flex justify-between items-center bg-slate-950/60">
+              {showAddApplicant ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddApplicant(false)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-800 hover:bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer transition-all"
+                >
+                  ← Back to Applicants
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAddApplicant(true)}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-extrabold cursor-pointer transition-all flex items-center gap-1.5"
+                >
+                  <UserPlus size={13} />
+                  <span>+ Add Driver to List</span>
+                </button>
+              )}
               <button
                 onClick={() => setReviewingMonthlyBooking(null)}
                 className="px-4 py-2 rounded-xl border border-slate-800 hover:bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white cursor-pointer transition-all"

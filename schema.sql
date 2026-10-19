@@ -531,6 +531,9 @@ create policy "Anyone authenticated can view booking applications." on public.bo
 create policy "Drivers can insert their own booking applications." on public.booking_applications
   for insert with check (auth.uid() = driver_id);
 
+create policy "Admins can insert booking applications." on public.booking_applications
+  for insert with check (public.is_admin());
+
 create policy "Admins can update booking applications." on public.booking_applications
   for update using (public.is_admin());
 

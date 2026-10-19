@@ -26,6 +26,10 @@ DROP POLICY IF EXISTS "Drivers can insert their own booking applications." ON pu
 CREATE POLICY "Drivers can insert their own booking applications." ON public.booking_applications
   FOR INSERT WITH CHECK (auth.uid() = driver_id);
 
+DROP POLICY IF EXISTS "Admins can insert booking applications." ON public.booking_applications;
+CREATE POLICY "Admins can insert booking applications." ON public.booking_applications
+  FOR INSERT WITH CHECK (public.is_admin());
+
 DROP POLICY IF EXISTS "Admins can update booking applications." ON public.booking_applications;
 CREATE POLICY "Admins can update booking applications." ON public.booking_applications
   FOR UPDATE USING (public.is_admin());
