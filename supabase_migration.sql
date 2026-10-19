@@ -500,3 +500,7 @@ begin
   return new;
 end;
 $$ language plpgsql security definer;
+
+-- 16. Add driving_license_back_url to driver_documents table (replaces pan_card_url)
+alter table if exists public.driver_documents add column if not exists driving_license_back_url text;
+

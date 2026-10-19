@@ -90,8 +90,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     const allFiles = [
       { label: 'Aadhaar_Front', url: docs.aadhaar_front_url },
       { label: 'Aadhaar_Back', url: docs.aadhaar_back_url },
-      { label: 'Driving_License', url: docs.driving_license_url },
-      { label: 'PAN_Card', url: docs.pan_card_url },
+      { label: 'Driving_License_Front', url: docs.driving_license_url },
+      { label: 'Driving_License_Back', url: (docs as any).driving_license_back_url || docs.pan_card_url },
       { label: 'Selfie', url: docs.selfie_url },
       { label: 'Driver_Profile', url: docs.driver_profile_url },
       { label: 'Payment_Receipt', url: docs.payment, isPayment: true },
@@ -155,11 +155,16 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     const docs = getDocuments(d)
     
     const getDocsArray = (documentsObject: any) => {
+      const dlBackUrl = documentsObject?.driving_license_back_url || documentsObject?.pan_card_url
+      const dlBackField = (documentsObject?.driving_license_back_url !== undefined && documentsObject?.driving_license_back_url !== null)
+        ? 'driving_license_back_url'
+        : 'pan_card_url'
+
       return [
         { label: 'Aadhaar Front', field: 'aadhaar_front_url', url: documentsObject?.aadhaar_front_url, accept: 'image/*' },
         { label: 'Aadhaar Back', field: 'aadhaar_back_url', url: documentsObject?.aadhaar_back_url, accept: 'image/*' },
-        { label: 'Driving License', field: 'driving_license_url', url: documentsObject?.driving_license_url, accept: 'image/*' },
-        { label: 'PAN Card', field: 'pan_card_url', url: documentsObject?.pan_card_url, accept: 'image/*' },
+        { label: 'Driving License Front', field: 'driving_license_url', url: documentsObject?.driving_license_url, accept: 'image/*' },
+        { label: 'Driving License Back', field: dlBackField, url: dlBackUrl, accept: 'image/*' },
         { label: 'Selfie', field: 'selfie_url', url: documentsObject?.selfie_url, accept: 'image/*' },
         { 
           label: 'Driver Profile', 

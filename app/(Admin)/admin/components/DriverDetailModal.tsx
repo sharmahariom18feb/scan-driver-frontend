@@ -132,8 +132,8 @@ export default function DriverDetailModal({ driver, booking, onClose }: DriverDe
   const documentsList = [
     { label: 'Aadhaar Card (Front)', url: docs?.aadhaar_front_url, isPayment: false },
     { label: 'Aadhaar Card (Back)', url: docs?.aadhaar_back_url, isPayment: false },
-    { label: 'Driving License', url: docs?.driving_license_url, isPayment: false },
-    { label: 'PAN Card', url: docs?.pan_card_url, isPayment: false },
+    { label: 'Driving License (Front)', url: docs?.driving_license_url, isPayment: false },
+    { label: 'Driving License (Back)', url: docs?.driving_license_back_url || docs?.pan_card_url || undefined, isPayment: false },
     { label: 'Selfie / Photo', url: docs?.selfie_url, isPayment: false },
     { label: 'Driver Profile', url: docs?.driver_profile_url, isPayment: false },
     { label: 'Payment Receipt', url: docs?.payment, isPayment: true },

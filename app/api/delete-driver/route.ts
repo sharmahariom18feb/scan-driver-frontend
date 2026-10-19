@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     try {
       const { data: docs, error: docsError } = await supabaseAdminClient
         .from('driver_documents')
-        .select('aadhaar_front_url, aadhaar_back_url, driving_license_url, pan_card_url, selfie_url, payment, driver_profile_url')
+        .select('*')
         .eq('driver_id', driverId)
         .maybeSingle()
 
@@ -129,13 +129,14 @@ export async function POST(request: Request) {
         console.error('Error fetching driver documents for deletion:', docsError)
       } else if (docs) {
         const urls = [
-          docs.aadhaar_front_url,
-          docs.aadhaar_back_url,
-          docs.driving_license_url,
-          docs.pan_card_url,
-          docs.selfie_url,
-          docs.payment,
-          docs.driver_profile_url
+          (docs as any).aadhaar_front_url,
+          (docs as any).aadhaar_back_url,
+          (docs as any).driving_license_url,
+          (docs as any).driving_license_back_url,
+          (docs as any).pan_card_url,
+          (docs as any).selfie_url,
+          (docs as any).payment,
+          (docs as any).driver_profile_url
         ].filter((url): url is string => !!url)
 
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME

@@ -540,3 +540,6 @@ create policy "Admins can update booking applications." on public.booking_applic
 create policy "Admins can delete booking applications." on public.booking_applications
   for delete using (public.is_admin());
 
+-- Add driving_license_back_url to driver_documents table (replaces pan_card_url)
+alter table if exists public.driver_documents add column if not exists driving_license_back_url text;
+

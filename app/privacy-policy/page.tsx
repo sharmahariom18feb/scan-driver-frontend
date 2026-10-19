@@ -82,7 +82,7 @@ export default function PrivacyPolicyPage() {
             <ul className="list-disc list-inside text-xs md:text-sm text-muted-foreground space-y-1">
               <li>Name & Mobile Number</li>
               <li>Driving Licence</li>
-              <li>Aadhaar / Identity Proof & PAN Card</li>
+              <li>Aadhaar / Identity Proof & Address Proof</li>
               <li>Address Proof & Photograph</li>
               <li>Bank Account Details</li>
               <li>Vehicle Information & Verification Documents</li>

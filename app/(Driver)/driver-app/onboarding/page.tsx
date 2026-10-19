@@ -23,7 +23,7 @@ export default function OnboardingPage() {
   // Steps: 
   // 1: Basic Info
   // 2: Experience & Preferences (Merged Experience & Preference)
-  // 3: Required Document Uploads (Aadhaar Front/Back, DL, PAN, Selfie)
+  // 3: Required Document Uploads (Aadhaar Front/Back, DL Front/Back, Selfie)
   // 4: References & One Last Thing (3 References + Platforms & Comments)
   // 5: Success
   const [step, setStep] = useState(1)
@@ -48,7 +48,7 @@ export default function OnboardingPage() {
   const [aadhaarFrontUrl, setAadhaarFrontUrl] = useState('')
   const [aadhaarBackUrl, setAadhaarBackUrl] = useState('')
   const [drivingLicenseUrl, setDrivingLicenseUrl] = useState('')
-  const [panCardUrl, setPanCardUrl] = useState('')
+  const [drivingLicenseBackUrl, setDrivingLicenseBackUrl] = useState('')
   const [selfieUrl, setSelfieUrl] = useState('')
   const [paymentUrl, setPaymentUrl] = useState('')
 
@@ -56,7 +56,7 @@ export default function OnboardingPage() {
   const [aadhaarFrontFile, setAadhaarFrontFile] = useState<File | null>(null)
   const [aadhaarBackFile, setAadhaarBackFile] = useState<File | null>(null)
   const [drivingLicenseFile, setDrivingLicenseFile] = useState<File | null>(null)
-  const [panCardFile, setPanCardFile] = useState<File | null>(null)
+  const [drivingLicenseBackFile, setDrivingLicenseBackFile] = useState<File | null>(null)
   const [selfieFile, setSelfieFile] = useState<File | null>(null)
   const [paymentFile, setPaymentFile] = useState<File | null>(null)
 
@@ -64,6 +64,7 @@ export default function OnboardingPage() {
     aadhaarFront: false,
     aadhaarBack: false,
     drivingLicense: false,
+    drivingLicenseBack: false,
     panCard: false,
     selfie: false,
     payment: false
@@ -73,6 +74,7 @@ export default function OnboardingPage() {
     aadhaarFront: 0,
     aadhaarBack: 0,
     drivingLicense: 0,
+    drivingLicenseBack: 0,
     panCard: 0,
     selfie: 0,
     payment: 0
@@ -147,7 +149,7 @@ export default function OnboardingPage() {
     setReferences(updated)
   }
 
-  const handleFileSelect = (key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie' | 'payment', file: File) => {
+  const handleFileSelect = (key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'drivingLicenseBack' | 'panCard' | 'selfie' | 'payment', file: File) => {
     if (!file) return
 
     let oldUrl = ''
@@ -166,11 +168,11 @@ export default function OnboardingPage() {
       setDrivingLicenseFile(file)
       const previewUrl = URL.createObjectURL(file)
       setDrivingLicenseUrl(previewUrl)
-    } else if (key === 'panCard') {
-      oldUrl = panCardUrl
-      setPanCardFile(file)
+    } else if (key === 'drivingLicenseBack' || key === 'panCard') {
+      oldUrl = drivingLicenseBackUrl
+      setDrivingLicenseBackFile(file)
       const previewUrl = URL.createObjectURL(file)
-      setPanCardUrl(previewUrl)
+      setDrivingLicenseBackUrl(previewUrl)
     } else if (key === 'selfie') {
       oldUrl = selfieUrl
       setSelfieFile(file)
@@ -196,7 +198,7 @@ export default function OnboardingPage() {
 
   const handleCancel = () => {
     // Revoke all local object URLs
-    [aadhaarFrontUrl, aadhaarBackUrl, drivingLicenseUrl, panCardUrl, selfieUrl, paymentUrl].forEach((url) => {
+    [aadhaarFrontUrl, aadhaarBackUrl, drivingLicenseUrl, drivingLicenseBackUrl, selfieUrl, paymentUrl].forEach((url) => {
       if (url && url.startsWith('blob:')) {
         try {
           URL.revokeObjectURL(url)
@@ -210,14 +212,14 @@ export default function OnboardingPage() {
     setAadhaarFrontFile(null)
     setAadhaarBackFile(null)
     setDrivingLicenseFile(null)
-    setPanCardFile(null)
+    setDrivingLicenseBackFile(null)
     setSelfieFile(null)
     setPaymentFile(null)
 
     setAadhaarFrontUrl('')
     setAadhaarBackUrl('')
     setDrivingLicenseUrl('')
-    setPanCardUrl('')
+    setDrivingLicenseBackUrl('')
     setSelfieUrl('')
     setPaymentUrl('')
     setCurrentAddress('')
@@ -282,11 +284,11 @@ export default function OnboardingPage() {
         return
       }
       if (!drivingLicenseFile) {
-        toast.error('Please select Driving Licence photo')
+        toast.error('Please select Driving Licence Front photo')
         return
       }
-      if (!panCardFile) {
-        toast.error('Please select PAN Card photo')
+      if (!drivingLicenseBackFile) {
+        toast.error('Please select Driving Licence Back photo')
         return
       }
       if (!selfieFile) {
@@ -391,7 +393,7 @@ export default function OnboardingPage() {
         aadhaarFrontFile ? uploadToCloudinary(aadhaarFrontFile) : Promise.resolve(''),
         aadhaarBackFile ? uploadToCloudinary(aadhaarBackFile) : Promise.resolve(''),
         drivingLicenseFile ? uploadToCloudinary(drivingLicenseFile) : Promise.resolve(''),
-        panCardFile ? uploadToCloudinary(panCardFile) : Promise.resolve(''),
+        drivingLicenseBackFile ? uploadToCloudinary(drivingLicenseBackFile) : Promise.resolve(''),
         selfieFile ? uploadToCloudinary(selfieFile) : Promise.resolve(''),
         paymentFile ? uploadToCloudinary(paymentFile) : Promise.resolve(''),
       ]
@@ -399,7 +401,7 @@ export default function OnboardingPage() {
       let aadhaarFrontCloudUrl = ''
       let aadhaarBackCloudUrl = ''
       let drivingLicenseCloudUrl = ''
-      let panCardCloudUrl = ''
+      let drivingLicenseBackCloudUrl = ''
       let selfieCloudUrl = ''
       let paymentCloudUrl = ''
 
@@ -408,7 +410,7 @@ export default function OnboardingPage() {
           afUrl,
           abUrl,
           dlUrl,
-          pcUrl,
+          dlbUrl,
           sfUrl,
           pyUrl
         ] = await Promise.all(uploadPromises)
@@ -416,7 +418,7 @@ export default function OnboardingPage() {
         aadhaarFrontCloudUrl = afUrl
         aadhaarBackCloudUrl = abUrl
         drivingLicenseCloudUrl = dlUrl
-        panCardCloudUrl = pcUrl
+        drivingLicenseBackCloudUrl = dlbUrl
         selfieCloudUrl = sfUrl
         paymentCloudUrl = pyUrl
       } catch (uploadErr: any) {
@@ -451,7 +453,7 @@ export default function OnboardingPage() {
           id: user.id,
           experience,
           license_status: licenseStatus,
-          documents_available: ['Aadhaar Card', 'Driving Licence', 'PAN Card', 'Selfie', 'Registration Payment'],
+          documents_available: ['Aadhaar Card', 'Driving Licence (Front & Back)', 'Selfie', 'Registration Payment'],
           availability,
           service_preference: servicePreference,
           vehicle_specialties: vehicleSpecialties,
@@ -486,25 +488,35 @@ export default function OnboardingPage() {
         }
 
         // Step 4: Write documents and references into driver_documents table
-        const { error: docsError } = await supabase
+        const docsInsertData: any = {
+          driver_id: user.id,
+          aadhaar_front_url: aadhaarFrontCloudUrl,
+          aadhaar_back_url: aadhaarBackCloudUrl,
+          driving_license_url: drivingLicenseCloudUrl,
+          driving_license_back_url: drivingLicenseBackCloudUrl,
+          pan_card_url: drivingLicenseBackCloudUrl,
+          selfie_url: selfieCloudUrl,
+          references: references,
+          payment: paymentCloudUrl
+        }
+
+        let { error: docsError } = await supabase
           .from('driver_documents')
-          .insert({
-            driver_id: user.id,
-            aadhaar_front_url: aadhaarFrontCloudUrl,
-            aadhaar_back_url: aadhaarBackCloudUrl,
-            driving_license_url: drivingLicenseCloudUrl,
-            pan_card_url: panCardCloudUrl,
-            selfie_url: selfieCloudUrl,
-            references: references,
-            payment: paymentCloudUrl
-          })
+          .insert(docsInsertData)
+
+        // Fallback if driving_license_back_url column is pending migration on driver_documents
+        if (docsError && docsError.message?.includes('driving_license_back_url')) {
+          delete docsInsertData.driving_license_back_url
+          const retryDocs = await supabase.from('driver_documents').insert(docsInsertData)
+          docsError = retryDocs.error
+        }
 
         if (docsError) {
           throw new Error(docsError.message || 'Failed to save documents and references')
         }
 
         // Clean up object URLs to release memory
-        [aadhaarFrontUrl, aadhaarBackUrl, drivingLicenseUrl, panCardUrl, selfieUrl, paymentUrl].forEach((url) => {
+        [aadhaarFrontUrl, aadhaarBackUrl, drivingLicenseUrl, drivingLicenseBackUrl, selfieUrl, paymentUrl].forEach((url) => {
           if (url && url.startsWith('blob:')) {
             try {
               URL.revokeObjectURL(url)
@@ -528,12 +540,12 @@ export default function OnboardingPage() {
 
   const renderUploadCard = (
     label: string,
-    key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'panCard' | 'selfie' | 'payment',
+    key: 'aadhaarFront' | 'aadhaarBack' | 'drivingLicense' | 'drivingLicenseBack' | 'panCard' | 'selfie' | 'payment',
     urlValue: string,
     subtext: string
   ) => {
-    const isUploading = uploadingStates[key]
-    const progress = uploadProgress[key]
+    const isUploading = uploadingStates[key as keyof typeof uploadingStates]
+    const progress = uploadProgress[key as keyof typeof uploadProgress]
 
     return (
       <div className="relative bg-surface2 border border-border/40 hover:border-[#E8B84B]/50 transition-all duration-200 p-4 rounded-2xl flex flex-col justify-between items-stretch min-h-[145px]">
@@ -996,8 +1008,8 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {renderUploadCard('Aadhaar Card - Front Side', 'aadhaarFront', aadhaarFrontUrl, 'Front side clear photo')}
               {renderUploadCard('Aadhaar Card - Back Side', 'aadhaarBack', aadhaarBackUrl, 'Back side clear photo with address')}
-              {renderUploadCard('Driving Licence', 'drivingLicense', drivingLicenseUrl, 'Valid DL clear photo')}
-              {renderUploadCard('PAN Card', 'panCard', panCardUrl, 'PAN card clear photo')}
+              {renderUploadCard('Driving Licence - Front Side', 'drivingLicense', drivingLicenseUrl, 'Front side clear photo with number & validity')}
+              {renderUploadCard('Driving Licence - Back Side', 'drivingLicenseBack', drivingLicenseBackUrl, 'Back side clear photo with category & details')}
               {renderUploadCard('Your Selfie', 'selfie', selfieUrl, 'Clear face selfie without glasses / cap')}
             </div>
           </div>
@@ -1204,7 +1216,7 @@ export default function OnboardingPage() {
               <ul className="space-y-1.5 text-[10px] text-text-muted">
                 <li className="flex items-start gap-1.5">
                   <span className="text-primary font-bold">1.</span>
-                  <span>Document check (Aadhaar, PAN & Driving License).</span>
+                  <span>Document check (Aadhaar & Driving License).</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <span className="text-primary font-bold">2.</span>

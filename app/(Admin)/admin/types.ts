@@ -22,7 +22,8 @@ export interface DriverDocument {
   aadhaar_front_url: string
   aadhaar_back_url: string
   driving_license_url: string
-  pan_card_url: string
+  driving_license_back_url?: string | null
+  pan_card_url?: string | null
   selfie_url: string
   driver_profile_url?: string | null
   references: DriverReference[]

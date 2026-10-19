@@ -120,6 +120,7 @@ export async function POST(request: Request) {
       'aadhaar_front_url',
       'aadhaar_back_url',
       'driving_license_url',
+      'driving_license_back_url',
       'pan_card_url',
       'selfie_url',
       'payment',
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
     // 4. Query current document URL
     const { data: docsRecord, error: fetchError } = await supabaseAdminClient
       .from('driver_documents')
-      .select(documentField)
+      .select('*')
       .eq('driver_id', driverId)
       .maybeSingle()
 
@@ -140,7 +141,10 @@ export async function POST(request: Request) {
       throw new Error(`Failed to query driver documents: ${fetchError.message}`)
     }
 
-    const currentUrl = docsRecord?.[documentField]
+    let currentUrl = (docsRecord as any)?.[documentField]
+    if (!currentUrl && (documentField === 'driving_license_back_url' || documentField === 'pan_card_url')) {
+      currentUrl = (docsRecord as any)?.driving_license_back_url || (docsRecord as any)?.pan_card_url
+    }
 
     // 5. Delete current file from Cloudinary if it exists
     if (currentUrl) {
@@ -169,23 +173,61 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existsCheck) {
-      const { error: updateError } = await supabaseAdminClient
-        .from('driver_documents')
-        .update({ [documentField]: targetValue })
-        .eq('driver_id', driverId)
+      if (documentField === 'driving_license_back_url' || documentField === 'pan_card_url') {
+        const updatePayload: any = {
+          pan_card_url: targetValue,
+          driving_license_back_url: targetValue
+        }
+        let { error: updateError } = await supabaseAdminClient
+          .from('driver_documents')
+          .update(updatePayload)
+          .eq('driver_id', driverId)
 
-      if (updateError) {
-        throw new Error(`Failed to update database: ${updateError.message}`)
+        if (updateError && updateError.message?.includes('driving_license_back_url')) {
+          delete updatePayload.driving_license_back_url
+          const retry = await supabaseAdminClient
+            .from('driver_documents')
+            .update(updatePayload)
+            .eq('driver_id', driverId)
+          updateError = retry.error
+        }
+
+        if (updateError) {
+          throw new Error(`Failed to update database: ${updateError.message}`)
+        }
+      } else {
+        const { error: updateError } = await supabaseAdminClient
+          .from('driver_documents')
+          .update({ [documentField]: targetValue })
+          .eq('driver_id', driverId)
+
+        if (updateError) {
+          throw new Error(`Failed to update database: ${updateError.message}`)
+        }
       }
     } else {
       // If it doesn't exist, and action is replace/upload, insert a new record
       if (action === 'replace') {
-        const { error: insertError } = await supabaseAdminClient
+        const insertPayload: any = {
+          driver_id: driverId,
+          [documentField]: targetValue
+        }
+        if (documentField === 'driving_license_back_url' || documentField === 'pan_card_url') {
+          insertPayload.pan_card_url = targetValue
+          insertPayload.driving_license_back_url = targetValue
+        }
+
+        let { error: insertError } = await supabaseAdminClient
           .from('driver_documents')
-          .insert({
-            driver_id: driverId,
-            [documentField]: targetValue
-          })
+          .insert(insertPayload)
+
+        if (insertError && insertError.message?.includes('driving_license_back_url')) {
+          delete insertPayload.driving_license_back_url
+          const retry = await supabaseAdminClient
+            .from('driver_documents')
+            .insert(insertPayload)
+          insertError = retry.error
+        }
 
         if (insertError) {
           throw new Error(`Failed to insert document record: ${insertError.message}`)
