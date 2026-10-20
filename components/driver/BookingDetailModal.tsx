@@ -13,7 +13,7 @@ import {
   History,
   CheckCircle2,
 } from 'lucide-react'
-import { cn, getMonthlyDutyHours, getMonthlyDays } from '@/lib/utils'
+import { cn, getMonthlyDutyHours, getMonthlyDays, formatBookingDateTime } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -292,7 +292,7 @@ export default function BookingDetailModal({
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-[10px] text-text-muted leading-none">Date & Time</p>
-                  <p className="text-sm font-semibold text-foreground">{booking.dateTime}</p>
+                  <p className="text-sm font-semibold text-foreground">{formatBookingDateTime(booking.dateTime)}</p>
                 </div>
               </div>
 

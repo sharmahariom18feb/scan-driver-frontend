@@ -9,7 +9,7 @@ import { Booking, Driver, BookingApplication } from '../types'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 import DriverDetailModal from './DriverDetailModal'
 import BookingTimelineModal from './BookingTimelineModal'
-import { getMonthlyDutyHours } from '@/lib/utils'
+import { getMonthlyDutyHours, formatBookingDateTime } from '@/lib/utils'
 
 export const renderBookingTypeBadge = (type?: string, duration?: string | null) => {
   const isMonthly = type === 'MONTHLY'
@@ -1060,7 +1060,7 @@ export default function BookingsTab({
           'Vehicle': b.vehicle || 'N/A',
           'Pickup Location': b.pickup || 'N/A',
           'Drop Location': b.drop || 'N/A',
-          'Date & Time': b.date_time || 'N/A',
+          'Date & Time': formatBookingDateTime(b.date_time) || 'N/A',
           'Duration': b.duration || 'N/A',
           'Distance': b.distance || 'N/A',
           'Fare (₹)': b.fare ?? 'N/A',
@@ -1367,7 +1367,7 @@ export default function BookingsTab({
                         <div className="space-y-0.5">
                           <p className="text-slate-200 font-bold">{b.vehicle}</p>
                           <p className="text-[10px] text-slate-300 font-semibold flex items-center gap-1">
-                            <Calendar size={10} className="text-amber-500 shrink-0" /> {b.date_time}
+                            <Calendar size={10} className="text-amber-500 shrink-0" /> {formatBookingDateTime(b.date_time)}
                           </p>
                           <p className="text-xs text-slate-200 font-semibold">
                             <span className="text-sm font-extrabold text-amber-400">₹{b.fare}</span> • {b.duration}
@@ -1605,7 +1605,7 @@ export default function BookingsTab({
                     <p className="font-extrabold text-white">{b.customer_name} • {b.phone}</p>
                     <p className="font-bold text-slate-300">{b.vehicle}</p>
                     <p className="text-[10px] text-slate-300 font-semibold">
-                      {b.date_time} • <span className="text-xs font-extrabold text-amber-400">₹{b.fare}</span> ({b.duration})
+                      {formatBookingDateTime(b.date_time)} • <span className="text-xs font-extrabold text-amber-400">₹{b.fare}</span> ({b.duration})
                     </p>
                     {b.invoice_id && (
                       <div className="flex items-center gap-1.5">

@@ -69,7 +69,8 @@ export interface DriverInfo {
   email: string
   currentArea: string
   currentAddress?: string
-  licenseNo: string
+  licenseNo?: string
+  remarks?: string
   amount?: number | null
   rating: number
   verified: boolean
@@ -281,7 +282,8 @@ export const loginDriver = createAsyncThunk(
         email: user.email || profile.email || '',
         currentArea: profile.current_area,
         currentAddress: profile.current_address || '',
-        licenseNo: profile.license_no,
+        licenseNo: profile.remarks || profile.license_no || '',
+        remarks: profile.remarks || profile.license_no || '',
         rating: Number(profile.rating),
         verified: profile.verified,
         isSuspended: profile.is_suspended || false,
@@ -389,7 +391,8 @@ export const verifyDriverOtp = createAsyncThunk(
         email: user.email || profile.email || '',
         currentArea: profile.current_area,
         currentAddress: profile.current_address || '',
-        licenseNo: profile.license_no,
+        licenseNo: profile.remarks || profile.license_no || '',
+        remarks: profile.remarks || profile.license_no || '',
         rating: Number(profile.rating),
         verified: profile.verified,
         isSuspended: profile.is_suspended || false,
@@ -431,7 +434,8 @@ export const signupDriver = createAsyncThunk(
           data: {
             full_name: profileData.fullName,
             phone: normalizedPhone,
-            license_no: profileData.licenseNo,
+            remarks: profileData.remarks || profileData.licenseNo || '',
+            license_no: profileData.remarks || profileData.licenseNo || '',
             current_area: profileData.currentArea,
             current_address: profileData.currentAddress || '',
             role: 'DRIVER',
@@ -451,7 +455,8 @@ export const signupDriver = createAsyncThunk(
         email: profileData.email || '',
         currentArea: profileData.currentArea || 'Delhi NCR',
         currentAddress: profileData.currentAddress || '',
-        licenseNo: profileData.licenseNo || 'DL-XXXXXXXXXXXXX',
+        licenseNo: profileData.remarks || profileData.licenseNo || '',
+        remarks: profileData.remarks || profileData.licenseNo || '',
         rating: 5.0,
         verified: false,
         isSuspended: false,
@@ -513,7 +518,8 @@ export const checkDriverSession = createAsyncThunk(
             email: user.email || '',
             currentArea: profile.current_area,
             currentAddress: profile.current_address || '',
-            licenseNo: profile.license_no,
+            licenseNo: profile.remarks || profile.license_no || '',
+            remarks: profile.remarks || profile.license_no || '',
             rating: Number(profile.rating),
             verified: profile.verified,
             isSuspended: profile.is_suspended || false,
@@ -623,7 +629,8 @@ export const fetchDriverProfile = createAsyncThunk(
         phone: profile.phone,
         email: session.user.email || profile.email || '',
         currentArea: profile.current_area,
-        licenseNo: profile.license_no,
+        licenseNo: profile.remarks || profile.license_no || '',
+        remarks: profile.remarks || profile.license_no || '',
         rating: Number(profile.rating),
         verified: profile.verified,
         isSuspended: profile.is_suspended || false,
@@ -658,7 +665,7 @@ export const updateDriverProfile = createAsyncThunk(
         .update({
           full_name: updatedData.fullName,
           phone: updatedData.phone,
-          license_no: updatedData.licenseNo,
+          remarks: updatedData.remarks ?? updatedData.licenseNo,
           current_area: updatedData.currentArea,
           ...(updatedData.currentAddress !== undefined ? { current_address: updatedData.currentAddress } : {}),
         })
@@ -675,7 +682,8 @@ export const updateDriverProfile = createAsyncThunk(
         email: session.user.email || '',
         currentArea: data.current_area,
         currentAddress: data.current_address || '',
-        licenseNo: data.license_no,
+        licenseNo: data.remarks || data.license_no || '',
+        remarks: data.remarks || data.license_no || '',
         rating: Number(data.rating),
         verified: data.verified,
         isSuspended: data.is_suspended || false,

@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Star, Search, RefreshCw } from 'lucide-react'
-import { cn, getMonthlyDutyHours, getMonthlyDays } from '@/lib/utils'
+import { cn, getMonthlyDutyHours, getMonthlyDays, formatBookingDateTime } from '@/lib/utils'
 import { Booking, DriverInfo } from '@/redux/slices/driverSlice'
 
 const getVehicleIcon = (vehicle: string) => {
@@ -63,41 +63,6 @@ const getPackageText = (booking: Booking) => {
     return `Package - ${booking.duration} (${booking.distance})`;
   }
   return `Package - ${booking.duration}`;
-};
-
-const formatTimeAndDate = (dateTimeStr: string) => {
-  if (!dateTimeStr) return '';
-  try {
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    
-    // YYYY-MM-DD HH:MM
-    const match = dateTimeStr.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/);
-    if (match) {
-      const [_, year, monthNum, dayNum, hours, minutes] = match;
-      const date = new Date(Number(year), Number(monthNum) - 1, Number(dayNum));
-      let hr = Number(hours);
-      const ampm = hr >= 12 ? 'PM' : 'AM';
-      hr = hr % 12;
-      hr = hr ? hr : 12;
-      const timeStr = `${hr}:${minutes} ${ampm}`;
-      return `${timeStr}, ${Number(dayNum)} ${months[date.getMonth()]}`;
-    }
-    
-    // Generic Date parser
-    const d = new Date(dateTimeStr);
-    if (!isNaN(d.getTime())) {
-      let hr = d.getHours();
-      const min = String(d.getMinutes()).padStart(2, '0');
-      const ampm = hr >= 12 ? 'PM' : 'AM';
-      hr = hr % 12;
-      hr = hr ? hr : 12;
-      const timeStr = `${hr}:${min} ${ampm}`;
-      return `${timeStr}, ${d.getDate()} ${months[d.getMonth()]}`;
-    }
-  } catch (e) {
-    console.error('Error parsing datetime:', e);
-  }
-  return dateTimeStr;
 };
 
 export default function HomeTab({
@@ -302,7 +267,7 @@ export default function HomeTab({
                 {/* Header: Date/Time on left, Car info on right */}
                 <div className="flex items-center justify-between border-b border-border/10 pb-2">
                   <div className="font-bold text-xs text-text">
-                    {formatTimeAndDate(booking.dateTime)}
+                    {formatBookingDateTime(booking.dateTime)}
                   </div>
                   <div className="flex items-center gap-1 font-bold text-xs text-text">
                     {booking.vehicle && (

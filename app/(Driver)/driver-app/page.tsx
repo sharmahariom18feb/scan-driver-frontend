@@ -225,7 +225,7 @@ export default function DriverApp() {
       setEditFullName(info.fullName)
       setEditPhone(info.phone)
       setEditCurrentArea(info.currentArea)
-      setEditLicenseNo(info.licenseNo)
+      setEditLicenseNo(info.remarks || info.licenseNo || '')
     }
   }, [info])
 
@@ -396,6 +396,7 @@ export default function DriverApp() {
         phone: editPhone,
         currentArea: editCurrentArea,
         licenseNo: editLicenseNo,
+        remarks: editLicenseNo,
       })
     )
     if (updateDriverProfile.fulfilled.match(result)) {

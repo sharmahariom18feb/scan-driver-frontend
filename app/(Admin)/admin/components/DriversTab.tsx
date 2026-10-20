@@ -353,7 +353,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
   const [editFullName, setEditFullName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editEmail, setEditEmail] = useState('')
-  const [editLicenseNo, setEditLicenseNo] = useState('')
+  const [editRemarks, setEditRemarks] = useState('')
   const [editAmount, setEditAmount] = useState<number | string>('')
   const [editCurrentArea, setEditCurrentArea] = useState('')
   const [editCurrentAddress, setEditCurrentAddress] = useState('')
@@ -390,7 +390,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
     setEditFullName(d.full_name || '')
     setEditPhone(d.phone || '')
     setEditEmail(d.email || '')
-    setEditLicenseNo(d.license_no || '')
+    setEditRemarks(d.remarks || d.license_no || '')
     setEditAmount(d.amount !== undefined && d.amount !== null ? d.amount : '')
     setEditCurrentArea(d.current_area || '')
     setEditCurrentAddress(d.current_address || profile?.current_address || '')
@@ -443,7 +443,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           full_name: editFullName,
           phone: editPhone,
           email: editEmail || null,
-          license_no: editLicenseNo,
+          remarks: editRemarks,
           amount: editAmount !== '' ? Number(editAmount) : 0,
           current_area: editCurrentArea,
           current_address: editCurrentAddress || null,
@@ -623,7 +623,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
       // 1. Apply Search Filter
       if (searchTerm.trim()) {
         const term = `%${searchTerm.trim()}%`
-        query = query.or(`full_name.ilike.${term},phone.ilike.${term},license_no.ilike.${term},current_area.ilike.${term},managed_by.ilike.${term}`)
+        query = query.or(`full_name.ilike.${term},phone.ilike.${term},remarks.ilike.${term},current_area.ilike.${term},managed_by.ilike.${term}`)
       }
 
       // 2. Apply Verification Filter
@@ -890,7 +890,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           'Driver ID': d.unique_id || 'N/A',
           'Full Name': d.full_name || 'N/A',
           'Mobile': d.phone || 'N/A',
-          'License No': d.license_no || 'N/A',
+          'Remarks': d.remarks || d.license_no || 'N/A',
           'Amount (₹)': d.amount !== undefined && d.amount !== null ? Number(d.amount) : 0,
           'Area': d.current_area || 'N/A',
           'Current Address': d.current_address || profile?.current_address || 'Not provided',
@@ -913,7 +913,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
         { wch: 14 }, // Driver ID
         { wch: 24 }, // Full Name
         { wch: 18 }, // Mobile
-        { wch: 24 }, // License No
+        { wch: 24 }, // Remarks
         { wch: 14 }, // Amount (₹)
         { wch: 24 }, // Area
         { wch: 36 }, // Current Address
@@ -993,7 +993,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-3 py-2.5 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-500 transition-colors"
-            placeholder="Search by name, phone, license, area..."
+            placeholder="Search by name, phone, remarks, area..."
           />
         </div>
 
@@ -1048,7 +1048,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
             <thead>
               <tr className="border-b border-slate-700 text-[10px] uppercase font-bold tracking-widest text-slate-300">
                 <th className="py-4 px-5">Driver Name</th>
-                <th className="py-4 px-5">Mobile</th>
+                <th className="py-4 px-5">Mobile & Remarks</th>
                 <th className="py-4 px-5">Area & Rating</th>
                 <th className="py-4 px-5">Employment Type</th>
                 <th className="py-4 px-5">Status</th>
@@ -1099,7 +1099,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       </div>
                     </td>
 
-                    {/* Contact */}
+                    {/* Contact & Remarks */}
                     <td className="py-4 px-5">
                       <p className="font-bold text-slate-100 flex items-center gap-1">
                         <Phone size={11} className="text-slate-450 shrink-0" /> {d.phone}
@@ -1109,6 +1109,16 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                         <span className="font-mono font-bold text-amber-400">
                           {d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}
                         </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] mt-1">
+                        <span className="text-slate-400 font-semibold">Remarks:</span>
+                        {(d.remarks || d.license_no) ? (
+                          <span className="font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-1.5 py-0.5 rounded text-[10px] break-words">
+                            {d.remarks || d.license_no}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 italic text-[10px]">None</span>
+                        )}
                       </div>
                     </td>
 
@@ -1276,8 +1286,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                         <td colSpan={6} className="py-4 px-6 border-b border-slate-800">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-300">
                             <div className="space-y-1.5">
-                              <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
-                              <p><span className="font-bold text-white">License Number:</span> <span className="font-mono text-white font-bold uppercase">{d.license_no || 'N/A'}</span></p>
+                              <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Remarks</h4>
+                              <p><span className="font-bold text-white">Remarks:</span> <span className="font-mono text-white font-bold">{d.remarks || d.license_no || 'N/A'}</span></p>
                               <p><span className="font-bold text-white">Licence Validity:</span> {profile ? profile.license_status : 'N/A'}</p>
                               <p><span className="font-bold text-white">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
                               <p><span className="font-bold text-white">Documents:</span> {profile && profile.documents_available.length > 0 ? profile.documents_available.join(', ') : 'None selected'}</p>
@@ -1364,6 +1374,16 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     <span className="mx-1.5 text-slate-600">•</span>
                     Amount: <span className="font-mono text-amber-400 font-bold">{d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}</span>
                   </p>
+                  <p className="flex items-center gap-1.5">
+                    <span className="text-slate-400">Remarks:</span>
+                    {(d.remarks || d.license_no) ? (
+                      <span className="font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-1.5 py-0.5 rounded text-[10px]">
+                        {d.remarks || d.license_no}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 italic font-normal text-[10px]">None</span>
+                    )}
+                  </p>
                   <p>Area: {d.current_area} • Rating: {Number(d.rating).toFixed(2)}★</p>
                   <p>
                     Employment Type:{' '}
@@ -1398,8 +1418,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                   return (
                     <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-350 space-y-3 mt-2">
                       <div className="space-y-1">
-                        <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
-                        <p><span className="font-bold text-slate-200">License Number:</span> <span className="font-mono text-white font-bold uppercase">{d.license_no || 'N/A'}</span></p>
+                        <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Remarks</h4>
+                        <p><span className="font-bold text-slate-200">Remarks:</span> <span className="font-mono text-white font-bold">{d.remarks || d.license_no || 'N/A'}</span></p>
                         <p><span className="font-bold text-slate-200">Licence Validity:</span> {profile ? profile.license_status : 'N/A'}</p>
                         <p><span className="font-bold text-slate-200">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
                         <p><span className="font-bold text-slate-200">Documents:</span> {profile && profile.documents_available.length > 0 ? profile.documents_available.join(', ') : 'None'}</p>
@@ -1696,16 +1716,16 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     />
                   </div>
 
-                  {/* License No */}
+                  {/* Remarks */}
                   <div>
                     <label className="block text-[9px] font-extrabold uppercase tracking-widest text-slate-350 mb-1">
-                      License Number
+                      Remarks
                     </label>
                     <input
                       type="text"
-                      required
-                      value={editLicenseNo}
-                      onChange={(e) => setEditLicenseNo(e.target.value)}
+                      value={editRemarks}
+                      onChange={(e) => setEditRemarks(e.target.value)}
+                      placeholder="e.g. Free, Free (Interview), ₹99 Return..."
                       className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none text-white rounded-xl placeholder:text-slate-600 transition-colors"
                     />
                   </div>

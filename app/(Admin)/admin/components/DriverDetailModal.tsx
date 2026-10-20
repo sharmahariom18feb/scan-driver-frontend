@@ -195,7 +195,7 @@ export default function DriverDetailModal({ driver, booking, onClose }: DriverDe
     const summary = `🚗 DRIVER DETAILS
 Name: ${driver.full_name}
 Phone: ${driver.phone}
-License No: ${driver.license_no || 'N/A'}
+Remarks: ${driver.remarks || driver.license_no || 'N/A'}
 Experience: ${profile?.experience || 'N/A'}
 Current Area: ${driver.current_area || 'N/A'}
 Rating: ${driver.rating || 5.0}★
@@ -457,21 +457,21 @@ ${booking ? `Assigned Booking: ${booking.id} (${booking.type})` : ''}`
             </h4>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {/* License Number */}
+              {/* Remarks */}
               <div className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl space-y-1">
-                <span className="text-[9px] font-extrabold uppercase text-slate-500">Driving License</span>
+                <span className="text-[9px] font-extrabold uppercase text-slate-500">Remarks</span>
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-bold text-white truncate" title={driver.license_no || 'N/A'}>
-                    {driver.license_no || 'Not Provided'}
+                  <span className="text-xs font-bold text-white truncate" title={driver.remarks || driver.license_no || 'N/A'}>
+                    {driver.remarks || driver.license_no || 'None'}
                   </span>
-                  {driver.license_no && (
+                  {(driver.remarks || driver.license_no) && (
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(driver.license_no, 'License Number')}
+                      onClick={() => copyToClipboard((driver.remarks || driver.license_no)!, 'Remarks')}
                       className="text-slate-500 hover:text-white cursor-pointer"
-                      title="Copy License"
+                      title="Copy Remarks"
                     >
-                      {copiedField === 'License Number' ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                      {copiedField === 'Remarks' ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
                     </button>
                   )}
                 </div>

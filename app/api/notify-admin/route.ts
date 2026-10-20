@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import twilio from 'twilio'
 import { createClient } from '@supabase/supabase-js'
+import { formatBookingDateTime } from '@/lib/utils'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY ?? ''
@@ -61,10 +62,7 @@ export async function POST(request: Request) {
     // 3. Format notification message
     const formattedFare = booking.fare ? `₹${Number(booking.fare).toLocaleString('en-IN')}` : 'N/A'
     const formattedDateTime = booking.date_time
-      ? new Date(booking.date_time).toLocaleString('en-IN', {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        })
+      ? formatBookingDateTime(booking.date_time)
       : 'Immediate / Not specified'
 
     let smsBody = `🚨 NEW BOOKING RECEIVED 🚨\n`

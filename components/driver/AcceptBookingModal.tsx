@@ -13,7 +13,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatBookingDateTime } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
 
 interface AcceptBookingModalProps {
@@ -137,7 +137,7 @@ export default function AcceptBookingModal({
           <div className="flex items-center justify-between pt-2 border-t border-border/10 text-[11px] text-text-muted">
             <div className="flex items-center gap-1">
               <Calendar size={12} className="text-gold" />
-              <span className="font-medium text-foreground">{booking.dateTime}</span>
+              <span className="font-medium text-foreground">{formatBookingDateTime(booking.dateTime)}</span>
             </div>
             {booking.duration && (
               <div className="flex items-center gap-1">

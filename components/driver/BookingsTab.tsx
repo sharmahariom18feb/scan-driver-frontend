@@ -20,7 +20,7 @@ import {
   Info,
   Clock
 } from 'lucide-react'
-import { cn, getMonthlyDutyHours } from '@/lib/utils'
+import { cn, getMonthlyDutyHours, formatBookingDateTime } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 
@@ -694,7 +694,7 @@ function ActiveBookingCard({
 
       <div className="border-t border-border/10 mt-4.5 pt-3.5 flex items-center justify-between">
         <span className="font-semibold text-[10px] text-text-muted flex items-center gap-1">
-          <Calendar size={12} /> {booking.dateTime}
+          <Calendar size={12} /> {formatBookingDateTime(booking.dateTime)}
         </span>
         <div className="text-right">
           <span className="block text-[9px] text-text-muted uppercase tracking-wider leading-none mb-1">Total Fare</span>
@@ -926,7 +926,7 @@ export default function BookingsTab({
                       DATE & TIME
                     </span>
                     <span className="text-xs font-semibold text-foreground">
-                      {booking.dateTime}
+                      {formatBookingDateTime(booking.dateTime)}
                     </span>
                     {booking.duration && (
                       <span className="text-[10px] text-text-muted block font-medium">

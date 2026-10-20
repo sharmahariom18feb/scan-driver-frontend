@@ -48,6 +48,12 @@ export async function POST(request: Request) {
     // 4. Update users table
     if (userData && Object.keys(userData).length > 0) {
       const finalUserData = { ...userData }
+      if (finalUserData.license_no !== undefined) {
+        if (finalUserData.remarks === undefined) {
+          finalUserData.remarks = finalUserData.license_no
+        }
+        delete finalUserData.license_no
+      }
       let { error: userUpdateError } = await supabaseAdminClient
         .from('users')
         .update(finalUserData)
