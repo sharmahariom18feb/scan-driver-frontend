@@ -77,6 +77,23 @@ export interface Booking {
   invoice_image?: string | null
 }
 
+export interface BookingStatusLog {
+  id: string
+  booking_id: string
+  driver_id: string | null
+  status: string
+  trip_status: string
+  changed_by?: string | null
+  metadata?: Record<string, any>
+  created_at: string
+  timestamp: string
+  driver?: {
+    id: string
+    full_name: string
+    phone: string
+  } | null
+}
+
 export interface DashboardStats {
   totalBookings: number
   availableBookings: number

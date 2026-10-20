@@ -1175,89 +1175,98 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     </td>
 
                     {/* Verification Toggle & Actions */}
-                    <td className="py-4 px-5 text-right whitespace-nowrap space-x-2">
-                      {!d.verified ? (
-                        <>
-                          <button
-                            onClick={() => toggleVerification(d.id, false, 'FREE')}
-                            disabled={updatingId === d.id}
-                            className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/5"
-                            title="Verify as Free driver (Verified: True, Type: FREE)"
-                          >
-                            <UserCheck size={12} /> VERIFIED
-                          </button>
-                          <button
-                            onClick={() => toggleVerification(d.id, false, 'PREMIUM')}
-                            disabled={updatingId === d.id}
-                            className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-amber-500/20"
-                            title="Verify as Premium driver (Verified: True, Type: PREMIUM)"
-                          >
-                            <Crown size={12} /> PREMIUM
-                          </button>
-                          <button
-                            onClick={() => handleRejectDriver(d.id)}
-                            disabled={updatingId === d.id}
-                            className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
-                          >
-                            <Ban size={12} /> REJECT
-                          </button>
-                        </>
-                      ) : d.is_suspended ? (
-                        <button
-                          onClick={() => toggleSuspension(d.id, d.is_suspended)}
-                          disabled={updatingId === d.id}
-                          className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
-                        >
-                          <UserCheck size={12} /> UNSUSPEND
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => toggleSuspension(d.id, d.is_suspended)}
-                            disabled={updatingId === d.id}
-                            className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer disabled:opacity-50"
-                          >
-                            <Ban size={12} /> SUSPEND
-                          </button>
-                          {(d.type || 'FREE').toUpperCase() === 'PREMIUM' ? (
+                    <td className="py-2.5 px-5 text-right whitespace-nowrap">
+                      <div className="flex flex-col items-end gap-1.5 w-fit ml-auto">
+                        {/* Row 1: Verification & Account Status */}
+                        <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
+                          {!d.verified ? (
+                            <>
+                              <button
+                                onClick={() => toggleVerification(d.id, false, 'FREE')}
+                                disabled={updatingId === d.id}
+                                className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/5 shrink-0"
+                                title="Verify as Free driver (Verified: True, Type: FREE)"
+                              >
+                                <UserCheck size={12} /> VERIFIED
+                              </button>
+                              <button
+                                onClick={() => toggleVerification(d.id, false, 'PREMIUM')}
+                                disabled={updatingId === d.id}
+                                className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-amber-500/20 shrink-0"
+                                title="Verify as Premium driver (Verified: True, Type: PREMIUM)"
+                              >
+                                <Crown size={12} /> PREMIUM
+                              </button>
+                              <button
+                                onClick={() => handleRejectDriver(d.id)}
+                                disabled={updatingId === d.id}
+                                className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                              >
+                                <Ban size={12} /> REJECT
+                              </button>
+                            </>
+                          ) : d.is_suspended ? (
                             <button
-                              onClick={() => handleUpdateDriverType(d.id, 'FREE')}
+                              onClick={() => toggleSuspension(d.id, d.is_suspended)}
                               disabled={updatingId === d.id}
-                              className="inline-flex items-center gap-1 bg-amber-500/10 hover:bg-slate-800 border border-amber-500/30 text-amber-300 hover:text-slate-300 font-extrabold text-[10px] py-1.5 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50"
-                              title="Currently Premium. Click to switch to Free"
+                              className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50 shrink-0"
                             >
-                              <Crown size={11} className="text-amber-400" /> PREMIUM
+                              <UserCheck size={12} /> UNSUSPEND
                             </button>
                           ) : (
-                            <button
-                              onClick={() => handleUpdateDriverType(d.id, 'PREMIUM')}
-                              disabled={updatingId === d.id}
-                              className="inline-flex items-center gap-1 bg-slate-800 hover:bg-gradient-to-r hover:from-amber-500 hover:to-amber-400 text-slate-300 hover:text-slate-950 border border-slate-700 font-extrabold text-[10px] py-1.5 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50"
-                              title="Currently Free. Click to upgrade to Premium"
-                            >
-                              <Crown size={11} className="text-amber-400" /> UPGRADE
-                            </button>
+                            <>
+                              <button
+                                onClick={() => toggleSuspension(d.id, d.is_suspended)}
+                                disabled={updatingId === d.id}
+                                className="inline-flex items-center gap-1 bg-rose-950/60 border border-rose-800 text-rose-300 hover:bg-rose-500 hover:text-slate-950 font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                              >
+                                <Ban size={12} /> SUSPEND
+                              </button>
+                              {(d.type || 'FREE').toUpperCase() === 'PREMIUM' ? (
+                                <button
+                                  onClick={() => handleUpdateDriverType(d.id, 'FREE')}
+                                  disabled={updatingId === d.id}
+                                  className="inline-flex items-center gap-1 bg-amber-500/10 hover:bg-slate-800 border border-amber-500/30 text-amber-300 hover:text-slate-300 font-extrabold text-[10px] py-1 px-2 rounded-lg transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                                  title="Currently Premium. Click to switch to Free"
+                                >
+                                  <Crown size={11} className="text-amber-400" /> PREMIUM
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUpdateDriverType(d.id, 'PREMIUM')}
+                                  disabled={updatingId === d.id}
+                                  className="inline-flex items-center gap-1 bg-slate-800 hover:bg-gradient-to-r hover:from-amber-500 hover:to-amber-400 text-slate-300 hover:text-slate-950 border border-slate-700 font-extrabold text-[10px] py-1 px-2 rounded-lg transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                                  title="Currently Free. Click to upgrade to Premium"
+                                >
+                                  <Crown size={11} className="text-amber-400" /> UPGRADE
+                                </button>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                      <button
-                        onClick={() => openEditModal(d)}
-                        className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer"
-                      >
-                        <Edit size={12} /> EDIT PROFILE
-                      </button>
-                      <button
-                        onClick={() => openResetModal(d.id, d.full_name)}
-                        className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer border border-slate-700"
-                      >
-                        <Key size={12} /> RESET PASSWORD
-                      </button>
-                      <button
-                        onClick={() => setExpandedDriverId(expandedDriverId === d.id ? null : d.id)}
-                        className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg transition-all cursor-pointer border border-slate-700"
-                      >
-                        {expandedDriverId === d.id ? 'HIDE DETAILS' : 'VIEW DETAILS'}
-                      </button>
+                        </div>
+
+                        {/* Row 2: Management Controls */}
+                        <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
+                          <button
+                            onClick={() => openEditModal(d)}
+                            className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer shrink-0"
+                          >
+                            <Edit size={12} /> EDIT PROFILE
+                          </button>
+                          <button
+                            onClick={() => openResetModal(d.id, d.full_name)}
+                            className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer border border-slate-700 shrink-0"
+                          >
+                            <Key size={12} /> RESET PASSWORD
+                          </button>
+                          <button
+                            onClick={() => setExpandedDriverId(expandedDriverId === d.id ? null : d.id)}
+                            className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-[10px] py-1 px-2.5 rounded-lg transition-all cursor-pointer border border-slate-700 shrink-0"
+                          >
+                            {expandedDriverId === d.id ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                   {expandedDriverId === d.id && (() => {

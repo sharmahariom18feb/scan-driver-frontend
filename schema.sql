@@ -547,4 +547,130 @@ alter table if exists public.driver_documents add column if not exists driving_l
 -- Add amount number field to users table
 alter table if exists public.users add column if not exists amount numeric(10,2) default 0.00;
 
+-- 12. Create booking_status_logs table and tracking trigger
+create table if not exists public.booking_status_logs (
+  id uuid primary key default gen_random_uuid(),
+  booking_id text references public.bookings(id) on delete cascade not null,
+  driver_id uuid references public.users(id) on delete set null,
+  status text not null,
+  trip_status text not null,
+  changed_by uuid references public.users(id) on delete set null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  timestamp timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_booking_status_logs_booking_id on public.booking_status_logs(booking_id, created_at asc);
+create index if not exists idx_booking_status_logs_driver_id on public.booking_status_logs(driver_id);
+create index if not exists idx_booking_status_logs_trip_status on public.booking_status_logs(trip_status);
+
+alter table public.booking_status_logs enable row level security;
+
+create policy "Anyone authenticated can view booking status logs." on public.booking_status_logs
+  for select using (auth.role() = 'authenticated');
+
+create policy "Authenticated users can insert booking status logs." on public.booking_status_logs
+  for insert with check (auth.role() = 'authenticated');
+
+create policy "Admins can update booking status logs." on public.booking_status_logs
+  for update using (public.is_admin());
+
+create policy "Admins can delete booking status logs." on public.booking_status_logs
+  for delete using (public.is_admin());
+
+create or replace function public.log_booking_status_change()
+returns trigger as $$
+declare
+  v_user_id uuid;
+  v_effective_trip_status text;
+begin
+  begin
+    v_user_id := auth.uid();
+  exception when others then
+    v_user_id := null;
+  end;
+
+  if (tg_op = 'INSERT') then
+    if (new.status in ('accepted', 'completed') or (new.trip_status is not null and new.trip_status <> 'not_started')) then
+      v_effective_trip_status := case 
+        when new.trip_status is not null and new.trip_status <> 'not_started' then new.trip_status
+        else new.status
+      end;
+
+      insert into public.booking_status_logs (
+        booking_id,
+        driver_id,
+        status,
+        trip_status,
+        changed_by,
+        metadata,
+        created_at,
+        timestamp
+      ) values (
+        new.id,
+        new.driver_id,
+        new.status,
+        v_effective_trip_status,
+        coalesce(v_user_id, new.driver_id),
+        jsonb_build_object(
+          'action', 'initial_booking',
+          'source', 'insert',
+          'payment_type', new.payment_type,
+          'invoice_id', new.invoice_id
+        ),
+        timezone('utc'::text, now()),
+        timezone('utc'::text, now())
+      );
+    end if;
+
+  elsif (tg_op = 'UPDATE') then
+    if (old.status is distinct from new.status or 
+        old.trip_status is distinct from new.trip_status or 
+        (old.driver_id is distinct from new.driver_id and new.status in ('accepted', 'completed'))) then
+      
+      if (old.status is distinct from new.status and new.status = 'accepted' and (new.trip_status is null or new.trip_status = 'not_started')) then
+        v_effective_trip_status := 'accepted';
+      else
+        v_effective_trip_status := coalesce(new.trip_status, new.status);
+      end if;
+
+      insert into public.booking_status_logs (
+        booking_id,
+        driver_id,
+        status,
+        trip_status,
+        changed_by,
+        metadata,
+        created_at,
+        timestamp
+      ) values (
+        new.id,
+        new.driver_id,
+        new.status,
+        v_effective_trip_status,
+        coalesce(v_user_id, new.driver_id),
+        jsonb_build_object(
+          'old_status', old.status,
+          'old_trip_status', old.trip_status,
+          'old_driver_id', old.driver_id,
+          'payment_type', new.payment_type,
+          'invoice_id', new.invoice_id,
+          'source', 'update'
+        ),
+        timezone('utc'::text, now()),
+        timezone('utc'::text, now())
+      );
+    end if;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger trg_log_booking_status_change
+  after insert or update on public.bookings
+  for each row
+  execute function public.log_booking_status_change();
+
+
 

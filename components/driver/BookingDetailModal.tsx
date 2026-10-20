@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   User as UserIcon,
   FileText,
@@ -10,9 +10,45 @@ import {
   Check,
   XCircle,
   X,
+  History,
+  CheckCircle2,
 } from 'lucide-react'
 import { cn, getMonthlyDutyHours, getMonthlyDays } from '@/lib/utils'
 import { Booking } from '@/redux/slices/driverSlice'
+import { supabase } from '@/lib/supabaseClient'
+
+const getDriverStatusLabel = (tripStatus?: string, mainStatus?: string) => {
+  switch (tripStatus) {
+    case 'accepted':
+      return 'Booking Accepted'
+    case 'called_customer':
+      return 'Calling Customer'
+    case 'customer_confirmed':
+      return 'Customer Confirmed'
+    case 'customer_unreachable':
+      return 'Customer Unreachable'
+    case 'on_the_way':
+      return 'On The Way'
+    case 'reached_pickup':
+      return 'Reached Pickup'
+    case 'started':
+      return 'Trip Started'
+    case 'ended':
+      return 'Trip Ended'
+    case 'invoice_generated':
+      return 'Invoice Generated'
+    case 'payment_received':
+      return 'Payment Received'
+    case 'completed':
+      return 'Completed'
+    case 'cancelled_by_driver':
+      return 'Cancelled by Driver'
+    case 'cancelled':
+      return 'Cancelled'
+    default:
+      return tripStatus || mainStatus || 'Status Updated'
+  }
+}
 
 const parseAddress = (address: string) => {
   if (!address) return { text: '', gpsUrl: null }
@@ -46,6 +82,42 @@ export default function BookingDetailModal({
   onPass,
   isApplied = false,
 }: BookingDetailModalProps) {
+  const [logs, setLogs] = useState<any[]>([])
+  const [loadingLogs, setLoadingLogs] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen || !booking.id || booking.status === 'available') {
+      setLogs([])
+      return
+    }
+
+    let isSubscribed = true
+    const fetchStatusLogs = async () => {
+      setLoadingLogs(true)
+      try {
+        const { data, error } = await supabase
+          .from('booking_status_logs')
+          .select('*')
+          .eq('booking_id', booking.id)
+          .order('created_at', { ascending: true })
+
+        if (!error && data && isSubscribed) {
+          setLogs(data)
+        }
+      } catch (err) {
+        console.error('Error fetching driver status logs:', err)
+      } finally {
+        if (isSubscribed) setLoadingLogs(false)
+      }
+    }
+
+    fetchStatusLogs()
+
+    return () => {
+      isSubscribed = false
+    }
+  }, [isOpen, booking.id, booking.status])
+
   if (!isOpen) return null
 
   return (
@@ -272,6 +344,59 @@ export default function BookingDetailModal({
               </div>
             </div>
           </div>
+
+          {/* Trip Milestone Timeline (For Accepted/Completed Bookings) */}
+          {(booking.status === 'accepted' || booking.status === 'completed') && (logs.length > 0 || loadingLogs) && (
+            <div className="space-y-3 pt-2">
+              <h4 className="font-bold text-sm uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                <History size={14} className="text-emerald-500" />
+                Trip Status Timeline
+              </h4>
+
+              {loadingLogs ? (
+                <div className="py-4 text-center text-xs text-text-muted flex items-center justify-center gap-2">
+                  <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span>Loading timeline...</span>
+                </div>
+              ) : (
+                <div className="bg-surface2/30 border border-border/10 rounded-xl p-3.5 space-y-3">
+                  <div className="space-y-2.5">
+                    {logs.map((log, idx) => {
+                      const isLatest = idx === logs.length - 1
+                      const logDate = new Date(log.created_at || log.timestamp)
+                      const timeStr = !isNaN(logDate.getTime())
+                        ? logDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                        : ''
+                      const dateStr = !isNaN(logDate.getTime())
+                        ? logDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                        : ''
+
+                      return (
+                        <div key={log.id || idx} className="flex items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "h-2 w-2 rounded-full shrink-0",
+                              isLatest ? "bg-emerald-500 animate-pulse" : "bg-text-muted/40"
+                            )} />
+                            <span className={cn(
+                              "font-semibold",
+                              isLatest ? "text-foreground font-bold" : "text-text-muted"
+                            )}>
+                              {getDriverStatusLabel(log.trip_status, log.status)}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-mono text-text-muted shrink-0">
+                            <span>{timeStr}</span>
+                            <span className="text-[9px] opacity-70 ml-1">({dateStr})</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Monthly Booking Notice */}

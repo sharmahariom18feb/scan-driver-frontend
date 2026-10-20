@@ -41,6 +41,18 @@ export interface Booking {
   invoiceImage?: string | null
 }
 
+export interface BookingStatusLog {
+  id: string
+  bookingId: string
+  driverId?: string | null
+  status: string
+  tripStatus: string
+  changedBy?: string | null
+  metadata?: Record<string, any>
+  createdAt: string
+  timestamp: string
+}
+
 export interface DriverNotification {
   id: string
   title: string

@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink, FileSpreadsheet, Users, UserPlus, Trash2 } from 'lucide-react'
+import { Plus, Search, Calendar, MapPin, Phone, Car, DollarSign, User, AlertCircle, X, ChevronDown, Check, Zap, ExternalLink, FileSpreadsheet, Users, UserPlus, Trash2, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { Booking, Driver, BookingApplication } from '../types'
 import { generateInvoiceImage } from '@/lib/invoiceGenerator'
 import DriverDetailModal from './DriverDetailModal'
+import BookingTimelineModal from './BookingTimelineModal'
 import { getMonthlyDutyHours } from '@/lib/utils'
 
 export const renderBookingTypeBadge = (type?: string, duration?: string | null) => {
@@ -130,6 +131,9 @@ export default function BookingsTab({
 
   // Viewing Invoice Modal State
   const [viewingInvoice, setViewingInvoice] = useState<string | null>(null)
+
+  // Viewing Status Timeline Modal State
+  const [viewingTimelineBooking, setViewingTimelineBooking] = useState<Booking | null>(null)
 
   // Viewing Driver Details Modal State
   const [viewingDriverDetail, setViewingDriverDetail] = useState<Driver | null>(null)
@@ -1454,81 +1458,95 @@ export default function BookingsTab({
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEditBookingClick(b)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
-                          >
-                            Edit
-                          </button>
-                          {b.admin_approved ? (
-                            b.status !== 'completed' && (
-                              <button
-                                onClick={() => handleUnapproveBooking(b.id)}
-                                className="border border-slate-700 hover:bg-slate-800 text-slate-355 font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1"
-                              >
-                                Unapprove
-                              </button>
-                            )
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => handleApproveBooking(b.id)}
-                                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleDeleteBooking(b.id)}
-                                className="bg-rose-500 hover:bg-rose-650 text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
-                              >
-                                Delete
-                              </button>
-                            </>
-                          )}
-
-                          <span
-                            className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mr-2 ${b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
-                                ? 'bg-rose-950 text-rose-300 border border-rose-850'
-                                : b.status === 'completed'
-                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                  : b.status === 'accepted'
-                                    ? 'bg-sky-950 text-sky-300 border border-sky-800'
-                                    : 'bg-amber-950 text-amber-300 border border-amber-800'
-                              }`}
-                          >
-                            {b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled' ? 'cancelled' : b.status}
-                          </span>
-
-                          {b.invoice_image && (
+                      <td className="py-2.5 px-5 text-right whitespace-nowrap">
+                        <div className="flex flex-col items-end gap-1.5 w-fit ml-auto">
+                          {/* Row 1: Action Controls & Status Badge */}
+                          <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
                             <button
-                              onClick={() => setViewingInvoice(b.invoice_image || null)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] py-1.5 px-3 rounded-lg cursor-pointer transition-all mr-1 shadow-sm"
+                              onClick={() => handleEditBookingClick(b)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] py-1 px-2.5 rounded-lg cursor-pointer transition-all shadow-sm shrink-0"
                             >
-                              View Invoice
+                              Edit
                             </button>
-                          )}
+                            {b.admin_approved ? (
+                              b.status !== 'completed' && (
+                                <button
+                                  onClick={() => handleUnapproveBooking(b.id)}
+                                  className="border border-slate-700 hover:bg-slate-800 text-slate-300 font-extrabold text-[10px] py-1 px-2.5 rounded-lg cursor-pointer transition-all shrink-0"
+                                >
+                                  Unapprove
+                                </button>
+                              )
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleApproveBooking(b.id)}
+                                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] py-1 px-2.5 rounded-lg cursor-pointer transition-all shadow-sm shrink-0"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteBooking(b.id)}
+                                  className="bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[10px] py-1 px-2.5 rounded-lg cursor-pointer transition-all shadow-sm shrink-0"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
 
-                          <select
-                            value={b.trip_status || 'not_started'}
-                            onChange={(e) => handleAdminUpdateTripStatus(b.id, e.target.value)}
-                            className="bg-slate-950 border border-slate-700 text-white rounded-lg text-[10px] py-1.5 px-2 font-bold focus:outline-none focus:border-amber-500 cursor-pointer max-w-[130px]"
-                          >
-                            <option value="not_started">Accepted / Not Started</option>
-                            <option value="called_customer">Calling Customer</option>
-                            <option value="customer_unreachable">Unreachable</option>
-                            <option value="customer_confirmed">Confirmed</option>
-                            <option value="cancellation_request">Cancellation Req</option>
-                            <option value="cancelled_by_driver">Cancelled</option>
-                            <option value="on_the_way">On the Way</option>
-                            <option value="reached_pickup">At Pickup</option>
-                            <option value="started">Trip Started</option>
-                            <option value="ended">Trip Ended</option>
-                            <option value="invoice_generated">Invoice Generated</option>
-                            <option value="payment_received">Payment Received</option>
-                            <option value="completed">Completed</option>
-                          </select>
+                            {b.invoice_image && (
+                              <button
+                                onClick={() => setViewingInvoice(b.invoice_image || null)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] py-1 px-2.5 rounded-lg cursor-pointer transition-all shadow-sm shrink-0"
+                              >
+                                View Invoice
+                              </button>
+                            )}
+
+                            <span
+                              className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full shrink-0 ${b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled'
+                                  ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                                  : b.status === 'completed'
+                                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                    : b.status === 'accepted'
+                                      ? 'bg-sky-950 text-sky-300 border border-sky-800'
+                                      : 'bg-amber-950 text-amber-300 border border-amber-800'
+                                }`}
+                            >
+                              {b.trip_status === 'cancelled_by_driver' || b.trip_status === 'cancelled' ? 'cancelled' : b.status}
+                            </span>
+                          </div>
+
+                          {/* Row 2: Status & Tracking */}
+                          <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
+                            <button
+                              onClick={() => setViewingTimelineBooking(b)}
+                              title="View status update timeline & timestamps"
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] py-1 px-2.5 rounded-lg cursor-pointer transition-all shadow-sm flex items-center gap-1 shrink-0"
+                            >
+                              <Clock size={11} /> Timeline
+                            </button>
+
+                            <select
+                              value={b.trip_status || 'not_started'}
+                              onChange={(e) => handleAdminUpdateTripStatus(b.id, e.target.value)}
+                              className="bg-slate-950 border border-slate-700 text-white rounded-lg text-[10px] py-1 px-2 font-bold focus:outline-none focus:border-amber-500 cursor-pointer min-w-[145px] shrink-0"
+                            >
+                              <option value="not_started">Accepted / Not Started</option>
+                              <option value="called_customer">Calling Customer</option>
+                              <option value="customer_unreachable">Unreachable</option>
+                              <option value="customer_confirmed">Confirmed</option>
+                              <option value="cancellation_request">Cancellation Req</option>
+                              <option value="cancelled_by_driver">Cancelled</option>
+                              <option value="on_the_way">On the Way</option>
+                              <option value="reached_pickup">At Pickup</option>
+                              <option value="started">Trip Started</option>
+                              <option value="ended">Trip Ended</option>
+                              <option value="invoice_generated">Invoice Generated</option>
+                              <option value="payment_received">Payment Received</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -1683,6 +1701,12 @@ export default function BookingsTab({
                             </button>
                           </>
                         )}
+                        <button
+                          onClick={() => setViewingTimelineBooking(b)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 px-3 rounded-lg text-[9px] font-extrabold uppercase cursor-pointer flex items-center gap-1"
+                        >
+                          <Clock size={10} /> Timeline
+                        </button>
                         {b.invoice_image && (
                           <button
                             onClick={() => setViewingInvoice(b.invoice_image || null)}
@@ -2787,6 +2811,15 @@ export default function BookingsTab({
             setViewingDriverDetail(null)
             setViewingDriverBooking(null)
           }}
+        />
+      )}
+
+      {/* Modal: Booking Status Tracking Timeline */}
+      {viewingTimelineBooking && (
+        <BookingTimelineModal
+          booking={viewingTimelineBooking}
+          driver={drivers.find((d) => d.id === viewingTimelineBooking.driver_id) || null}
+          onClose={() => setViewingTimelineBooking(null)}
         />
       )}
     </div>
