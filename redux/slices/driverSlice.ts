@@ -732,7 +732,7 @@ export const acceptBooking = createAsyncThunk(
         .maybeSingle()
 
       if ((userProfile?.type || 'FREE').toUpperCase() === 'FREE') {
-        throw new Error('Your payment is pending, contact : +91-9717498198')
+        throw new Error('Your payment is pending,Please contact : +91-9718181498')
       }
 
       // Call postgres safe acceptance RPC to handle row locking (FOR UPDATE) and check status
@@ -907,7 +907,7 @@ export const applyForMonthlyBooking = createAsyncThunk(
         .maybeSingle()
 
       if ((userProfile?.type || 'FREE').toUpperCase() === 'FREE') {
-        throw new Error('Your payment is pending, contact : +91-9717498198')
+        throw new Error('Your payment is pending,Please contact : +91-9718181498')
       }
 
       const { error } = await supabase

@@ -1049,10 +1049,8 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
               <tr className="border-b border-slate-700 text-[10px] uppercase font-bold tracking-widest text-slate-300">
                 <th className="py-4 px-5">Driver Name</th>
                 <th className="py-4 px-5">Mobile</th>
-                <th className="py-4 px-5">License</th>
                 <th className="py-4 px-5">Area & Rating</th>
                 <th className="py-4 px-5">Employment Type</th>
-                <th className="py-4 px-5">Managed By (SPOC)</th>
                 <th className="py-4 px-5">Status</th>
                 <th className="py-4 px-5 text-right">Verification Action</th>
               </tr>
@@ -1060,7 +1058,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
             <tbody className="divide-y divide-slate-800 text-slate-200">
               {filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-xs text-slate-400 italic">
+                  <td colSpan={6} className="py-12 text-center text-xs text-slate-400 italic">
                     {mode === 'suspended'
                       ? 'No suspended drivers found.'
                       : 'No drivers registered matching current filters.'}
@@ -1106,21 +1104,11 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       <p className="font-bold text-slate-100 flex items-center gap-1">
                         <Phone size={11} className="text-slate-450 shrink-0" /> {d.phone}
                       </p>
-                    </td>
-
-                    {/* License */}
-                    <td className="py-4 px-5">
-                      <div className="space-y-0.5">
-                        <p className="font-bold text-white tracking-wide font-mono uppercase">{d.license_no}</p>
-                        <div className="flex items-center gap-1.5 text-[11px]">
-                          <span className="text-slate-400 font-semibold">Amount:</span>
-                          <span className="font-mono font-bold text-amber-400">
-                            {d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-slate-350 uppercase tracking-widest font-bold flex items-center gap-1">
-                          <Award size={10} className="text-amber-500" /> Professional Class
-                        </p>
+                      <div className="flex items-center gap-1.5 text-[11px] mt-0.5">
+                        <span className="text-slate-400 font-semibold">Amount:</span>
+                        <span className="font-mono font-bold text-amber-400">
+                          {d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}
+                        </span>
                       </div>
                     </td>
 
@@ -1173,20 +1161,6 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                           </span>
                         )
                       })()}
-                    </td>
-
-                    {/* Managed By (SPOC) */}
-                    <td className="py-4 px-5">
-                      {d.managed_by || getProfile(d)?.managed_by ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-                          <UserCheck size={11} className="text-indigo-400" />
-                          {d.managed_by || getProfile(d)?.managed_by}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-medium text-slate-450 italic">
-                          Not Assigned
-                        </span>
-                      )}
                     </td>
 
                     {/* Online status */}
@@ -1290,12 +1264,13 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     const profile = getProfile(d)
                     return (
                       <tr className="bg-slate-950/60 text-xs">
-                        <td colSpan={8} className="py-4 px-6 border-b border-slate-800">
+                        <td colSpan={6} className="py-4 px-6 border-b border-slate-800">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-300">
                             <div className="space-y-1.5">
                               <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
-                              <p><span className="font-bold text-white">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
+                              <p><span className="font-bold text-white">License Number:</span> <span className="font-mono text-white font-bold uppercase">{d.license_no || 'N/A'}</span></p>
                               <p><span className="font-bold text-white">Licence Validity:</span> {profile ? profile.license_status : 'N/A'}</p>
+                              <p><span className="font-bold text-white">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
                               <p><span className="font-bold text-white">Documents:</span> {profile && profile.documents_available.length > 0 ? profile.documents_available.join(', ') : 'None selected'}</p>
                             </div>
                             <div className="space-y-1.5">
@@ -1310,6 +1285,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                             <div className="space-y-1.5">
                               <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#A3E635]">Additional Details</h4>
                               <p><span className="font-bold text-white">Managed By (SPOC):</span> {d.managed_by || profile?.managed_by ? <span className="text-indigo-300 font-bold">{d.managed_by || profile?.managed_by}</span> : <span className="text-slate-450 italic font-normal">Not Assigned</span>}</p>
+                              <p><span className="font-bold text-white">Amount:</span> <span className="font-mono text-amber-400 font-bold">{d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}</span></p>
                               <p><span className="font-bold text-white">Pehle platform pe:</span> {profile ? (profile.previous_platforms || 'Nahi') : 'N/A'}</p>
                               <p className="whitespace-pre-wrap"><span className="font-bold text-white">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
                             </div>
@@ -1375,11 +1351,10 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
 
                 <div className="space-y-1 text-slate-200 text-[11px] font-semibold">
                   <p>
-                    License: <span className="font-mono text-white font-bold">{d.license_no}</span>
+                    Mobile: <span className="font-bold text-white">{d.phone}</span>
                     <span className="mx-1.5 text-slate-600">•</span>
                     Amount: <span className="font-mono text-amber-400 font-bold">{d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}</span>
                   </p>
-                  <p>Mobile: {d.phone}</p>
                   <p>Area: {d.current_area} • Rating: {Number(d.rating).toFixed(2)}★</p>
                   <p>
                     Employment Type:{' '}
@@ -1403,14 +1378,6 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       <span className="text-slate-500 italic">Not provided</span>
                     )}
                   </p>
-                  <p className="text-[11px] font-semibold">
-                    <span className="text-slate-400">Managed By (SPOC):</span>{' '}
-                    {d.managed_by || getProfile(d)?.managed_by ? (
-                      <span className="text-indigo-300 font-bold">{d.managed_by || getProfile(d)?.managed_by}</span>
-                    ) : (
-                      <span className="text-slate-500 italic font-normal">Not Assigned</span>
-                    )}
-                  </p>
                   <p className="flex items-center gap-1 mt-1 font-semibold">
                     Status: <span className={`h-1.5 w-1.5 rounded-full ${d.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
                     <span className="font-bold text-slate-200">{d.is_online ? 'Online' : 'Offline'}</span>
@@ -1423,8 +1390,9 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-350 space-y-3 mt-2">
                       <div className="space-y-1">
                         <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Background & Licence</h4>
-                        <p><span className="font-bold text-slate-200">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
+                        <p><span className="font-bold text-slate-200">License Number:</span> <span className="font-mono text-white font-bold uppercase">{d.license_no || 'N/A'}</span></p>
                         <p><span className="font-bold text-slate-200">Licence Validity:</span> {profile ? profile.license_status : 'N/A'}</p>
+                        <p><span className="font-bold text-slate-200">Experience:</span> {profile ? profile.experience : 'N/A'}</p>
                         <p><span className="font-bold text-slate-200">Documents:</span> {profile && profile.documents_available.length > 0 ? profile.documents_available.join(', ') : 'None'}</p>
                       </div>
                       <div className="space-y-1">
@@ -1439,6 +1407,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                       <div className="space-y-1">
                         <h4 className="text-[9px] font-extrabold uppercase tracking-widest text-[#A3E635]">Additional Details</h4>
                         <p><span className="font-bold text-slate-200">Managed By (SPOC):</span> {d.managed_by || profile?.managed_by ? <span className="text-indigo-300 font-bold">{d.managed_by || profile?.managed_by}</span> : <span className="text-slate-500 italic font-normal">Not Assigned</span>}</p>
+                        <p><span className="font-bold text-slate-200">Amount:</span> <span className="font-mono text-amber-400 font-bold">{d.amount !== undefined && d.amount !== null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : '₹0'}</span></p>
                         <p><span className="font-bold text-slate-200">Pehle Platform:</span> {profile ? (profile.previous_platforms || 'Nahi') : 'N/A'}</p>
                         <p className="whitespace-pre-wrap"><span className="font-bold text-slate-200">Comments:</span> {profile ? (profile.additional_comments || 'Nahi') : 'N/A'}</p>
                       </div>
