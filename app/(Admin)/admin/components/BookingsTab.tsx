@@ -380,7 +380,11 @@ export default function BookingsTab({
 
     setCreating(true)
     const bookingId = 'SD-' + Math.floor(1000 + Math.random() * 9000)
-    const formattedDateTime = startDate && startTime ? `${startDate} ${startTime}` : 'Immediate'
+    const isMonthly = tripType === 'MONTHLY'
+    const finalTime = startTime || (isMonthly ? '10:00' : '')
+    const formattedDateTime = startDate && finalTime
+      ? (isMonthly ? `Interview: ${startDate} ${finalTime}` : `${startDate} ${finalTime}`)
+      : (startDate ? (isMonthly ? `Interview: ${startDate} 10:00` : startDate) : 'Immediate')
     const formattedDuration = tripType === 'HOURLY'
       ? `${durationValue} Hours`
       : tripType === 'MONTHLY'
@@ -517,9 +521,17 @@ export default function BookingsTab({
 
     // Parse date and time from b.date_time
     if (b.date_time && b.date_time !== 'Immediate') {
-      const parts = b.date_time.split(' ')
-      if (parts[0]) setStartDate(parts[0])
-      if (parts[1]) setStartTime(parts[1])
+      const isMonthlyBooking = b.type === 'MONTHLY' || /^interview:/i.test(b.date_time)
+      const cleanDT = b.date_time.replace(/^[a-zA-Z\s]+:\s*/i, '').trim()
+      const match = cleanDT.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s]+(\d{1,2}:\d{2}))?/)
+      if (match) {
+        setStartDate(match[1])
+        setStartTime(match[2] || (isMonthlyBooking ? '10:00' : ''))
+      } else {
+        const parts = cleanDT.split(' ')
+        setStartDate(parts[0] || '')
+        setStartTime(parts[1] || (isMonthlyBooking ? '10:00' : ''))
+      }
     } else {
       setStartDate('')
       setStartTime('')
@@ -570,7 +582,11 @@ export default function BookingsTab({
     }
 
     setCreating(true)
-    const formattedDateTime = startDate && startTime ? `${startDate} ${startTime}` : 'Immediate'
+    const isMonthly = tripType === 'MONTHLY'
+    const finalTime = startTime || (isMonthly ? '10:00' : '')
+    const formattedDateTime = startDate && finalTime
+      ? (isMonthly ? `Interview: ${startDate} ${finalTime}` : `${startDate} ${finalTime}`)
+      : (startDate ? (isMonthly ? `Interview: ${startDate} 10:00` : startDate) : 'Immediate')
     const formattedDuration = tripType === 'HOURLY'
       ? `${durationValue} Hours`
       : tripType === 'MONTHLY'
@@ -1060,7 +1076,7 @@ export default function BookingsTab({
           'Vehicle': b.vehicle || 'N/A',
           'Pickup Location': b.pickup || 'N/A',
           'Drop Location': b.drop || 'N/A',
-          'Date & Time': formatBookingDateTime(b.date_time) || 'N/A',
+          'Date & Time': formatBookingDateTime(b.date_time, b.type) || 'N/A',
           'Duration': b.duration || 'N/A',
           'Distance': b.distance || 'N/A',
           'Fare (₹)': b.fare ?? 'N/A',
@@ -1367,7 +1383,7 @@ export default function BookingsTab({
                         <div className="space-y-0.5">
                           <p className="text-slate-200 font-bold">{b.vehicle}</p>
                           <p className="text-[10px] text-slate-300 font-semibold flex items-center gap-1">
-                            <Calendar size={10} className="text-amber-500 shrink-0" /> {formatBookingDateTime(b.date_time)}
+                            <Calendar size={10} className="text-amber-500 shrink-0" /> {formatBookingDateTime(b.date_time, b.type)}
                           </p>
                           <p className="text-xs text-slate-200 font-semibold">
                             <span className="text-sm font-extrabold text-amber-400">₹{b.fare}</span> • {b.duration}
@@ -1605,7 +1621,7 @@ export default function BookingsTab({
                     <p className="font-extrabold text-white">{b.customer_name} • {b.phone}</p>
                     <p className="font-bold text-slate-300">{b.vehicle}</p>
                     <p className="text-[10px] text-slate-300 font-semibold">
-                      {formatBookingDateTime(b.date_time)} • <span className="text-xs font-extrabold text-amber-400">₹{b.fare}</span> ({b.duration})
+                      {formatBookingDateTime(b.date_time, b.type)} • <span className="text-xs font-extrabold text-amber-400">₹{b.fare}</span> ({b.duration})
                     </p>
                     {b.invoice_id && (
                       <div className="flex items-center gap-1.5">
@@ -1908,25 +1924,31 @@ export default function BookingsTab({
                   />
                 </div>
 
-                {/* Start Date */}
+                {/* Start / Interview Date */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Start Date</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {tripType === 'MONTHLY' ? 'Interview Date *' : 'Start Date'}
+                  </label>
                   <input
                     type="date"
+                    required={tripType === 'MONTHLY'}
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none"
+                    className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
-                {/* Start Time */}
+                {/* Start / Interview Time */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Start Time</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {tripType === 'MONTHLY' ? 'Interview Time *' : 'Start Time'}
+                  </label>
                   <input
                     type="time"
+                    required={tripType === 'MONTHLY'}
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none"
+                    className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
@@ -2318,8 +2340,12 @@ export default function BookingsTab({
                   <span className="text-rose-400 font-bold">Drop:</span> {reviewingMonthlyBooking.drop}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="space-y-0.5 text-right">
                 <p className="text-[10px] text-slate-400">Customer: <strong className="text-white">{reviewingMonthlyBooking.customer_name}</strong></p>
+                <p className="text-[10px] text-slate-300 flex items-center justify-end gap-1 font-semibold">
+                  <Calendar size={11} className="text-amber-400 shrink-0" />
+                  <span>{formatBookingDateTime(reviewingMonthlyBooking.date_time, 'MONTHLY')}</span>
+                </p>
                 <p className="text-[10px] text-slate-400">Current Status: <strong className="text-amber-400 uppercase">{reviewingMonthlyBooking.status}</strong></p>
               </div>
             </div>

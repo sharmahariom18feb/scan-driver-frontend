@@ -123,9 +123,24 @@ export default function BookingPage() {
 
   // Enforce 1hr minimum on date/time selection change
   const handleDateTimeChange = (dateVal: string, timeVal: string, type: 'book' | 'interview') => {
-    if (!dateVal || !timeVal) return
+    const targetDate = dateVal || (type === 'book' ? bookDate : interviewDate)
+    const targetTime = timeVal || (type === 'book' ? bookTime : interviewTime)
+
+    if (!targetDate && !targetTime) return
+
+    if (!targetDate || !targetTime) {
+      if (type === 'book') {
+        if (dateVal !== undefined) setBookDate(dateVal)
+        if (timeVal !== undefined) setBookTime(timeVal)
+      } else {
+        if (dateVal !== undefined) setInterviewDate(dateVal)
+        if (timeVal !== undefined) setInterviewTime(timeVal)
+      }
+      return
+    }
+
     const { date: minDate, time: minTime, full: minDT } = getMinDateTime()
-    const selectedDT = new Date(`${dateVal}T${timeVal}`)
+    const selectedDT = new Date(`${targetDate}T${targetTime}`)
     if (selectedDT < minDT) {
       toast.warning('⚠️ Booking must be at least 1 hour from now.')
       if (type === 'book') {
@@ -137,11 +152,11 @@ export default function BookingPage() {
       }
     } else {
       if (type === 'book') {
-        setBookDate(dateVal)
-        setBookTime(timeVal)
+        setBookDate(targetDate)
+        setBookTime(targetTime)
       } else {
-        setInterviewDate(dateVal)
-        setInterviewTime(timeVal)
+        setInterviewDate(targetDate)
+        setInterviewTime(targetTime)
       }
     }
   }
@@ -413,8 +428,8 @@ export default function BookingPage() {
 
     // Date Time
     const finalDateTime = tripType === 'monthly'
-      ? `Interview: ${interviewDate} ${interviewTime}`
-      : `${bookDate} ${bookTime}`
+      ? `Interview: ${interviewDate} ${interviewTime || '10:00'}`
+      : `${bookDate} ${bookTime || '10:00'}`
 
     // Duration
     let finalDuration = ''

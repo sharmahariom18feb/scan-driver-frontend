@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { Booking, BookingStatusLog, Driver } from '../types'
+import { formatBookingDateTime } from '@/lib/utils'
 
 interface BookingTimelineModalProps {
   booking: Booking
@@ -437,6 +438,11 @@ export default function BookingTimelineModal({
                 <p className="text-sm font-semibold text-white">
                   {booking.type}
                 </p>
+                {booking.date_time && (
+                  <p className="text-[10px] text-amber-300 font-semibold truncate">
+                    {formatBookingDateTime(booking.date_time, booking.type)}
+                  </p>
+                )}
                 <p className="text-xs font-bold text-emerald-400 font-mono">
                   ₹{booking.fare} • {booking.vehicle}
                 </p>
