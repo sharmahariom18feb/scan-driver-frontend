@@ -1051,14 +1051,13 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                 <th className="py-4 px-5">Mobile & Remarks</th>
                 <th className="py-4 px-5">Area & Rating</th>
                 <th className="py-4 px-5">Employment Type</th>
-                <th className="py-4 px-5">Status</th>
                 <th className="py-4 px-5 text-right">Verification Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800 text-slate-200">
               {filteredDrivers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-xs text-slate-400 italic">
+                  <td colSpan={5} className="py-12 text-center text-xs text-slate-400 italic">
                     {mode === 'suspended'
                       ? 'No suspended drivers found.'
                       : 'No drivers registered matching current filters.'}
@@ -1171,17 +1170,6 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                           </span>
                         )
                       })()}
-                    </td>
-
-                    {/* Online status */}
-                    <td className="py-4 px-5">
-                      <button
-                        onClick={() => toggleOnline(d.id, d.is_online)}
-                        className="flex items-center gap-1.5 hover:underline text-left cursor-pointer bg-transparent border-0 p-0"
-                      >
-                        <span className={`h-2 w-2 rounded-full ${d.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
-                        <span className="font-bold text-slate-200">{d.is_online ? 'Online' : 'Offline'}</span>
-                      </button>
                     </td>
 
                     {/* Verification Toggle & Actions */}
@@ -1406,10 +1394,6 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                     {d.current_address || getProfile(d)?.current_address || (
                       <span className="text-slate-500 italic">Not provided</span>
                     )}
-                  </p>
-                  <p className="flex items-center gap-1 mt-1 font-semibold">
-                    Status: <span className={`h-1.5 w-1.5 rounded-full ${d.is_online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
-                    <span className="font-bold text-slate-200">{d.is_online ? 'Online' : 'Offline'}</span>
                   </p>
                 </div>
 

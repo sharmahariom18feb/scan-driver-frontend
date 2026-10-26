@@ -319,7 +319,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               { id: 'dashboard' as const, label: 'Overview', icon: LayoutDashboard },
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
               { id: 'history' as const, label: 'Booking History', icon: CheckCircle2 },
-              { id: 'fake-bookings' as const, label: 'Fake Bookings', icon: Sparkles },
+              { id: 'fake-bookings' as const, label: 'Test Bookings', icon: Sparkles },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'suspended-drivers' as const, label: 'Suspended Drivers', icon: UserX },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },

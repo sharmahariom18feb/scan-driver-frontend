@@ -215,8 +215,8 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
       if (error) throw error
       setFakeBookings((data || []) as Booking[])
     } catch (err: any) {
-      console.error('Error fetching fake bookings:', err)
-      toast.error('Failed to load fake bookings.')
+      console.error('Error fetching test bookings:', err)
+      toast.error('Failed to load test bookings.')
     } finally {
       if (showLoadingSpinner) setLoading(false)
     }
@@ -298,14 +298,14 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
       const { error } = await supabase.from('bookings').insert(payload)
       if (error) throw error
 
-      toast.success(`Fake booking #${bookingId} deployed live on Driver App!`)
+      toast.success(`Test booking #${bookingId} deployed live on Driver App!`)
       fetchFakeBookings(false)
       onRefresh?.()
 
       // Broadcast push notification
       broadcastPushNotification(bookingId)
     } catch (err: any) {
-      console.error('Error deploying preset fake booking:', err)
+      console.error('Error deploying preset test booking:', err)
       toast.error('Failed to deploy preset: ' + err.message)
     }
   }
@@ -346,7 +346,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
       const { error } = await supabase.from('bookings').insert(payload)
       if (error) throw error
 
-      toast.success(`Fake booking #${bookingId} published live to Driver App!`)
+      toast.success(`Test booking #${bookingId} published live to Driver App!`)
       setShowModal(false)
       fetchFakeBookings(false)
       onRefresh?.()
@@ -355,8 +355,8 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
         broadcastPushNotification(bookingId)
       }
     } catch (err: any) {
-      console.error('Error creating fake booking:', err)
-      toast.error('Failed to create fake booking: ' + err.message)
+      console.error('Error creating test booking:', err)
+      toast.error('Failed to create test booking: ' + err.message)
     } finally {
       setSubmitting(false)
     }
@@ -388,18 +388,18 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
     }
   }
 
-  // Delete fake booking
+  // Delete test booking
   const handleDelete = async (bookingId: string) => {
-    if (!window.confirm(`Are you sure you want to delete fake booking #${bookingId}?`)) return
+    if (!window.confirm(`Are you sure you want to delete test booking #${bookingId}?`)) return
     setActionLoadingId(bookingId)
     try {
       const { error } = await supabase.from('bookings').delete().eq('id', bookingId)
       if (error) throw error
-      toast.success(`Fake booking #${bookingId} deleted.`)
+      toast.success(`Test booking #${bookingId} deleted.`)
       fetchFakeBookings(false)
       onRefresh?.()
     } catch (err: any) {
-      console.error('Error deleting fake booking:', err)
+      console.error('Error deleting test booking:', err)
       toast.error('Failed to delete: ' + err.message)
     } finally {
       setActionLoadingId(null)
@@ -443,7 +443,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                Fake Bookings Section
+                Test Bookings Section
                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
                   Driver Engagement
                 </span>
@@ -471,7 +471,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs tracking-wide shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             <Plus size={16} strokeWidth={2.5} />
-            Create Fake Booking
+            Create Test Booking
           </button>
         </div>
       </div>
@@ -573,7 +573,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
         <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-              Total Fake Bookings
+              Total Test Bookings
             </span>
             <div className="text-2xl font-black text-white mt-1">{totalCount}</div>
             <p className="text-[10px] text-slate-500 mt-0.5">Zero impact on real customer orders</p>
@@ -601,7 +601,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
         {/* Status Filters */}
         <div className="flex items-center gap-1.5 w-full sm:w-auto">
           {[
-            { id: 'all' as const, label: 'All Fake' },
+            { id: 'all' as const, label: 'All Test' },
             { id: 'available' as const, label: `Live on App (${liveCount})` },
             { id: 'attempted' as const, label: `Attempted (${attemptedCount})` },
           ].map((tab) => {
@@ -628,22 +628,22 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="h-8 w-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-slate-400 font-semibold tracking-wider uppercase">Loading Fake Bookings...</p>
+            <p className="text-xs text-slate-400 font-semibold tracking-wider uppercase">Loading Test Bookings...</p>
           </div>
         ) : filteredBookings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
             <div className="h-12 w-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-3">
               <Sparkles size={24} />
             </div>
-            <h3 className="text-sm font-bold text-white">No Fake Bookings Found</h3>
+            <h3 className="text-sm font-bold text-white">No Test Bookings Found</h3>
             <p className="text-xs text-slate-400 max-w-sm mt-1 mb-4">
-              Deploy one of the quick presets above or click "Create Fake Booking" to test driver engagement!
+              Deploy one of the quick presets above or click "Create Test Booking" to test driver engagement!
             </p>
             <button
               onClick={handleOpenCreateModal}
               className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer"
             >
-              + Create First Fake Booking
+              + Create First Test Booking
             </button>
           </div>
         ) : (
@@ -677,7 +677,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
                             #{b.id}
                           </span>
                           <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase">
-                            FAKE
+                            TEST
                           </span>
                         </div>
                         <div className="mt-1 text-xs font-semibold text-white">
@@ -792,7 +792,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
                               onClick={() => handleReactivate(b)}
                               disabled={isLoadingThis}
                               className="px-2 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 font-bold text-[10px] uppercase tracking-wide border border-emerald-500/30 transition-all flex items-center gap-1 cursor-pointer"
-                              title="Make this fake booking available again"
+                              title="Make this test booking available again"
                             >
                               <RefreshCw size={11} className={isLoadingThis ? 'animate-spin' : ''} />
                               Re-live
@@ -804,7 +804,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
                             onClick={() => handleDelete(b.id)}
                             disabled={isLoadingThis}
                             className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 transition-all cursor-pointer shadow-xs"
-                            title="Delete Fake Booking"
+                            title="Delete Test Booking"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -833,7 +833,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
                     <Sparkles size={16} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white tracking-tight">Create Fake / Simulated Booking</h3>
+                    <h3 className="text-sm font-bold text-white tracking-tight">Create Test / Simulated Booking</h3>
                     <p className="text-[11px] text-slate-400">Shows live on Driver App. Returns "You are late..." on accept.</p>
                   </div>
                 </div>
@@ -1024,7 +1024,7 @@ export default function FakeBookingsTab({ onRefresh }: FakeBookingsTabProps) {
                 <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px]">
                   <AlertCircle size={15} className="shrink-0 mt-0.5" />
                   <span>
-                    This booking is flagged with <code>is_fake = true</code>. It will not alter real revenue, completed trips, or admin notification SMS.
+                    This booking is a test simulation. It will not alter real revenue, completed trips, or admin notification SMS.
                   </span>
                 </div>
 
