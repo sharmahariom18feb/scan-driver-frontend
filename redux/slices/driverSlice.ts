@@ -39,6 +39,7 @@ export interface Booking {
   paymentType?: 'CASH' | 'QR' | null
   invoiceId?: string | null
   invoiceImage?: string | null
+  isFake?: boolean
 }
 
 export interface BookingStatusLog {
@@ -744,17 +745,6 @@ export const acceptBooking = createAsyncThunk(
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
-      // Check subscription plan
-      const { data: userProfile } = await supabase
-        .from('users')
-        .select('type')
-        .eq('id', session.user.id)
-        .maybeSingle()
-
-      if ((userProfile?.type || 'FREE').toUpperCase() === 'FREE') {
-        throw new Error('Your payment is pending,Please contact : +91-9718181498')
-      }
-
       // Call postgres safe acceptance RPC to handle row locking (FOR UPDATE) and check status
       const { data, error } = await supabase.rpc('accept_booking_safe', {
         p_booking_id: bookingId,
@@ -1007,6 +997,9 @@ export const driverSlice = createSlice({
     setBookings: (state, action: PayloadAction<Booking[]>) => {
       state.bookings = action.payload
     },
+    removeBooking: (state, action: PayloadAction<string>) => {
+      state.bookings = state.bookings.filter((b) => b.id !== action.payload)
+    },
     updateBookingState: (state, action: PayloadAction<Booking>) => {
       const index = state.bookings.findIndex((b) => b.id === action.payload.id)
       if (index !== -1) {
@@ -1213,7 +1206,20 @@ export const driverSlice = createSlice({
     })
     builder.addCase(acceptBooking.rejected, (state, action) => {
       state.loading = false
-      state.error = action.payload as string || 'Failed to accept booking'
+      state.error = (action.payload as string) || 'Failed to accept booking'
+      const bookingId = action.meta.arg
+      const bookingIndex = state.bookings.findIndex((b) => b.id === bookingId)
+      if (bookingIndex !== -1) {
+        const errMsg = ((action.payload as string) || '').toLowerCase()
+        if (
+          errMsg.includes('already assigned') ||
+          errMsg.includes('late') ||
+          errMsg.includes('no longer available') ||
+          errMsg.includes('already been accepted')
+        ) {
+          state.bookings.splice(bookingIndex, 1)
+        }
+      }
     })
 
     // Pass Booking
@@ -1276,6 +1282,7 @@ export const driverSlice = createSlice({
 export const {
   setDriverInfo,
   setBookings,
+  removeBooking,
   updateBookingState,
   setNotifications,
   updateNotificationState,

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { LayoutDashboard, Briefcase, Users, UserX, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus, Zap, CheckCircle2 } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, UserX, LogOut, Menu, X, Sun, Moon, Bell, MessageSquare, ChevronLeft, ChevronRight, PlusCircle, UserPlus, Zap, CheckCircle2, Sparkles } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import DashboardTab from './DashboardTab'
 import BookingsTab from './BookingsTab'
 import DriversTab from './DriversTab'
 import EnquiriesTab from './EnquiriesTab'
+import FakeBookingsTab from './FakeBookingsTab'
 
 interface AdminDashboardProps {
   adminUser: Driver
@@ -19,7 +20,8 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'history' | 'drivers' | 'suspended-drivers' | 'enquiries'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'bookings' | 'history' | 'fake-bookings' | 'drivers' | 'suspended-drivers' | 'enquiries'>('dashboard')
+  const [activeFakeCount, setActiveFakeCount] = useState<number>(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -119,20 +121,22 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         recentBookingsRes,
         recentDriversRes,
         pendingEnquiriesRes,
-        suspendedDriversRes
+        suspendedDriversRes,
+        activeFakeRes
       ] = await Promise.all([
-        supabase.from('bookings').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'available'),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'accepted'),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).or('is_fake.is.null,is_fake.eq.false'),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'available').or('is_fake.is.null,is_fake.eq.false'),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'accepted').or('is_fake.is.null,is_fake.eq.false'),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'completed').or('is_fake.is.null,is_fake.eq.false'),
         supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', false),
         supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', false).eq('is_online', true),
         supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', false).eq('verified', false),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('admin_approved', false),
-        supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('admin_approved', false).or('is_fake.is.null,is_fake.eq.false'),
+        supabase.from('bookings').select('*').or('is_fake.is.null,is_fake.eq.false').order('created_at', { ascending: false }).limit(5),
         supabase.from('users').select('*, driver_profiles(*)').eq('role', 'DRIVER').eq('is_suspended', false).order('created_at', { ascending: false }).limit(5),
         supabase.from('customer_enquiries').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', true)
+        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'DRIVER').eq('is_suspended', true),
+        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('is_fake', true).eq('status', 'available')
       ])
 
       if (recentBookingsRes.error) throw recentBookingsRes.error
@@ -156,6 +160,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         pendingEnquiriesCount: pendingEnquiriesRes.count || 0,
         suspendedDriversCount: suspendedDriversRes.count || 0,
       })
+      setActiveFakeCount(activeFakeRes?.count || 0)
     } catch (err: any) {
       console.error('Error fetching admin data:', err)
       toast.error('Failed to load real-time database details.')
@@ -314,6 +319,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               { id: 'dashboard' as const, label: 'Overview', icon: LayoutDashboard },
               { id: 'bookings' as const, label: 'Bookings', icon: Briefcase },
               { id: 'history' as const, label: 'Booking History', icon: CheckCircle2 },
+              { id: 'fake-bookings' as const, label: 'Fake Bookings', icon: Sparkles },
               { id: 'drivers' as const, label: 'Drivers', icon: Users },
               { id: 'suspended-drivers' as const, label: 'Suspended Drivers', icon: UserX },
               { id: 'enquiries' as const, label: 'Enquiries', icon: MessageSquare },
@@ -343,6 +349,17 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   <span className={`${isCollapsed ? 'lg:hidden' : 'inline'} whitespace-nowrap transition-all duration-300`}>
                     {item.label}
                   </span>
+                  {item.id === 'fake-bookings' && activeFakeCount > 0 ? (
+                    <span
+                      className={`bg-amber-400 text-slate-950 font-extrabold text-[9px] rounded-full transition-all duration-300 animate-pulse ${
+                        isCollapsed
+                          ? 'lg:absolute lg:top-1 lg:right-1.5 lg:px-1.5 lg:py-0.5'
+                          : 'ml-auto px-2 py-0.5'
+                      }`}
+                    >
+                      {activeFakeCount}
+                    </span>
+                  ) : null}
                   {item.id === 'suspended-drivers' && stats.suspendedDriversCount && stats.suspendedDriversCount > 0 ? (
                     <span
                       className={`bg-rose-500/20 text-rose-300 border border-rose-500/30 font-extrabold text-[9px] rounded-full transition-all duration-300 ${
@@ -499,6 +516,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               {activeTab === 'history' && (
                 <BookingsTab
                   mode="history"
+                  onRefresh={fetchData}
+                />
+              )}
+
+              {activeTab === 'fake-bookings' && (
+                <FakeBookingsTab
                   onRefresh={fetchData}
                 />
               )}

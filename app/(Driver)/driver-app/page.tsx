@@ -25,6 +25,7 @@ import {
   toggleOnlineStatus,
   acceptBooking,
   passBooking,
+  removeBooking,
   logoutDriver,
   markAllNotificationsAsRead,
   fetchBookings,
@@ -645,12 +646,6 @@ export default function DriverApp() {
         return
       }
 
-      // 3. Check subscription plan
-      if ((profile.type || 'FREE').toUpperCase() === 'FREE') {
-        toast.error('Your payment is pending,Please contact : +91-9718181498')
-        return
-      }
-
       // Keep local state in sync
       if (info) {
         dispatch(setDriverInfo({ ...info, verified: true, isSuspended: false, type: (profile.type || 'FREE') as 'FREE' | 'PREMIUM' }))
@@ -666,7 +661,20 @@ export default function DriverApp() {
         setSelectedBooking(null)
       } else {
         const errMsg = result.payload as string || 'Failed to accept booking. It may have been accepted by another driver.'
-        toast.error(errMsg)
+        toast.error(errMsg, { duration: 5000 })
+        setBookingToConfirm(null)
+        setIsModalOpen(false)
+        setSelectedBooking(null)
+
+        const lowerErr = errMsg.toLowerCase()
+        if (
+          lowerErr.includes('already assigned') ||
+          lowerErr.includes('late') ||
+          lowerErr.includes('no longer available') ||
+          lowerErr.includes('already been accepted')
+        ) {
+          dispatch(removeBooking(bookingId))
+        }
       }
     } catch (err) {
       console.error('Error verifying status before acceptance:', err)

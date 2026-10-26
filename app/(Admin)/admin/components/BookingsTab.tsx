@@ -196,6 +196,7 @@ export default function BookingsTab({
       let query = supabase
         .from('bookings')
         .select('*', { count: 'exact' })
+        .or('is_fake.is.null,is_fake.eq.false')
 
       // 1. Apply Search Filter
       if (searchTerm.trim()) {
@@ -1006,6 +1007,7 @@ export default function BookingsTab({
       let query = supabase
         .from('bookings')
         .select('*')
+        .or('is_fake.is.null,is_fake.eq.false')
 
       // 1. Apply Search Filter if entered
       if (searchTerm.trim()) {

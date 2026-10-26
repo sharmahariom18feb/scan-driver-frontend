@@ -76,6 +76,9 @@ export interface Booking {
   invoice_id?: string | null
   payment_type?: 'CASH' | 'QR' | null
   invoice_image?: string | null
+  is_fake?: boolean
+  attempted_by_driver_id?: string | null
+  attempted_at?: string | null
 }
 
 export interface BookingStatusLog {

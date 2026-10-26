@@ -267,12 +267,6 @@ declare
   v_booking public.bookings%rowtype;
   v_driver_type text;
 begin
-  -- 0. Check driver subscription type
-  select type into v_driver_type from public.users where id = p_driver_id;
-  if coalesce(v_driver_type, 'FREE') = 'FREE' then
-    return json_build_object('success', false, 'message', 'Please take subscription plan to accept the booking');
-  end if;
-
   -- 1. Select the row for update to lock it
   select * into v_booking
   from public.bookings
@@ -284,7 +278,31 @@ begin
     return json_build_object('success', false, 'message', 'Booking not found');
   end if;
 
-  -- 3. Check if booking is still available
+  -- 3. Check if fake booking
+  if coalesce(v_booking.is_fake, false) = true then
+    if v_booking.status = 'available' then
+      update public.bookings
+      set status = 'passed',
+          attempted_by_driver_id = p_driver_id,
+          attempted_at = timezone('utc'::text, now())
+      where id = p_booking_id;
+    end if;
+
+    return json_build_object(
+      'success', false,
+      'is_fake', true,
+      'booking_id', p_booking_id,
+      'message', 'You are late, already assigned to another driver.'
+    );
+  end if;
+
+  -- 4. Check driver subscription type
+  select type into v_driver_type from public.users where id = p_driver_id;
+  if coalesce(v_driver_type, 'FREE') = 'FREE' then
+    return json_build_object('success', false, 'message', 'Please take subscription plan to accept the booking');
+  end if;
+
+  -- 5. Check if booking is still available
   if v_booking.status != 'available' then
     if v_booking.driver_id = p_driver_id then
       return json_build_object('success', true, 'booking', to_jsonb(v_booking));
@@ -293,19 +311,19 @@ begin
     end if;
   end if;
 
-  -- 4. Check if admin approved it
+  -- 6. Check if admin approved it
   if not v_booking.admin_approved then
     return json_build_object('success', false, 'message', 'Booking is not approved by admin yet');
   end if;
 
-  -- 5. Perform the update
+  -- 7. Perform the update
   update public.bookings
   set status = 'accepted',
       driver_id = p_driver_id
   where id = p_booking_id
   returning * into v_booking;
 
-  -- 6. Insert notification for the driver
+  -- 8. Insert notification for the driver
   insert into public.notifications (driver_id, title, description, time, type, read)
   values (
     p_driver_id,
