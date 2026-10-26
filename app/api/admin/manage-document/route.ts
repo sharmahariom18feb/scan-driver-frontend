@@ -130,6 +130,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid document field' }, { status: 400 })
     }
 
+    if (documentField === 'driver_profile_url' && action === 'replace' && newUrl) {
+      const lower = newUrl.toLowerCase().split('?')[0]
+      const isValid =
+        lower.endsWith('.pdf') ||
+        lower.endsWith('.doc') ||
+        lower.endsWith('.docx') ||
+        lower.includes('.pdf') ||
+        lower.includes('.doc') ||
+        lower.includes('.docx') ||
+        lower.includes('/raw/')
+      if (!isValid) {
+        return NextResponse.json(
+          { error: 'Driver Profile must be a PDF or Word document (.pdf, .doc, .docx) only' },
+          { status: 400 }
+        )
+      }
+    }
+
     // 4. Query current document URL
     const { data: docsRecord, error: fetchError } = await supabaseAdminClient
       .from('driver_documents')

@@ -177,7 +177,7 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
           label: 'Driver Profile', 
           field: 'driver_profile_url', 
           url: documentsObject?.driver_profile_url, 
-          accept: 'image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+          accept: '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
         },
       ]
     }
@@ -219,6 +219,11 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                   <span className="text-[9px] font-bold text-slate-400 text-center truncate w-full" title={doc.label}>
                     {doc.label}
                   </span>
+                  {doc.field === 'driver_profile_url' && (
+                    <span className="text-[8px] font-extrabold text-blue-400/90 tracking-wider">
+                      (PDF / DOC only)
+                    </span>
+                  )}
                   {doc.url ? (
                     <>
                       {docType === 'pdf' ? (
@@ -279,7 +284,22 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                             disabled={managingDocId === `${d.id}-${doc.field}`}
                             onChange={(e) => {
                               const file = e.target.files?.[0]
-                              if (file) handleDocumentAction(d.id, doc.field, 'replace', file)
+                              if (file) {
+                                if (doc.field === 'driver_profile_url') {
+                                  const name = file.name.toLowerCase()
+                                  const isValidExt = name.endsWith('.pdf') || name.endsWith('.doc') || name.endsWith('.docx')
+                                  const isValidMime =
+                                    file.type === 'application/pdf' ||
+                                    file.type === 'application/msword' ||
+                                    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                                  if (!isValidExt && !isValidMime) {
+                                    toast.error('Driver Profile must be a PDF or Word document (.pdf, .doc, .docx) only.')
+                                    e.target.value = ''
+                                    return
+                                  }
+                                }
+                                handleDocumentAction(d.id, doc.field, 'replace', file)
+                              }
                               e.target.value = ''
                             }}
                           />
@@ -311,7 +331,22 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
                           disabled={managingDocId === `${d.id}-${doc.field}`}
                           onChange={(e) => {
                             const file = e.target.files?.[0]
-                            if (file) handleDocumentAction(d.id, doc.field, 'replace', file)
+                            if (file) {
+                              if (doc.field === 'driver_profile_url') {
+                                const name = file.name.toLowerCase()
+                                const isValidExt = name.endsWith('.pdf') || name.endsWith('.doc') || name.endsWith('.docx')
+                                const isValidMime =
+                                  file.type === 'application/pdf' ||
+                                  file.type === 'application/msword' ||
+                                  file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                                if (!isValidExt && !isValidMime) {
+                                  toast.error('Driver Profile must be a PDF or Word document (.pdf, .doc, .docx) only.')
+                                  e.target.value = ''
+                                  return
+                                }
+                              }
+                              handleDocumentAction(d.id, doc.field, 'replace', file)
+                            }
                             e.target.value = ''
                           }}
                         />
@@ -501,6 +536,20 @@ export default function DriversTab({ onRefresh, mode = 'active' }: DriversTabPro
   const [managingDocId, setManagingDocId] = useState<string | null>(null)
 
   const handleDocumentAction = async (driverId: string, field: string, action: 'delete' | 'replace', file?: File) => {
+    if (action === 'replace' && file && field === 'driver_profile_url') {
+      const name = (file.name || '').toLowerCase()
+      const isValidExt = name.endsWith('.pdf') || name.endsWith('.doc') || name.endsWith('.docx')
+      const isValidMime =
+        file.type === 'application/pdf' ||
+        file.type === 'application/msword' ||
+        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+      if (!isValidExt && !isValidMime) {
+        toast.error('Driver Profile must be a PDF or Word document (.pdf, .doc, .docx) only.')
+        return
+      }
+    }
+
     const key = `${driverId}-${field}`
     setManagingDocId(key)
     const toastId = toast.loading(`${action === 'delete' ? 'Deleting' : 'Uploading'} document...`)
